@@ -109,7 +109,7 @@ You will need:
 - Node.js 20 or newer
 - A Mistral API key if you want to use receipt extraction
 
-Store local configuration in `server/appsettings.Development.json`, environment variables, or .NET user secrets. Do not add real credentials to `appsettings.json`.
+For local development, update `server/appsettings.json` with your PostgreSQL, JWT, and Mistral credentials. This file is tracked by Git, so review it before every commit and never commit real credentials.
 
 Example development configuration:
 
