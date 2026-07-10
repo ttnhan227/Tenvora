@@ -31,8 +31,7 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
 
-      # No test project detected yet; keep CI future-proof.
-      - name: Test (if present)
+      - name: Test
         run: dotnet test -c Release --no-build
 
   client:

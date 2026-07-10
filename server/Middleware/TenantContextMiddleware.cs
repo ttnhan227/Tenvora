@@ -25,15 +25,15 @@ public class TenantContextMiddleware
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var tenantIdClaim = context.User.FindFirst("tenantId")?.Value;
-            if (string.IsNullOrWhiteSpace(tenantIdClaim))
+            if (!Guid.TryParse(tenantIdClaim, out var tenantId))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Token is missing tenant context." });
+                await context.Response.WriteAsJsonAsync(new { error = "Token has an invalid tenant context." });
                 return;
             }
 
             // Store in HttpContext.Items for use by services during this request
-            context.Items["TenantId"] = Guid.Parse(tenantIdClaim);
+            context.Items["TenantId"] = tenantId;
 
             // Set the PostgreSQL session variable so RLS policies can filter data
             // Resolve the scoped DbContext from the request's service provider

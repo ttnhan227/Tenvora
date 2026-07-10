@@ -7,13 +7,13 @@ public static class ClaimsPrincipalExtensions
     public static Guid GetTenantId(this ClaimsPrincipal user)
     {
         var claim = user.FindFirst("tenantId")?.Value;
-        return string.IsNullOrWhiteSpace(claim) ? Guid.Empty : Guid.Parse(claim);
+        return Guid.TryParse(claim, out var tenantId) ? tenantId : Guid.Empty;
     }
 
     public static Guid GetUserId(this ClaimsPrincipal user)
     {
         var claim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return string.IsNullOrWhiteSpace(claim) ? Guid.Empty : Guid.Parse(claim);
+        return Guid.TryParse(claim, out var userId) ? userId : Guid.Empty;
     }
 
     public static string GetUserRole(this ClaimsPrincipal user)
