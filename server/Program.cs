@@ -239,6 +239,12 @@ app.Use(async (context, next) =>
 
 app.UseAuthorization();
 
+app.MapGet("/api/health", () => Results.Ok(new
+{
+    status = "ready",
+    timestamp = DateTimeOffset.UtcNow
+})).AllowAnonymous();
+
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())

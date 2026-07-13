@@ -142,6 +142,17 @@ npm ci
 npm run dev
 ```
 
+Alternatively, start PostgreSQL, the API, and the frontend together from the
+repository root with Docker Compose:
+
+```powershell
+docker compose up --build
+```
+
+The frontend is available at `http://localhost:5173` and the API at
+`http://localhost:8080`. Stop the services with `docker compose down`. The
+PostgreSQL data is kept in a named Docker volume between runs.
+
 The frontend uses `http://localhost:5291/api` by default. To use another API URL, add this to `client/.env.local`:
 
 ```text
