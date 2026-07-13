@@ -1,140 +1,122 @@
 # AiAudit Expense Tracker
 
-AiAudit is a multi-tenant expense management app for submitting, reviewing, and auditing company expenses. Receipts can be processed with Mistral AI, while a rule-based risk engine flags claims that need closer review.
+AiAudit is a full-stack, multi-tenant expense operations platform for submitting, reviewing, approving, and auditing company expenses.
 
-- [Live app](https://aiaudit-expensetracker-web.onrender.com)
+## Overview
+
+The application gives Owners, Managers, and Members role-specific workflows across a shared expense lifecycle. Its technically interesting areas include AI-assisted receipt extraction, explainable risk scoring, tenant isolation, approval automation, audit history, compliance reporting, analytics, and notification integrations.
+
+- [Live application](https://aiaudit-expensetracker-web.onrender.com)
 - [Swagger API](https://aiaudit-expensetracker.onrender.com/swagger)
 
-The API is hosted on Render's free tier, so the first request may take 30–60 seconds.
+The hosted demo uses a free backend service, so its first response can take approximately one minute after a period without traffic.
 
-## Features
+## Key features
 
-- Receipt upload and structured data extraction with Mistral AI
-- Draft, submission, approval, and rejection workflow
-- Owner, Manager, and Member roles
-- Tenant-scoped users, expenses, settings, and reports
-- Risk scoring based on spend limits, duplicate claims, missing descriptions, unusual amounts, restricted categories, and submission frequency
-- Audit records with before-and-after values
-- Manager review queue and analytics
-- Auto-approval rules and category budgets
-- Email and Slack notifications
-- Currency conversion and base-currency reporting
-- User invitations and refresh-token rotation
-- GDPR export/deletion and compliance reports
+- JWT authentication, refresh-token rotation, and backend-enforced role authorization
+- Tenant-scoped users, expenses, subscriptions, settings, analytics, and audit records
+- Manual expense entry and AI-assisted receipt extraction with Mistral AI
+- Draft, submission, approval, rejection, and auto-approval workflows
+- Explainable risk scoring for limits, duplicates, missing details, unusual amounts, restricted categories, and submission frequency
+- Manager review queues, audit insights, budget prediction, and accounting exports
+- Category budgets, policy settings, auto-categorization, and currency conversion
+- Email, Slack, scheduled digest, and in-app notification workflows
+- GDPR export/deletion, SOX audit history, and SOC 2-oriented compliance reporting
+- Public health endpoint used to check backend availability from the landing page
 
-## How it works
+## Tech stack
 
-An employee creates an expense manually or uploads a receipt. AI-extracted fields are shown for confirmation before the expense is saved.
+- Backend: .NET 10, ASP.NET Core, Entity Framework Core, JWT Bearer authentication
+- Web: React 18, TypeScript, Vite, Axios, TanStack Query, Tailwind CSS, shadcn/ui
+- Data: PostgreSQL and Entity Framework Core migrations
+- AI and integrations: Mistral AI, SendGrid/SMTP, Slack, and exchange-rate providers
+- Testing/CI: xUnit, Vitest, Testing Library, ESLint, Docker, and GitHub Actions
 
-When an expense is created or submitted, the risk service checks it against company limits and recent tenant activity. It returns a score, a risk level, and the reasons behind the result. These rules are kept separate from the AI integration so approval decisions do not depend on an LLM response.
+## Architecture
 
-Managers can then approve or reject submitted expenses. Changes to an expense are recorded in the audit log, including the previous and updated values.
+```text
+React client --> ASP.NET Core REST API --> PostgreSQL
+                       |
+                       +--> Mistral AI / exchange rates
+                       +--> Email / Slack notifications
+```
+
+HTTP controllers delegate business rules to services, which use repositories and Entity Framework Core for persistence. DTOs define public API contracts, JWT claims establish user and tenant identity, and authorization policies protect role-specific endpoints. Middleware propagates the authenticated tenant context to PostgreSQL for row-level isolation.
+
+## Main roles
+
+| Role | Primary capabilities |
+| --- | --- |
+| Owner | Manage users, policies, subscriptions, compliance, analytics, and company settings |
+| Manager | Review expenses, approve or reject submissions, inspect risk and audit history, and export reports |
+| Member | Create expenses, upload receipts, submit claims, and track personal expense status |
+
+## Important workflows
+
+```text
+Receipt upload -> AI extraction -> user confirmation -> expense draft
+Expense draft -> risk assessment -> submission -> manager review -> approval/rejection
+Policy rules -> eligible pending expense -> automatic approval -> audit record/notification
+Authenticated request -> JWT claims -> tenant context -> tenant-scoped database query
+```
 
 ## Project structure
 
 ```text
-client/          React and TypeScript frontend
-server/          ASP.NET Core API
-server.Tests/    Backend unit tests
-.github/         CI and deployment workflows
+client/                 React pages, components, contexts, and API services
+server/                 ASP.NET Core API, services, repositories, and integrations
+server.Tests/           Backend unit tests
+compose.yaml            Local frontend, backend, and PostgreSQL orchestration
+.github/workflows/      Build, test, and Docker validation automation
 ```
 
-The backend follows a controller → service → repository structure:
+## Local setup
 
-```text
-HTTP request
-    ↓
-Controller
-    ↓
-Business service
-    ↓
-Repository / EF Core
-    ↓
-PostgreSQL
-```
+For the containerized stack, Docker Desktop is the only prerequisite. For manual development, install the .NET 10 SDK, Node.js 20 or newer, npm, and PostgreSQL 15 or newer. A Mistral API key is optional unless receipt extraction is needed.
 
-External integrations such as Mistral, Slack, email, and exchange-rate providers are accessed through interfaces and typed HTTP clients.
+### Docker Compose
 
-## Tenant isolation
-
-Authenticated tokens contain a tenant ID. The API validates this claim and makes it available for the request. Repository queries for tenant-owned data also require a tenant ID, so an expense lookup uses both the expense ID and tenant ID.
-
-The middleware sets a PostgreSQL session value for the current tenant. Database row-level security policies are not enabled yet; adding and testing those policies is listed in the roadmap below.
-
-## Risk assessment
-
-The current risk engine checks for:
-
-- Amounts above or close to the tenant limit
-- Restricted expense categories
-- Missing business descriptions
-- Weekend expenses
-- Amounts well above the tenant average
-- Matching merchant and amount within 14 days
-- Repeated claims in the same category
-- Five or more submissions within 24 hours
-
-The result is capped at 100 and classified as Low, Medium, or High. Each result includes readable reasons so a reviewer can understand why an expense was flagged.
-
-## Tech stack
-
-### Backend
-
-- .NET 10 and ASP.NET Core
-- Entity Framework Core
-- PostgreSQL
-- JWT authentication
-- xUnit
-
-### Frontend
-
-- React 18 and TypeScript
-- TanStack Query
-- React Hook Form and Zod
-- Tailwind CSS and shadcn/ui
-- Vitest and Testing Library
-
-### Deployment
-
-- Docker
-- GitHub Actions
-- Render
-
-## Run locally
-
-You will need:
-
-- .NET 10 SDK
-- PostgreSQL 15 or newer
-- Node.js 20 or newer
-- A Mistral API key if you want to use receipt extraction
-
-For local development, update `server/appsettings.json` with your PostgreSQL, JWT, and Mistral credentials. This file is tracked by Git, so review it before every commit and never commit real credentials.
-
-Example development configuration:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=AiAuditExpenseTracker;Username=postgres;Password=your_password"
-  },
-  "JwtSettings": {
-    "Secret": "use-a-long-random-secret"
-  },
-  "MistralSettings": {
-    "ApiKey": "your_mistral_key"
-  }
-}
-```
-
-Start the API:
+From the repository root, start PostgreSQL, the API, and the Vite development server with:
 
 ```powershell
-dotnet ef database update --project server
+docker compose up -d --build
+```
+
+Open [http://localhost:5173](http://localhost:5173). The API is exposed at [http://localhost:8080](http://localhost:8080), its health endpoint is [http://localhost:8080/api/health](http://localhost:8080/api/health), and PostgreSQL is exposed at `localhost:5432`.
+
+The first startup builds the backend image, installs frontend packages, applies Entity Framework Core migrations, and creates demo data. PostgreSQL data is kept in a named Docker volume between runs.
+
+Useful lifecycle commands:
+
+```powershell
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose down
+docker compose down -v  # Also deletes the local database volume
+```
+
+The credentials in `compose.yaml` are for local development only and must not be reused in a public environment.
+
+### Manual setup
+
+Create a PostgreSQL database named `AiAuditExpenseTracker`, then set the required configuration in the terminal that will run the API:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=AiAuditExpenseTracker;Username=postgres;Password=your_password"
+$env:JwtSettings__Secret = "use-a-long-random-development-secret"
+$env:MistralSettings__ApiKey = "your_optional_mistral_key"
+```
+
+Start the backend from the repository root:
+
+```powershell
 dotnet run --project server
 ```
 
-Start the frontend in another terminal:
+The manual backend runs at `http://localhost:5291`. It applies pending migrations and creates demo data during startup.
+
+Start the client in another terminal:
 
 ```powershell
 cd client
@@ -142,58 +124,47 @@ npm ci
 npm run dev
 ```
 
-Alternatively, start PostgreSQL, the API, and the frontend together from the
-repository root with Docker Compose:
+Open [http://localhost:5173](http://localhost:5173). When `VITE_API_BASE_URL` is not set, the development client uses `http://localhost:5291/api`.
+
+## Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string used by the API |
+| `JwtSettings__Secret` | Secret used to sign and validate access tokens |
+| `MistralSettings__ApiKey` | Optional Mistral credential for receipt extraction |
+| `CLIENT_ORIGINS` | Comma-separated frontend origins allowed by API CORS |
+| `PORT` | HTTP port used by the backend container |
+| `VITE_API_BASE_URL` | Browser-visible API base URL used when building or running the Vite client |
+| `EmailSettings__SendGridApiKey` | Optional SendGrid credential for email delivery |
+| `EmailSettings__SmtpHost` | Optional SMTP server used when SMTP delivery is configured |
+
+Never commit populated secrets. Set `VITE_API_BASE_URL` to the API URL, including `/api`, when the frontend should connect to an API other than the default manual-development address.
+
+## Testing
+
+Run the backend build and tests from the repository root:
 
 ```powershell
-docker compose up --build
-```
-
-The frontend is available at `http://localhost:5173` and the API at
-`http://localhost:8080`. Stop the services with `docker compose down`. The
-PostgreSQL data is kept in a named Docker volume between runs.
-
-The frontend uses `http://localhost:5291/api` by default. To use another API URL, add this to `client/.env.local`:
-
-```text
-VITE_API_BASE_URL=https://localhost:7218/api
-```
-
-## Tests
-
-Run the backend tests:
-
-```powershell
+dotnet build AiAudit.ExpenseTracker.sln
 dotnet test AiAudit.ExpenseTracker.sln
 ```
 
-Run the frontend tests and build:
+Run the frontend checks from `client/`:
 
 ```powershell
-cd client
+npm ci
+npm run lint
 npm test
 npm run build
 ```
 
-GitHub Actions runs the server build and tests, frontend lint/tests/build, and Docker build for pushes and pull requests.
+GitHub Actions validates the server build and tests, frontend lint/tests/build, and backend Docker image on pushes and pull requests.
 
 ## Current limitations
 
-- Uploaded receipts are stored on the API server's local filesystem.
-- Background tasks use an in-process queue rather than a durable message broker.
-- PostgreSQL row-level security policies have not been added.
+- Uploaded receipts are stored on the API service's ephemeral local filesystem.
+- Background jobs use an in-process queue instead of a durable message broker.
+- The hosted demo can introduce a cold-start delay after periods without traffic.
 - Approval updates do not yet use optimistic concurrency tokens.
-- The frontend needs route-level code splitting and further type/lint cleanup.
-
-## Next steps
-
-- Add integration tests against PostgreSQL for cross-tenant access
-- Add and test database row-level security policies
-- Move receipt files to object storage
-- Use a durable queue for notifications and scheduled work
-- Add optimistic concurrency to expense reviews
-- Add OpenTelemetry tracing and application metrics
-
-## License
-
-MIT
+- The frontend would benefit from route-level code splitting to reduce its initial bundle size.
