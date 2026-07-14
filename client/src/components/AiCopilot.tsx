@@ -7,6 +7,12 @@ import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+const normalizeMarkdown = (content: string) => content
+  .replace(/\s+-\s+(?=(?:\*\*[^*]+\*\*|[A-Z][A-Za-z ]+:))/g, "\n\n- ")
+  .replace(/\s+(?=\d+\.\s+[^\d])/g, "\n")
+  .replace(/^(\*\*[^*]+\*\*)(?=\s*-)/, "$1\n\n")
+  .trim();
+
 export const AiCopilot = ({ companyName }: { companyName?: string }) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -64,7 +70,7 @@ export const AiCopilot = ({ companyName }: { companyName?: string }) => {
         th: ({children}) => <th className="border border-border bg-muted p-2 text-left font-bold">{children}</th>,
         td: ({children}) => <td className="border border-border p-2 align-top">{children}</td>,
         a: ({href, children}) => <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-primary underline underline-offset-2">{children}</a>,
-      }}>{message.content}</ReactMarkdown> : message.content}</div></div>)}{loading && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Reading workspace context…</div>}<div ref={endRef}/></div>
+      }}>{normalizeMarkdown(message.content)}</ReactMarkdown> : message.content}</div></div>)}{loading && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Reading workspace context…</div>}<div ref={endRef}/></div>
       <div className="border-t border-border p-4"><div className="mb-3 flex gap-2 overflow-x-auto pb-1">{suggestions.map(suggestion => <button key={suggestion} onClick={() => handleSuggestion(suggestion)} className="shrink-0 rounded-full border border-border bg-card px-3 py-1.5 text-[10px] font-semibold hover:border-primary/30 hover:text-primary">{suggestion}</button>)}</div><form onSubmit={submit} className="flex gap-2"><Input value={input} onChange={event => setInput(event.target.value)} placeholder="Ask about setup, spend, risk, or policy…" maxLength={2000}/><Button type="submit" size="icon" disabled={loading || !input.trim()}><Send className="h-4 w-4"/></Button></form><p className="mt-2 text-center text-[9px] text-muted-foreground">Read-only copilot · Answers respect tenant and role permissions</p></div>
     </aside>
   </>;

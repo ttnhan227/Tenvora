@@ -27,6 +27,24 @@ Open the live application and select **Explore populated demo**.
 
 VeriSpend creates a temporary private organization containing realistic expenses, risk cases, budgets, policies, and audit history. The guided mission shows the main workflow.
 
+## Product preview
+
+### Finance control dashboard
+
+![VeriSpend finance control dashboard](docs/screenshots/dashboard.png)
+
+### Expense records and risk analysis
+
+![Expense records with status and AI risk analysis](docs/screenshots/expense-records.png)
+
+### Workspace-aware AI copilot
+
+![Veri AI Copilot summarizing authorized company data](docs/screenshots/ai-copilot.png)
+
+### Policy impact simulation
+
+![Policy Lab previewing approval outcomes](docs/screenshots/policy-lab.png)
+
 ## Technology
 
 - React, TypeScript, Vite, Tailwind CSS, TanStack Query
