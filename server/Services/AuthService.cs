@@ -99,6 +99,49 @@ public sealed class AuthService : IAuthService
         return await BuildAuthResponseAsync(user);
     }
 
+    public async Task<ApiResult<AuthResponse>> CreateDemoAsync()
+    {
+        var demoId = Guid.NewGuid();
+        var tenant = new Tenant
+        {
+            Id = demoId,
+            CompanyName = $"Aperture Operations · {demoId.ToString("N")[..6].ToUpperInvariant()}",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "USD",
+            IsDemo = true,
+            DemoExpiresAt = DateTime.UtcNow.AddHours(8)
+        };
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = $"owner+{demoId:N}@demo.verispend.app",
+            PasswordHash = PasswordHasher.Hash(Guid.NewGuid().ToString("N")),
+            Role = "Owner",
+            IsActive = true,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            PreferredCurrency = "USD"
+        };
+
+        StarterWorkspaceFactory.Populate(tenant, user, DateTime.UtcNow);
+        await using var transaction = await _tenantRepository.BeginTransactionAsync();
+        try
+        {
+            await _tenantRepository.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', @p0, true)", tenant.Id.ToString());
+            await _tenantRepository.AddAsync(tenant);
+            await _userRepository.AddAsync(user);
+            await _tenantRepository.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        return await BuildAuthResponseAsync(user);
+    }
+
     public async Task<ApiResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email);

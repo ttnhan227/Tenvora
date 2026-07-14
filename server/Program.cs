@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Threading.RateLimiting;
 using VeriSpend.Api.Common;
 using VeriSpend.Api.Data;
 using VeriSpend.Api.Middleware;
@@ -21,6 +22,20 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 builder.Services.AddControllers();
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("demo-provisioning", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
@@ -84,7 +99,17 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.Configure<MistralSettings>(builder.Configuration.GetSection("MistralSettings"));
+var aiProviderSettings = builder.Configuration.GetSection("AiProvider").Get<AiProviderSettings>() ?? new AiProviderSettings();
+var legacyMistralSettings = builder.Configuration.GetSection("MistralSettings").Get<MistralSettings>();
+if (string.IsNullOrWhiteSpace(aiProviderSettings.ApiKey) && legacyMistralSettings is not null)
+{
+    aiProviderSettings.Name = "Mistral";
+    aiProviderSettings.ApiKey = legacyMistralSettings.ApiKey;
+    aiProviderSettings.Endpoint = legacyMistralSettings.Endpoint;
+    aiProviderSettings.VisionModel = legacyMistralSettings.Model;
+    aiProviderSettings.ChatModel = legacyMistralSettings.ChatModel;
+}
+builder.Services.AddSingleton(aiProviderSettings);
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddSingleton<TokenService>();
 
@@ -98,6 +123,7 @@ builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<IAiCopilotService, AiCopilotService>();
 builder.Services.AddScoped<IManagerService, ManagerService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
@@ -116,7 +142,7 @@ builder.Services.AddScoped<IAdvancedAnalyticsService, AdvancedAnalyticsService>(
 builder.Services.AddScoped<IComplianceService, ComplianceService>();
 builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000)); // capacity 1000
 
-builder.Services.AddHttpClient("MistralClient");
+builder.Services.AddHttpClient("AiProviderClient");
 builder.Services.AddHttpClient("SendGrid");
 builder.Services.AddHttpClient("Slack");
 builder.Services.AddHttpClient("Email");
@@ -171,6 +197,7 @@ builder.Services.AddHostedService<AutoApprovalService>();
 builder.Services.AddHostedService<WeeklyDigestBackgroundService>();
 builder.Services.AddHostedService<DailySlackDigestBackgroundService>();
 builder.Services.AddHostedService<QueuedHostedService>();
+builder.Services.AddHostedService<DemoTenantCleanupService>();
 
 var app = builder.Build();
 var hasHttpsBinding = builder.Configuration["ASPNETCORE_URLS"]?.Contains("https://", StringComparison.OrdinalIgnoreCase) == true;
@@ -200,6 +227,7 @@ if (Directory.Exists(webRootPath))
 }
 
 app.UseCors("ClientApp");
+app.UseRateLimiter();
 
 var uploadDir = Path.Combine(app.Environment.ContentRootPath, "Uploads");
 Directory.CreateDirectory(uploadDir);

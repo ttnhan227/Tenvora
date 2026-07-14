@@ -69,6 +69,14 @@ public class SettingsController : ControllerBase
          return result.Success ? Ok(result) : NotFound(result);
      }
 
+     [Authorize(Roles = "Owner")]
+     [HttpPost("policy-simulation")]
+     public async Task<IActionResult> SimulatePolicy(PolicySimulationRequest request)
+     {
+         var result = await _settingsService.SimulatePolicyAsync(User.GetTenantId(), request);
+         return result.Success ? Ok(result) : BadRequest(result);
+     }
+
      [HttpGet("notifications")]
      public async Task<IActionResult> GetNotificationSettings()
      {

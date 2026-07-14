@@ -6,6 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  createDemo: () => Promise<boolean>;
   register: (companyName: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -53,6 +54,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const createDemo = async (): Promise<boolean> => {
+    const result = await authService.createDemo();
+    if (!result.success || !result.data) return false;
+    localStorage.setItem("accessToken", result.data.accessToken);
+    localStorage.setItem("refreshToken", result.data.refreshToken);
+    localStorage.removeItem("verispend-demo-mission-complete");
+    setUser(result.data.profile);
+    return true;
+  };
+
   const register = async (companyName: string, email: string, password: string): Promise<boolean> => {
     try {
       const result = await authService.register({ companyName, email, password });
@@ -86,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     login,
+    createDemo,
     register,
     logout,
     refreshProfile,

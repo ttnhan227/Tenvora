@@ -26,6 +26,12 @@ services:
       JwtSettings__Secret: local-development-jwt-secret-change-before-production
       CLIENT_ORIGINS: http://localhost:5173
       APP_BASE_URL: http://localhost:5173
+      AiProvider__Name: ${AI_PROVIDER_NAME:-Mistral}
+      AiProvider__ApiKey: ${AI_PROVIDER_API_KEY:-}
+      AiProvider__Endpoint: ${AI_PROVIDER_ENDPOINT:-https://api.mistral.ai/v1/chat/completions}
+      AiProvider__ChatModel: ${AI_CHAT_MODEL:-mistral-small-latest}
+      AiProvider__VisionModel: ${AI_VISION_MODEL:-mistral-small-latest}
+      MistralSettings__ApiKey: ${MISTRAL_API_KEY:-}
     ports:
       - "8080:8080"
     depends_on:

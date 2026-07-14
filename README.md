@@ -15,7 +15,7 @@ The links retain their existing Render service addresses until those external se
 
 - JWT authentication, refresh-token rotation, and backend-enforced role authorization
 - Tenant-scoped users, expenses, subscriptions, settings, analytics, and audit records
-- Manual expense entry and AI-assisted receipt extraction with Mistral AI
+- Manual expense entry, provider-neutral AI receipt extraction, and a tenant-aware spend copilot
 - Draft, submission, approval, rejection, and auto-approval workflows
 - Explainable risk scoring for limits, duplicates, missing details, unusual amounts, restricted categories, and submission frequency
 - Manager review queues, audit insights, budget prediction, and accounting exports
@@ -29,7 +29,7 @@ The links retain their existing Render service addresses until those external se
 - Backend: .NET 10, ASP.NET Core, Entity Framework Core, JWT Bearer authentication
 - Web: React 18, TypeScript, Vite, Axios, TanStack Query, Tailwind CSS, shadcn/ui
 - Data: PostgreSQL and Entity Framework Core migrations
-- AI and integrations: Mistral AI, SendGrid/SMTP, Slack, and exchange-rate providers
+- AI and integrations: OpenAI-compatible AI providers, SendGrid/SMTP, Slack, and exchange-rate providers
 - Testing/CI: xUnit, Vitest, Testing Library, ESLint, Docker, and GitHub Actions
 
 ## Architecture
@@ -37,7 +37,7 @@ The links retain their existing Render service addresses until those external se
 ```text
 React client --> ASP.NET Core REST API --> PostgreSQL
                        |
-                       +--> Mistral AI / exchange rates
+                       +--> Configurable AI provider / exchange rates
                        +--> Email / Slack notifications
 ```
 
@@ -72,7 +72,7 @@ compose.yaml            Local frontend, backend, and PostgreSQL orchestration
 
 ## Local setup
 
-For the containerized stack, Docker Desktop is the only prerequisite. For manual development, install the .NET 10 SDK, Node.js 20 or newer, npm, and PostgreSQL 15 or newer. A Mistral API key is optional unless receipt extraction is needed.
+For the containerized stack, Docker Desktop is the only prerequisite. For manual development, install the .NET 10 SDK, Node.js 20 or newer, npm, and PostgreSQL 15 or newer. An AI provider key is optional; without one, receipt extraction and the copilot use deterministic fallback behavior.
 
 ### Docker Compose
 
@@ -105,7 +105,7 @@ Create a PostgreSQL database named `VeriSpend`, then set the required configurat
 ```powershell
 $env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=VeriSpend;Username=postgres;Password=your_password"
 $env:JwtSettings__Secret = "use-a-long-random-development-secret"
-$env:MistralSettings__ApiKey = "your_optional_mistral_key"
+$env:AiProvider__ApiKey = "your_optional_provider_key"
 ```
 
 Start the backend from the repository root:
@@ -132,7 +132,11 @@ Open [http://localhost:5173](http://localhost:5173). When `VITE_API_BASE_URL` is
 | --- | --- |
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string used by the API |
 | `JwtSettings__Secret` | Secret used to sign and validate access tokens |
-| `MistralSettings__ApiKey` | Optional Mistral credential for receipt extraction |
+| `AiProvider__Name` | Display name for the configured AI provider |
+| `AiProvider__ApiKey` | API credential for the selected provider |
+| `AiProvider__Endpoint` | OpenAI-compatible chat-completions endpoint |
+| `AiProvider__ChatModel` | Text model used by the Veri copilot |
+| `AiProvider__VisionModel` | Vision-capable model used for receipt extraction |
 | `CLIENT_ORIGINS` | Comma-separated frontend origins allowed by API CORS |
 | `PORT` | HTTP port used by the backend container |
 | `APP_BASE_URL` | Public frontend URL used in email and Slack links |
@@ -141,6 +145,22 @@ Open [http://localhost:5173](http://localhost:5173). When `VITE_API_BASE_URL` is
 | `EmailSettings__SmtpHost` | Optional SMTP server used when SMTP delivery is configured |
 
 Never commit populated secrets. Set `VITE_API_BASE_URL` to the API URL, including `/api`, when the frontend should connect to an API other than the default manual-development address.
+
+### AI provider configuration
+
+VeriSpend accepts providers that implement the OpenAI-compatible chat-completions request and response format. The chat model must support text; receipt extraction requires a model that also accepts image input.
+
+For local development, store the provider configuration once with .NET user secrets:
+
+```powershell
+dotnet user-secrets set "AiProvider:Name" "Mistral" --project server
+dotnet user-secrets set "AiProvider:ApiKey" "your-key" --project server
+dotnet user-secrets set "AiProvider:Endpoint" "https://api.mistral.ai/v1/chat/completions" --project server
+dotnet user-secrets set "AiProvider:ChatModel" "mistral-small-latest" --project server
+dotnet user-secrets set "AiProvider:VisionModel" "mistral-small-latest" --project server
+```
+
+For Docker, copy `.env.example` to `.env`, populate `AI_PROVIDER_API_KEY`, and adjust the endpoint and models for the selected provider. `.env` is ignored by Git. Existing `MistralSettings` configuration remains supported for backward compatibility.
 
 ## Testing
 

@@ -439,7 +439,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       toast.dismiss(toastId);
 
       if (response.success) {
-        toast.success("Spreadsheet changes saved successfully & auto-audited by AI!");
+        toast.success("Spreadsheet changes saved and reviewed by VeriSpend AI.");
         setUnsaved({});
         setErrors({});
         onSaved();

@@ -60,6 +60,9 @@ publish/
 
 # User secrets / local settings copies
 secrets.json
+.env
+.env.*
+!.env.example
 
 # ASP.NET Core local appsettings (may contain secrets)
 server/appsettings.Local.json

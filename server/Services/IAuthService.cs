@@ -6,6 +6,7 @@ namespace VeriSpend.Api.Services;
 public interface IAuthService
 {
     Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request);
+    Task<ApiResult<AuthResponse>> CreateDemoAsync();
     Task<ApiResult<AuthResponse>> LoginAsync(LoginRequest request);
     Task<ApiResult<AuthResponse>> AcceptInviteAsync(AcceptInviteRequest request);
     Task<ApiResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request);

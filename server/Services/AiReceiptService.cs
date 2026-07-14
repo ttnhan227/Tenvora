@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using VeriSpend.Api.Common;
 
 namespace VeriSpend.Api.Services;
@@ -20,19 +19,19 @@ public sealed class AiReceiptService : IAiReceiptService
 {
     private readonly IWebHostEnvironment _environment;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly MistralSettings _mistralSettings;
+    private readonly AiProviderSettings _providerSettings;
     private readonly ILogger<AiReceiptService> _logger;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     public AiReceiptService(
         IWebHostEnvironment environment,
         IHttpClientFactory httpClientFactory,
-        IOptions<MistralSettings> mistralOptions,
+        AiProviderSettings providerSettings,
         ILogger<AiReceiptService> logger)
     {
         _environment = environment;
         _httpClientFactory = httpClientFactory;
-        _mistralSettings = mistralOptions.Value;
+        _providerSettings = providerSettings;
         _logger = logger;
     }
 
@@ -101,7 +100,7 @@ public sealed class AiReceiptService : IAiReceiptService
 
     private async Task<(decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData)?> TryExtractFromMistralAsync(byte[] imageBytes, string fileName, string? contentType, decimal maxSpendLimit)
     {
-        if (string.IsNullOrWhiteSpace(_mistralSettings.ApiKey) || string.IsNullOrWhiteSpace(_mistralSettings.Endpoint))
+        if (string.IsNullOrWhiteSpace(_providerSettings.ApiKey) || string.IsNullOrWhiteSpace(_providerSettings.Endpoint))
         {
             _logger.LogWarning("Skipping Mistral extraction because API settings are incomplete. FileName={FileName}", fileName);
             return null;
@@ -110,11 +109,11 @@ public sealed class AiReceiptService : IAiReceiptService
         _logger.LogInformation(
             "Calling Mistral receipt extraction. FileName={FileName}, Endpoint={Endpoint}, Model={Model}",
             fileName,
-            _mistralSettings.Endpoint,
-            _mistralSettings.Model);
+            _providerSettings.Endpoint,
+            _providerSettings.VisionModel);
 
-        var client = _httpClientFactory.CreateClient("MistralClient");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _mistralSettings.ApiKey);
+        var client = _httpClientFactory.CreateClient("AiProviderClient");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _providerSettings.ApiKey);
 
         var prompt = $"Extract structured receipt data from the attached receipt and return only valid JSON with keys: Amount, Currency, Merchant, Category, Date, Message. " +
                  "Category must be exactly one of: Travel, Meals, Accommodation, Office Supplies, Software, Other. " +
@@ -128,7 +127,7 @@ public sealed class AiReceiptService : IAiReceiptService
 
         var requestBody = new
         {
-            model = _mistralSettings.Model,
+            model = _providerSettings.VisionModel,
             response_format = new { type = "json_object" },
             temperature = 0.1,
             messages = new object[]
@@ -153,7 +152,7 @@ public sealed class AiReceiptService : IAiReceiptService
         HttpResponseMessage response;
         try
         {
-            response = await client.PostAsJsonAsync(_mistralSettings.Endpoint, requestBody, _jsonOptions);
+            response = await client.PostAsJsonAsync(_providerSettings.Endpoint, requestBody, _jsonOptions);
         }
         catch (Exception ex)
         {
@@ -163,10 +162,12 @@ public sealed class AiReceiptService : IAiReceiptService
 
         if (!response.IsSuccessStatusCode)
         {
+            var providerError = await response.Content.ReadAsStringAsync();
             _logger.LogWarning(
-                "Mistral receipt extraction returned non-success status. FileName={FileName}, StatusCode={StatusCode}",
+                "Mistral receipt extraction returned non-success status. FileName={FileName}, StatusCode={StatusCode}, ProviderError={ProviderError}",
                 fileName,
-                (int)response.StatusCode);
+                (int)response.StatusCode,
+                providerError[..Math.Min(providerError.Length, 500)]);
             return null;
         }
 

@@ -22,10 +22,10 @@ const CTA = () => {
       <div className="container relative mx-auto px-4 text-center">
         <div className="mx-auto max-w-4xl rounded-[2rem] border border-primary-foreground/12 bg-primary-foreground/6 px-6 py-14 shadow-[0_28px_80px_-40px_rgba(0,0,0,0.8)] backdrop-blur-sm md:px-10">
         <h2 className="mb-4 text-3xl font-bold text-primary-foreground md:text-4xl">
-          Ready to automate your expense audits?
+          Ready to verify every expense?
         </h2>
         <p className="mx-auto mb-8 max-w-lg text-lg text-primary-foreground/72">
-          Join thousands of finance teams saving 10+ hours per week with AI-powered auditing.
+          Use VeriSpend to automate receipt review, policy checks, and approval workflows.
         </p>
         <Button size="lg" className="gap-2 rounded-full bg-primary px-8 text-primary-foreground hover:bg-primary/90 shadow-[0_18px_48px_-20px_hsl(var(--primary))]" onClick={handleGetStarted}>
           {isAuthenticated ? "Choose Your Plan" : "Start Free Trial"} <ArrowRight className="h-4 w-4" />

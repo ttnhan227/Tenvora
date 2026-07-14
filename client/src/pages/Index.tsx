@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import PlatformTour from "@/components/landing/PlatformTour";
 import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Pricing from "@/components/landing/Pricing";
@@ -21,6 +22,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Hero />
+      <PlatformTour />
       <Features />
       <HowItWorks />
       <Pricing />

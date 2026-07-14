@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using VeriSpend.Api.Common;
 using VeriSpend.Api.Dtos.Auth;
 using VeriSpend.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace VeriSpend.Api.Controllers;
 
@@ -23,6 +24,15 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.RegisterAsync(request);
         return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [AllowAnonymous]
+    [EnableRateLimiting("demo-provisioning")]
+    [HttpPost("demo")]
+    public async Task<IActionResult> CreateDemo()
+    {
+        var result = await _authService.CreateDemoAsync();
+        return result.Success ? Ok(result) : StatusCode(StatusCodes.Status503ServiceUnavailable, result);
     }
 
     [AllowAnonymous]

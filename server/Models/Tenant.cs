@@ -15,6 +15,8 @@ public class Tenant
     public decimal MaxSpendLimit { get; set; } = 2_000_000m;
     public string? PolicyNotes { get; set; }
     public string BaseCurrency { get; set; } = "USD";
+    public bool IsDemo { get; set; }
+    public DateTime? DemoExpiresAt { get; set; }
 
     // Auto-approval defaults
     public bool AutoApprovalEnabled { get; set; } = false;

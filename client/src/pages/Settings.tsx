@@ -423,7 +423,7 @@ const Settings = () => {
                 <CardTitle className="text-base font-bold text-foreground">Policy Configuration</CardTitle>
               </div>
               <CardDescription className="text-xs text-muted-foreground">
-                Set maximum spend limits and general company expense notes used by the AI Auditor.
+                Set maximum spend limits and company expense guidance used by the VeriSpend risk engine.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6 space-y-4">

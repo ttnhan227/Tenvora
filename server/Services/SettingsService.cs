@@ -11,15 +11,18 @@ public sealed class SettingsService : ISettingsService
     private readonly ITenantRepository _tenantRepository;
     private readonly IExpenseRepository _expenseRepository;
     private readonly IBudgetGuardrailService _budgetGuardrailService;
+    private readonly IRiskAssessmentService _riskAssessmentService;
 
     public SettingsService(
         ITenantRepository tenantRepository,
         IExpenseRepository expenseRepository,
-        IBudgetGuardrailService budgetGuardrailService)
+        IBudgetGuardrailService budgetGuardrailService,
+        IRiskAssessmentService riskAssessmentService)
     {
         _tenantRepository = tenantRepository;
         _expenseRepository = expenseRepository;
         _budgetGuardrailService = budgetGuardrailService;
+        _riskAssessmentService = riskAssessmentService;
     }
 
     public async Task<ApiResult<CompanySettingsResponse>> GetCompanySettingsAsync(Guid tenantId)
@@ -122,6 +125,42 @@ public sealed class SettingsService : ISettingsService
 
         await _tenantRepository.SaveChangesAsync();
         return ApiResult.Ok();
+    }
+
+    public async Task<ApiResult<PolicySimulationResponse>> SimulatePolicyAsync(Guid tenantId, PolicySimulationRequest request)
+    {
+        if (request.MaxAmount < 0 || request.MaxRiskScore is < 0 or > 100)
+            return ApiResult<PolicySimulationResponse>.Fail("Policy thresholds are outside the supported range.");
+
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        if (tenant is null) return ApiResult<PolicySimulationResponse>.Fail("Tenant not found.");
+
+        var expenses = await _expenseRepository.GetTenantExpensesAsync(tenantId);
+        var candidates = expenses.Where(expense => expense.Status is "Pending" or "Approved").OrderByDescending(expense => expense.CreatedAt).Take(100).ToList();
+        var excluded = request.ExcludedCategories.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var results = candidates.Select(expense =>
+        {
+            var risk = _riskAssessmentService.EvaluateExpense(expense, tenant.MaxSpendLimit, expenses);
+            var weekendBlocked = request.ExcludeWeekends && expense.Date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+            var categoryBlocked = excluded.Contains(expense.Category);
+            var highRisk = risk.RiskScore > request.MaxRiskScore;
+            var amountBlocked = expense.Amount > request.MaxAmount;
+            var outcome = !request.Enabled || amountBlocked || categoryBlocked || weekendBlocked || highRisk
+                ? risk.RiskScore >= 70 || expense.Flagged ? "Escalate" : "Human review"
+                : "Auto-approve";
+            var reason = outcome == "Auto-approve" ? "Within every proposed guardrail"
+                : amountBlocked ? "Above automatic approval amount"
+                : highRisk ? "Risk score exceeds threshold"
+                : categoryBlocked ? "Category excluded from automation"
+                : weekendBlocked ? "Weekend automation disabled" : "Automation disabled";
+            return new PolicySimulationExpense(expense.Id, expense.Merchant, expense.Amount, expense.Category, risk.RiskScore, outcome, reason);
+        }).ToArray();
+
+        var autoApprove = results.Count(item => item.Outcome == "Auto-approve");
+        var humanReview = results.Count(item => item.Outcome == "Human review");
+        var escalate = results.Count(item => item.Outcome == "Escalate");
+        var rate = results.Length == 0 ? 0 : decimal.Round((decimal)autoApprove / results.Length * 100, 1);
+        return ApiResult<PolicySimulationResponse>.Ok(new(results.Length, autoApprove, humanReview, escalate, rate, decimal.Round(autoApprove * 4m / 60m, 1), results));
     }
 
     public async Task<ApiResult<NotificationSettingsResponse>> GetNotificationSettingsAsync(Guid tenantId)

@@ -41,6 +41,11 @@ export interface UpdateAutoApprovalRulesRequest {
   excludedCategories: string[];
   minAgeHours: number;
 }
+export interface PolicySimulationResult {
+  evaluatedCount: number; autoApproveCount: number; humanReviewCount: number; escalateCount: number;
+  automationRate: number; reviewHoursSaved: number;
+  expenses: Array<{ expenseId: string; merchant: string; amount: number; category: string; riskScore: number; outcome: string; reason: string }>;
+}
 
 export interface NotificationSettings {
   emailNotificationsEnabled: boolean;
@@ -65,6 +70,14 @@ export interface UpdateNotificationSettingsRequest {
 }
 
 export const settingsService = {
+  simulatePolicy: async (request: Omit<UpdateAutoApprovalRulesRequest, "minAgeHours">): Promise<ApiResponse<PolicySimulationResult>> => {
+    try {
+      const response = await apiClient.post("/settings/policy-simulation", request);
+      return response.data;
+    } catch (error: any) {
+      return { success: false, error: error.response?.data?.error || "Policy simulation failed" };
+    }
+  },
   getCompanySettings: async (): Promise<ApiResponse<CompanySettings>> => {
     try {
       const response = await apiClient.get("/settings/company");

@@ -44,7 +44,7 @@ const Register = () => {
     try {
       const success = await register(companyName, email, password);
       if (success) {
-        navigate("/dashboard");
+        navigate("/onboarding");
       } else {
         setError("Registration failed. Please try again.");
       }

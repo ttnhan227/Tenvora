@@ -34,6 +34,14 @@ export interface ApiResponse<T> {
 }
 
 export const authService = {
+  createDemo: async (): Promise<ApiResponse<AuthResponse>> => {
+    try {
+      const response = await apiClient.post("/auth/demo");
+      return response.data;
+    } catch (error: any) {
+      return { success: false, error: error.response?.data?.error || "Demo provisioning failed" };
+    }
+  },
   login: async (request: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
     try {
       const response = await apiClient.post("/auth/login", request);

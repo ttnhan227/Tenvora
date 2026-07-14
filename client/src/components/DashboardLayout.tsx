@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
-  Leaf,
   BarChart3,
   FileText,
   Plus,
@@ -16,7 +15,8 @@ import {
   Activity,
   CreditCard,
   Users,
-  ShieldCheck
+  ShieldCheck,
+  FlaskConical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { DemoMission } from "@/components/DemoMission";
+import { AiCopilot } from "@/components/AiCopilot";
 
 export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -37,7 +39,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const isOwner = user?.role === "Owner";
   const canUseSubmitterFeatures = user?.role === "Owner" || user?.role === "Member";
   const isManagerOnly = user?.role === "Manager";
-  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "AI";
+  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "VS";
 
   const navItems = [
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
@@ -59,6 +61,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       ? [
           { href: "/admin/users", icon: Users, label: "User Management" },
           { href: "/compliance", icon: ShieldCheck, label: "Compliance Hub" },
+          { href: "/policy-lab", icon: FlaskConical, label: "Policy Lab" },
         ]
       : []),
     ...(!isManagerOnly
@@ -96,11 +99,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           <div className="flex h-16 items-center justify-between border-b border-border px-5 bg-card/50">
             <Link to="/" className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all duration-300 hover:rotate-6">
-                <Leaf className="h-5 w-5 font-bold" />
+                <ShieldCheck className="h-5 w-5 font-bold" />
               </div>
               <div>
-                <span className="block font-bold tracking-tight text-sm">AuditAI</span>
-                <span className="block text-[9px] uppercase tracking-[0.24em] text-muted-foreground font-semibold">Smart Spend Control</span>
+                <span className="block font-bold tracking-tight text-sm">VeriSpend</span>
+                <span className="block text-[9px] uppercase tracking-[0.24em] text-muted-foreground font-semibold">Verified Spend Control</span>
               </div>
             </Link>
             <Button
@@ -137,7 +140,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
         {/* Workspace Display Card */}
         <div className="mx-3 rounded-2xl border border-border bg-secondary/40 p-4 text-xs mb-4">
           <p className="text-[9px] uppercase tracking-[0.24em] text-muted-foreground font-bold">Workspace</p>
-          <p className="mt-1 font-bold text-foreground truncate">{user?.companyName ?? "AuditAI tenant"}</p>
+          <p className="mt-1 font-bold text-foreground truncate">{user?.companyName ?? "VeriSpend workspace"}</p>
           <p className="mt-1.5 text-[10px] text-muted-foreground uppercase">
             Role: <span className="text-primary font-bold">{user?.role ?? "Member"}</span>
           </p>
@@ -198,11 +201,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           </div>
         </header>
 
+        <DemoMission email={user?.email} />
+
         {/* Page content wrapper */}
         <main className="flex-1 overflow-auto">
           <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8 animate-fade-in">{children}</div>
         </main>
       </div>
+      <AiCopilot companyName={user?.companyName} />
     </div>
   );
 };

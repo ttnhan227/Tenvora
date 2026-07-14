@@ -13,11 +13,13 @@ public class AiController : ControllerBase
 {
     private readonly IAiService _aiService;
     private readonly ILogger<AiController> _logger;
+    private readonly IAiCopilotService _copilot;
 
-    public AiController(IAiService aiService, ILogger<AiController> logger)
+    public AiController(IAiService aiService, ILogger<AiController> logger, IAiCopilotService copilot)
     {
         _aiService = aiService;
         _logger = logger;
+        _copilot = copilot;
     }
 
     [Authorize(Roles = "Owner,Manager,Member")]
@@ -77,5 +79,12 @@ public class AiController : ControllerBase
         var tenantId = User.GetTenantId();
         var result = await _aiService.GetUsageAsync(tenantId);
         return Ok(result);
+    }
+
+    [HttpPost("copilot")]
+    public async Task<IActionResult> AskCopilot(AiCopilotRequest request)
+    {
+        var result = await _copilot.AskAsync(User.GetTenantId(), User.GetUserId(), User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Member", request);
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 }

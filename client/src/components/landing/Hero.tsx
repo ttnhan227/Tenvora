@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, Shield, Star, Users } from "lucide-react";
+import { ArrowRight, Building2, GitBranch, ScanSearch, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const stats = [
-  { value: "10K+", label: "Expenses Audited Daily" },
-  { value: "98%", label: "Accuracy Rate" },
-  { value: "12hrs", label: "Saved Per Week" },
-  { value: "500+", label: "Companies Trust Us" },
+  { value: "3", label: "Role-specific workspaces" },
+  { value: "6+", label: "Explainable risk signals" },
+  { value: "4", label: "Compliance & audit controls" },
+  { value: "2", label: "Accounting export formats" },
 ];
 
 const Hero = () => {
@@ -33,23 +33,16 @@ const Hero = () => {
         <div className="mx-auto max-w-3xl text-center" style={{ animation: "fade-in-up 0.8s ease-out forwards" }}>
           {/* Trust badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-background/70 px-4 py-1.5 text-sm text-foreground/85 shadow-[0_10px_40px_-28px_hsl(var(--primary))] backdrop-blur-sm dark:border-primary-foreground/15 dark:bg-primary-foreground/8 dark:text-primary-foreground/90">
-            <Shield className="h-4 w-4" />
-            Trusted by 500+ Finance Teams
-            <span className="flex items-center gap-0.5" style={{ color: "hsl(45 93% 58%)" }}>
-              <Star className="h-3 w-3 fill-current" />
-              <Star className="h-3 w-3 fill-current" />
-              <Star className="h-3 w-3 fill-current" />
-              <Star className="h-3 w-3 fill-current" />
-              <Star className="h-3 w-3 fill-current" />
-            </span>
+            <ShieldCheck className="h-4 w-4" />
+            Multi-tenant spend controls for modern finance teams
           </div>
 
           <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight text-foreground md:text-6xl dark:text-primary-foreground">
-            Audit Every Expense.{" "}
-            <span className="text-gradient">Automatically.</span>
+            Turn company spend into a{" "}
+            <span className="text-gradient">controlled workflow.</span>
           </h1>
           <p className="mx-auto mb-10 max-w-xl text-lg leading-relaxed text-foreground/75 dark:text-primary-foreground/72">
-            Stop manual expense reviews. Our AI scans, categorizes, and flags anomalies in real-time — saving your finance team hours every week.
+            VeriSpend connects receipt intelligence, policy enforcement, risk-based approvals, audit evidence, and finance analytics in one explainable operating system.
           </p>
 
           {/* Dual CTAs */}
@@ -58,7 +51,7 @@ const Hero = () => {
               Start Free Trial <ArrowRight className="h-4 w-4" />
             </Button>
             <Button size="lg" variant="outline" className="gap-2 rounded-full border-foreground/20 bg-background/60 px-8 text-foreground hover:bg-background/85 backdrop-blur-sm dark:border-primary-foreground/20 dark:bg-primary-foreground/5 dark:text-primary-foreground dark:hover:bg-primary-foreground/10">
-              <Play className="h-4 w-4" /> Watch Demo
+              <ScanSearch className="h-4 w-4" /> Explore the platform
             </Button>
           </div>
         </div>
@@ -79,18 +72,14 @@ const Hero = () => {
           </div>
         </div>
 
-        {/* Social proof avatars */}
+        {/* Product architecture summary */}
         <div className="mt-10 flex items-center justify-center gap-3" style={{ animation: "fade-in-up 0.8s ease-out 0.7s forwards", opacity: 0 }}>
-          <div className="flex -space-x-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-hero bg-primary/20 text-xs font-bold text-primary">
-                <Users className="h-3.5 w-3.5" />
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-foreground/65 dark:text-primary-foreground/60">
-            Join <span className="font-semibold text-foreground/80 dark:text-primary-foreground/70">2,000+</span> finance professionals
-          </p>
+          <Building2 className="h-4 w-4 text-primary" />
+          <p className="text-sm text-foreground/65 dark:text-primary-foreground/60">Tenant isolation</p>
+          <GitBranch className="ml-3 h-4 w-4 text-primary" />
+          <p className="text-sm text-foreground/65 dark:text-primary-foreground/60">Policy-driven decisions</p>
+          <ShieldCheck className="ml-3 h-4 w-4 text-primary" />
+          <p className="text-sm text-foreground/65 dark:text-primary-foreground/60">Evidence-ready audit trail</p>
         </div>
       </div>
     </section>

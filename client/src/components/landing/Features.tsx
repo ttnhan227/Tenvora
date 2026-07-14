@@ -1,45 +1,45 @@
-import { Brain, Receipt, FileBarChart, Sparkles, ShieldCheck, Zap } from "lucide-react";
+import { Brain, Building2, FileBarChart, GitPullRequestArrow, ShieldCheck, Workflow } from "lucide-react";
 
 const features = [
   {
     icon: Brain,
-    title: "AI Categorization",
-    description: "Machine learning automatically categorizes expenses, detects duplicates, and flags policy violations with 98% accuracy.",
+    title: "Explainable Risk Engine",
+    description: "Score claims across duplicate, policy, amount, category, evidence, and behavioral signals, with reasons reviewers can inspect.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
   {
-    icon: Receipt,
-    title: "Smart Receipt Scanning",
-    description: "Upload any receipt — our OCR extracts vendor, amount, date, and category in seconds. No manual data entry needed.",
+    icon: Workflow,
+    title: "Approval Orchestration",
+    description: "Move claims from draft through risk review and decision, with safe auto-approval for eligible expenses.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
   {
     icon: FileBarChart,
-    title: "Audit Reports",
-    description: "Generate comprehensive audit reports with one click. Track trends, anomalies, and compliance metrics over time.",
+    title: "Finance Intelligence",
+    description: "Monitor budgets, seasonal spend, review SLAs, policy trends, forecasted overruns, and operational KPIs.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
   {
-    icon: Sparkles,
-    title: "Anomaly Detection",
-    description: "AI continuously monitors spending for unusual patterns, potential fraud, and out-of-policy expenses in real-time.",
+    icon: Building2,
+    title: "Multi-tenant Architecture",
+    description: "Keep organizations isolated across users, expenses, policies, analytics, subscriptions, and audit records.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
   {
     icon: ShieldCheck,
-    title: "Policy Compliance",
-    description: "Automatically enforce spending policies across your organization. Get instant alerts when limits are exceeded.",
+    title: "Compliance Evidence",
+    description: "Generate SOX-oriented audit trails, SOC 2 control reports, and GDPR export or deletion workflows.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
   {
-    icon: Zap,
-    title: "Instant Processing",
-    description: "Process thousands of expenses in seconds. Accelerate your monthly close by up to 80% with automated workflows.",
+    icon: GitPullRequestArrow,
+    title: "Connected Operations",
+    description: "Use email, Slack, scheduled digests, and in-app alerts; export approved spend to QuickBooks or Xero.",
     color: "bg-primary/10 text-primary",
     hoverColor: "group-hover:bg-primary group-hover:text-primary-foreground",
   },
@@ -52,15 +52,15 @@ const Features = () => {
       <div className="container mx-auto px-4">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/70 px-4 py-1.5 text-sm font-medium text-secondary-foreground backdrop-blur-sm">
-            <Sparkles className="h-4 w-4" />
-            Powerful Features
+            <Brain className="h-4 w-4" />
+            Platform capabilities
           </div>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Everything you need to{" "}
-            <span className="text-gradient">audit smarter</span>
+            Built for the full{" "}
+            <span className="text-gradient">spend lifecycle</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Powerful AI tools that transform how your finance team handles expense management.
+            A connected system of record, decision engine, control layer, and evidence trail.
           </p>
         </div>
 

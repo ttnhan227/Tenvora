@@ -51,6 +51,27 @@ const CATEGORY_NORMALIZATION: Record<string, string> = {
   general: "Other",
 };
 
+const rasterizeSvg = async (source: File): Promise<File> => {
+  const svgUrl = URL.createObjectURL(source);
+  try {
+    const image = new Image();
+    image.src = svgUrl;
+    await image.decode();
+    const maxDimension = 2048;
+    const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth || 1200, image.naturalHeight || 1600));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round((image.naturalWidth || 1200) * scale));
+    canvas.height = Math.max(1, Math.round((image.naturalHeight || 1600) * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Your browser could not prepare this SVG receipt.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("SVG conversion failed.")), "image/png", 0.95));
+    return new File([blob], source.name.replace(/\.svg$/i, ".png"), { type: "image/png" });
+  } finally { URL.revokeObjectURL(svgUrl); }
+};
+
 const UploadReceipt = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<"upload" | "review" | "confirm">("upload");
@@ -150,7 +171,11 @@ const UploadReceipt = () => {
         setError("File too large. Please upload a file under 10MB.");
         return;
       }
-      setFile(selected);
+      if (selected.type === "image/svg+xml" || selected.name.toLowerCase().endsWith(".svg")) {
+        void rasterizeSvg(selected).then(setFile).catch((conversionError: Error) => setError(conversionError.message));
+      } else {
+        setFile(selected);
+      }
       setError("");
     }
   };
@@ -190,8 +215,8 @@ const UploadReceipt = () => {
       } else {
         setError(result.error || "Failed to upload receipt");
       }
-    } catch (err: any) {
-      setError(err?.message || "An error occurred while uploading the receipt");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred while uploading the receipt");
     } finally {
       setIsUploading(false);
     }

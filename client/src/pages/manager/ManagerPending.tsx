@@ -518,7 +518,7 @@ const ManagerPending = () => {
                     
                     {/* Summary */}
                     <div className="bg-primary/5 border border-primary/10 rounded-2xl p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">AI Auditor Verdict</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">VeriSpend AI Verdict</p>
                       <p className="text-foreground leading-relaxed">{drawerExpense.reviewAssistant.summary}</p>
                     </div>
 

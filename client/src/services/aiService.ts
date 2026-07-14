@@ -30,8 +30,18 @@ export interface AiUsage {
   scansThisMonth: number;
   remaining: number;
 }
+export interface AiCopilotResponse { answer: string; suggestedActions: string[]; dataSources: string[]; generatedAt: string; }
+export interface AiCopilotMessage { role: "user" | "assistant"; content: string; }
 
 export const aiService = {
+  askCopilot: async (message: string, history: AiCopilotMessage[]): Promise<ApiResponse<AiCopilotResponse>> => {
+    try {
+      const response = await apiClient.post("/ai/copilot", { message, history });
+      return response.data;
+    } catch (error: any) {
+      return { success: false, error: error.response?.data?.error || "Veri is unavailable right now" };
+    }
+  },
   uploadReceipt: async (file: File): Promise<ApiResponse<AiUploadResponse>> => {
     try {
       const formData = new FormData();

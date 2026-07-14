@@ -20,6 +20,9 @@ public sealed record UpdateAutoApprovalRulesRequest(
     string[] ExcludedCategories,
     int MinAgeHours
 );
+public sealed record PolicySimulationRequest(bool Enabled, decimal MaxAmount, int MaxRiskScore, bool ExcludeWeekends, string[] ExcludedCategories);
+public sealed record PolicySimulationExpense(Guid ExpenseId, string Merchant, decimal Amount, string Category, int RiskScore, string Outcome, string Reason);
+public sealed record PolicySimulationResponse(int EvaluatedCount, int AutoApproveCount, int HumanReviewCount, int EscalateCount, decimal AutomationRate, decimal ReviewHoursSaved, PolicySimulationExpense[] Expenses);
 
 public sealed record NotificationSettingsResponse(
      bool EmailNotificationsEnabled,

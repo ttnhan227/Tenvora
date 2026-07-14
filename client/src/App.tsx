@@ -23,6 +23,8 @@ import Subscription from "./pages/Subscription.tsx";
 import UserManagement from "./pages/admin/UserManagement.tsx";
 import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics.tsx";
 import ComplianceHub from "./pages/compliance/ComplianceHub.tsx";
+import PolicyLab from "./pages/PolicyLab.tsx";
+import Onboarding from "./pages/Onboarding.tsx";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,10 @@ const App = () => (
             <Route path="/accept-invite" element={<AcceptInvite />} />
             
             {/* Protected routes */}
+            <Route
+              path="/onboarding"
+              element={<ProtectedRoute requiredRole={["Owner"]}><Onboarding /></ProtectedRoute>}
+            />
             <Route
               path="/dashboard"
               element={
@@ -144,7 +150,11 @@ const App = () => (
                  </ProtectedRoute>
                }
              />
-<Route
+            <Route
+              path="/policy-lab"
+              element={<ProtectedRoute requiredRole={["Owner"]}><PolicyLab /></ProtectedRoute>}
+            />
+            <Route
                path="/subscription"
                element={
                  <ProtectedRoute requiredRole={["Owner", "Member"]}>

@@ -39,6 +39,10 @@ import {
   Target,
   ShieldCheck,
   Zap
+  ,ArrowRight,
+  Building2,
+  UsersRound,
+  ReceiptText
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -122,6 +126,49 @@ const Dashboard = () => {
       currency: "USD",
     }).format(amount);
   };
+
+  if (user?.role === "Owner" && (stats?.expenseCount ?? 0) === 0) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-5xl space-y-6 py-4">
+          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-card p-8 shadow-xl md:p-12">
+            <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+            <div className="relative max-w-2xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
+                <ShieldCheck className="h-4 w-4" /> New organization workspace
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl">Welcome to VeriSpend, {user.companyName}</h1>
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground">Your workspace is secure and ready. Complete the setup checklist below before your team starts submitting company expenses.</p>
+              <Button asChild size="lg" className="mt-7 rounded-full px-7">
+                <Link to="/onboarding">Start guided setup <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { icon: Building2, step: "01", title: "Define company controls", detail: "Set review thresholds, expense policy, category budgets, and approval automation." },
+              { icon: UsersRound, step: "02", title: "Invite your finance team", detail: "Add a Manager who can investigate risk signals and make approval decisions." },
+              { icon: ReceiptText, step: "03", title: "Upload the first receipt", detail: "Create the first real expense and watch extraction, risk assessment, and audit logging work." },
+            ].map((item) => (
+              <Card key={item.step} className="rounded-3xl border-border bg-card/70">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><item.icon className="h-5 w-5" /></div><span className="font-mono text-xs text-muted-foreground">{item.step}</span></div>
+                  <h2 className="mt-6 font-bold">{item.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-muted/30 p-5">
+            <div><p className="text-sm font-semibold">Want to understand the product before configuring it?</p><p className="mt-1 text-xs text-muted-foreground">The isolated demo workspace contains realistic review cases and is separate from this company.</p></div>
+            <Button asChild variant="outline" className="rounded-full"><Link to="/login">Open recruiter demo</Link></Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
