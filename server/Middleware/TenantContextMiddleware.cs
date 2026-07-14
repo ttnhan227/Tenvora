@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Server.Common;
-using Server.Data;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Data;
 
-namespace Server.Middleware;
+namespace VeriSpend.Api.Middleware;
 
 /// <summary>
 /// Sets the PostgreSQL session variable app.current_tenant_id based on the authenticated user's tenant claim.

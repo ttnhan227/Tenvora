@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class CategoryRulesService : ICategoryRulesService
 {

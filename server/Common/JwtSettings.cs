@@ -1,4 +1,4 @@
-namespace Server.Common;
+namespace VeriSpend.Api.Common;
 
 public sealed class JwtSettings
 {

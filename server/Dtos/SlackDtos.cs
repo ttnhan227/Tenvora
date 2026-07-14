@@ -1,4 +1,4 @@
-namespace Server.Dtos.Slack;
+namespace VeriSpend.Api.Dtos.Slack;
 
 public sealed record SlackSlashCommandRequest(
     string? TeamId,

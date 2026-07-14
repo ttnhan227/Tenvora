@@ -1,6 +1,6 @@
-namespace Server.Dtos.Manager;
+namespace VeriSpend.Api.Dtos.Manager;
 
-using Server.Dtos.Expenses;
+using VeriSpend.Api.Dtos.Expenses;
 
 public sealed record PendingExpenseResponse(Guid Id, string EmployeeEmail, decimal Amount, string Currency, string Merchant, string Category, string Status, DateTime Date, bool Flagged, string? FlagReason, string? Description, string[] ReceiptUrls, int ReviewPriority, int TriggeredRuleCount, RiskAssessmentResponse RiskAssessment, ReviewAssistantResponse ReviewAssistant);
 public sealed record RejectionReasonInsightResponse(string Reason, int Count);

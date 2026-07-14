@@ -2,7 +2,7 @@ using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace Server.Common;
+namespace VeriSpend.Api.Common;
 
 public sealed class SwaggerTagDescriptionsDocumentFilter : IDocumentFilter
 {

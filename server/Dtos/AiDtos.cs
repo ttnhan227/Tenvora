@@ -1,4 +1,4 @@
-namespace Server.Dtos.Ai;
+namespace VeriSpend.Api.Dtos.Ai;
 
 public sealed class AiUploadRequest
 {

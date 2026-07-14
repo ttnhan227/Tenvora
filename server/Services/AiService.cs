@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Http;
-using Server.Common;
-using Server.Dtos.Ai;
-using Server.Dtos.Expenses;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Ai;
+using VeriSpend.Api.Dtos.Expenses;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class AiService : IAiService
 {

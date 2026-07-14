@@ -4,10 +4,10 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Server.Common;
-using Server.Models;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Models;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class TokenService
 {

@@ -1,11 +1,11 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Server.Common;
-using Server.Data;
-using Server.Dtos.Analytics;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Data;
+using VeriSpend.Api.Dtos.Analytics;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 /// <summary>
 /// Phase 4 — Advanced Analytics:

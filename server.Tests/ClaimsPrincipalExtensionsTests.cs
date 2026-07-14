@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using Server.Common;
+using VeriSpend.Api.Common;
 using Xunit;
 
-namespace Server.Tests;
+namespace VeriSpend.Api.Tests;
 
 public sealed class ClaimsPrincipalExtensionsTests
 {

@@ -1,4 +1,4 @@
-namespace Server.Dtos.Expenses;
+namespace VeriSpend.Api.Dtos.Expenses;
 
 public sealed record RelatedExpenseResponse(Guid Id, string EmployeeEmail, decimal Amount, string Currency, string Merchant, string Category, string Status, DateTime Date, string Relationship);
 public sealed record ReviewAssistantResponse(string Recommendation, string Confidence, string Summary, string[] MissingEvidence, string[] ReviewerPrompts, string[] SuspiciousPatterns, RelatedExpenseResponse[] RelatedExpenses);

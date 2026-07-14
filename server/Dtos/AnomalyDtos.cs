@@ -1,4 +1,4 @@
-namespace Server.Dtos.Anomalies;
+namespace VeriSpend.Api.Dtos.Anomalies;
 
 public sealed record AnomalyNotification(
     Guid ExpenseId,

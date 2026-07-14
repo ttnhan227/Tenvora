@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public static class PasswordHasher
 {

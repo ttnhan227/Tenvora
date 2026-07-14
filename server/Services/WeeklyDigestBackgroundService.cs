@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public class WeeklyDigestBackgroundService : BackgroundService
 {

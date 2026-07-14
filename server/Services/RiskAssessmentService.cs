@@ -1,7 +1,7 @@
-using Server.Dtos.Expenses;
-using Server.Models;
+using VeriSpend.Api.Dtos.Expenses;
+using VeriSpend.Api.Models;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IRiskAssessmentService
 {

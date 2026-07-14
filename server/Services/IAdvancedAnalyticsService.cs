@@ -1,7 +1,7 @@
-using Server.Common;
-using Server.Dtos.Analytics;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Analytics;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IAdvancedAnalyticsService
 {

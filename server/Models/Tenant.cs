@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Server.Models;
+namespace VeriSpend.Api.Models;
 
 public class Tenant
 {
@@ -50,7 +50,7 @@ public class Tenant
     public string? SlackUserEmailMappings { get; set; } // JSON: {"U12345":"manager@company.com"}
 
     public string? ManagerEmail { get; set; } // For weekly digests, escalations
-    public string? NoReplyEmail { get; set; } = "noreply@aiaudit.app";
+    public string? NoReplyEmail { get; set; } = "noreply@verispend.local";
 
     public ICollection<User> Users { get; set; } = new List<User>();
     public ICollection<Expense> Expenses { get; set; } = new List<Expense>();

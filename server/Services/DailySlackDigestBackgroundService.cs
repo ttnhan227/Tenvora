@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public class DailySlackDigestBackgroundService : BackgroundService
 {
@@ -47,6 +47,7 @@ public class DailySlackDigestBackgroundService : BackgroundService
 
                 var tenants = await tenantRepository.GetAllAsync();
                 var utcNow = DateTime.UtcNow;
+                var appBaseUrl = (Environment.GetEnvironmentVariable("APP_BASE_URL") ?? "http://localhost:5173").TrimEnd('/');
 
                 foreach (var tenant in tenants)
                 {
@@ -61,7 +62,7 @@ public class DailySlackDigestBackgroundService : BackgroundService
                         var pendingCount = expenses.Count(e => e.Status == "Pending");
                         var highRiskCount = expenses.Count(e => e.Flagged);
 
-                        var managerUrl = "https://app.aiaudit.app/manager/review";
+                        var managerUrl = $"{appBaseUrl}/manager/pending";
 
                         await slackService.SendDailyDigestAsync(tenant.Id.ToString(), pendingCount, highRiskCount, managerUrl);
                         _logger.LogInformation("Daily Slack digest sent for tenant {TenantId} ({CompanyName}) — {Pending} pending, {HighRisk} high-risk",

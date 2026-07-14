@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Server.Data;
-using Server.Models;
+using VeriSpend.Api.Data;
+using VeriSpend.Api.Models;
 
-namespace Server.Repositories;
+namespace VeriSpend.Api.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {

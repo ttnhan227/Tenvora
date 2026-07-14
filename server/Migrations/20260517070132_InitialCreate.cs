@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace server.Migrations
+namespace VeriSpend.Api.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

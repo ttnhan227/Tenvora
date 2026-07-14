@@ -1,7 +1,7 @@
-using Server.Common;
-using Server.Dtos.Auth;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Auth;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IAuthService
 {

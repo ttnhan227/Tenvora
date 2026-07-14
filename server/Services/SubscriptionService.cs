@@ -1,9 +1,9 @@
-using Server.Common;
-using Server.Dtos.Subscription;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Subscription;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class SubscriptionService : ISubscriptionService
 {

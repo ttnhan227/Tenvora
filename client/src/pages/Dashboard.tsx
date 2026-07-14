@@ -136,7 +136,7 @@ const Dashboard = () => {
                 </span>
                 <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
                   <ShieldCheck className="h-3 w-3 text-primary animate-pulse" />
-                  AI Auditor Safeguard Enabled
+                  VeriSpend Safeguards Enabled
                 </span>
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>

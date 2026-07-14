@@ -1,12 +1,12 @@
 using System.Text.Json;
 using System.Linq;
-using Server.Common;
-using Server.Dtos.Budget;
-using Server.Dtos.Manager;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Budget;
+using VeriSpend.Api.Dtos.Manager;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IBudgetGuardrailService
 {

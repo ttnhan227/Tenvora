@@ -1,7 +1,7 @@
-using Server.Common;
-using Server.Dtos.Compliance;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Compliance;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IComplianceService
 {

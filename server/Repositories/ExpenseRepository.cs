@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Server.Common;
-using Server.Data;
-using Server.Models;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Data;
+using VeriSpend.Api.Models;
 
-namespace Server.Repositories;
+namespace VeriSpend.Api.Repositories;
 
 public sealed class ExpenseRepository : IExpenseRepository
 {

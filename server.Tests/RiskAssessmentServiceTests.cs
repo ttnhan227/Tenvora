@@ -1,8 +1,8 @@
-using Server.Models;
-using Server.Services;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Services;
 using Xunit;
 
-namespace Server.Tests;
+namespace VeriSpend.Api.Tests;
 
 public sealed class RiskAssessmentServiceTests
 {

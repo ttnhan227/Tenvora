@@ -1,8 +1,8 @@
-using Server.Common;
-using Server.Dtos.Budget;
-using Server.Dtos.Settings;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Budget;
+using VeriSpend.Api.Dtos.Settings;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface ISettingsService
 {

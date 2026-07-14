@@ -1,6 +1,6 @@
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface INotificationService
 {

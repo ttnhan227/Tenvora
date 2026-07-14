@@ -1,10 +1,10 @@
 using System.Text.Json;
-using Server.Common;
-using Server.Dtos.Budget;
-using Server.Dtos.Settings;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Budget;
+using VeriSpend.Api.Dtos.Settings;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class SettingsService : ISettingsService
 {

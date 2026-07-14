@@ -2,13 +2,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Server.Common;
-using Server.Data;
-using Server.Dtos.Compliance;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Data;
+using VeriSpend.Api.Dtos.Compliance;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 /// <summary>
 /// Phase 4 — Compliance Automation:

@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
-using Server.Common;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class AuditLogService : IAuditLogService
 {

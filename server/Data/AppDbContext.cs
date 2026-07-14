@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Data;
+namespace VeriSpend.Api.Data;
 
 public class AppDbContext : DbContext
 {

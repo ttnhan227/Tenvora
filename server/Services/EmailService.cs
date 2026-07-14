@@ -1,9 +1,9 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public class EmailService : IEmailService
 {
@@ -36,7 +36,7 @@ public class EmailService : IEmailService
             var emailMessage = new
             {
                 to,
-                from = _emailSettings.FromEmail ?? "noreply@aiaudit.app",
+                from = _emailSettings.FromEmail ?? "noreply@verispend.local",
                 subject,
                 htmlBody,
                 plainTextBody = plainTextBody ?? StripHtml(htmlBody)
@@ -74,7 +74,7 @@ public class EmailService : IEmailService
             {
                 new { to = new[] { new { email = emailMessage.to } } }
             },
-            from = new { email = emailMessage.from, name = _emailSettings.FromName ?? "AiAudit" },
+            from = new { email = emailMessage.from, name = _emailSettings.FromName ?? "VeriSpend" },
             subject = emailMessage.subject,
             content = new[]
             {
@@ -101,7 +101,7 @@ public class EmailService : IEmailService
 
         var mailMessage = new System.Net.Mail.MailMessage
         {
-            From = new System.Net.Mail.MailAddress(emailMessage.from, _emailSettings.FromName ?? "AiAudit"),
+            From = new System.Net.Mail.MailAddress(emailMessage.from, _emailSettings.FromName ?? "VeriSpend"),
             Subject = emailMessage.subject,
             Body = emailMessage.htmlBody,
             IsBodyHtml = true
@@ -156,7 +156,7 @@ public class EmailService : IEmailService
         <a href='{policyUrl}' class='policy-link'>View Expense Policy</a>
     </div>
     <div class='footer'>
-        <p>This email was sent automatically by AiAudit Expense Tracker.</p>
+        <p>This email was sent automatically by VeriSpend.</p>
         <p>If you believe this is an error, please contact your manager or finance team.</p>
     </div>
 </body>
@@ -179,7 +179,7 @@ Reason for rejection:
 Please review the company expense policy: {policyUrl}
 
 ---
-AiAudit Expense Tracker
+VeriSpend
 ";
 
         await SendAsync(expense.User.Email, subject, htmlBody, plainText);
@@ -227,7 +227,7 @@ AiAudit Expense Tracker
         <p>You may be contacted by a manager for additional information. Thank you for your patience.</p>
     </div>
     <div class='footer'>
-        <p>This email was sent automatically by AiAudit Expense Tracker.</p>
+        <p>This email was sent automatically by VeriSpend.</p>
     </div>
 </body>
 </html>";
@@ -248,7 +248,7 @@ Details: {anomalyReason}
 
 You may be contacted by a manager for additional information.
 ---
-AiAudit Expense Tracker
+VeriSpend
 ";
 
         await SendAsync(employee.Email, subject, htmlBody, plainText);
@@ -348,7 +348,7 @@ Total Pending Amount: ${totalAmount:N2}
 View full report: {reportUrl}
 
 ---
-AiAudit Expense Tracker
+VeriSpend
 ";
 
         if (string.IsNullOrWhiteSpace(recipientEmail))

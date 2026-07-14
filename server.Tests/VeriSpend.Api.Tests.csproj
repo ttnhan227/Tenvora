@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>VeriSpend.Api.Tests</AssemblyName>
+    <RootNamespace>VeriSpend.Api.Tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -13,6 +15,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\server\server.csproj" />
+    <ProjectReference Include="..\server\VeriSpend.Api.csproj" />
   </ItemGroup>
 </Project>

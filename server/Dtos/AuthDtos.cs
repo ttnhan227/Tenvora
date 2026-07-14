@@ -1,4 +1,4 @@
-namespace Server.Dtos.Auth;
+namespace VeriSpend.Api.Dtos.Auth;
 
 public sealed record RegisterRequest(string CompanyName, string Email, string Password);
 public sealed record LoginRequest(string Email, string Password);

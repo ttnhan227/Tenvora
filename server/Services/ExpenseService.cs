@@ -1,9 +1,9 @@
-using Server.Common;
-using Server.Dtos.Expenses;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Expenses;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class ExpenseService : IExpenseService
 {

@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using Server.Dtos.Anomalies;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Dtos.Anomalies;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public sealed class NotificationService : INotificationService
 {
@@ -218,6 +218,6 @@ public sealed class NotificationService : INotificationService
     private static string GetAppBaseUrl()
     {
         var baseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL");
-        return string.IsNullOrWhiteSpace(baseUrl) ? "https://app.aiaudit.app" : baseUrl;
+        return string.IsNullOrWhiteSpace(baseUrl) ? "http://localhost:5173" : baseUrl;
     }
 }

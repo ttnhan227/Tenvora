@@ -1,7 +1,7 @@
-using Server.Common;
-using Server.Dtos.Subscription;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Subscription;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface ISubscriptionService
 {

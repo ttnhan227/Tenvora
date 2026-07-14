@@ -1,4 +1,4 @@
-namespace Server.Dtos.Subscription;
+namespace VeriSpend.Api.Dtos.Subscription;
 
 public sealed record SubscriptionPlanDto(
     string Id,

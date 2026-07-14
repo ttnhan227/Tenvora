@@ -6,11 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Server.Common;
-using Server.Data;
-using Server.Middleware;
-using Server.Repositories;
-using Server.Services;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Data;
+using VeriSpend.Api.Middleware;
+using VeriSpend.Api.Repositories;
+using VeriSpend.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,7 +50,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "AI Audit Expense Tracker API",
+        Title = "VeriSpend API",
         Version = "v1",
         Description = "Interactive API documentation for authentication, expense management, manager workflows, tenant settings, and AI receipt processing."
     });
@@ -135,12 +135,12 @@ if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith(
 }
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddSingleton<Server.Data.Interceptors.AuditLogSaveChangesInterceptor>();
+builder.Services.AddSingleton<VeriSpend.Api.Data.Interceptors.AuditLogSaveChangesInterceptor>();
 
 builder.Services.AddDbContextFactory<AppDbContext>((sp, options) =>
     options.UseNpgsql(connectionString)
-           .AddInterceptors(sp.GetRequiredService<Server.Data.Interceptors.AuditLogSaveChangesInterceptor>())
-           .AddInterceptors(new Server.Data.Interceptors.EntityValidationInterceptor()));
+           .AddInterceptors(sp.GetRequiredService<VeriSpend.Api.Data.Interceptors.AuditLogSaveChangesInterceptor>())
+           .AddInterceptors(new VeriSpend.Api.Data.Interceptors.EntityValidationInterceptor()));
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
 var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
@@ -184,7 +184,7 @@ if (enableSwagger)
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "AI Audit Expense Tracker API v1");
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "VeriSpend API v1");
         options.RoutePrefix = "swagger";
     });
 }

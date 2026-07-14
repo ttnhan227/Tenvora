@@ -1,4 +1,4 @@
-namespace Server.Dtos.Budget;
+namespace VeriSpend.Api.Dtos.Budget;
 
 public sealed record CategoryBudget(
     string Category,

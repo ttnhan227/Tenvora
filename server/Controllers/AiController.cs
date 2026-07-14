@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Server.Common;
-using Server.Dtos.Ai;
-using Server.Services;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Ai;
+using VeriSpend.Api.Services;
 
-namespace Server.Controllers;
+namespace VeriSpend.Api.Controllers;
 
 [ApiController]
 [Authorize]

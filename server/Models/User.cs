@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Server.Models;
+namespace VeriSpend.Api.Models;
 
 public class User
 {

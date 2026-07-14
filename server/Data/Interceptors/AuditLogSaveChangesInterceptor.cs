@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Data.Interceptors;
+namespace VeriSpend.Api.Data.Interceptors;
 
 public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 {

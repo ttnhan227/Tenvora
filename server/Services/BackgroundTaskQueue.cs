@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IBackgroundTaskQueue
 {

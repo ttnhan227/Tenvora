@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Server.Common;
-using Server.Dtos.Admin;
-using Server.Services;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Admin;
+using VeriSpend.Api.Services;
 
-namespace Server.Controllers;
+namespace VeriSpend.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Owner")]

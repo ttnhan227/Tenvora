@@ -185,7 +185,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
 
     const field = columns[activeCell.col].toLowerCase();
     if (field === "risk score") {
-      toast.error("Risk score is auto-calculated by the AI Audit engine.");
+      toast.error("Risk score is calculated automatically by the VeriSpend risk engine.");
       return;
     }
 

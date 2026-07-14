@@ -63,7 +63,7 @@ const AcceptInvite = () => {
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <span className="text-xl font-extrabold tracking-tight text-foreground">AiAudit</span>
+            <span className="text-xl font-extrabold tracking-tight text-foreground">VeriSpend</span>
           </Link>
         </div>
 

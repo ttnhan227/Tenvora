@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Data;
+namespace VeriSpend.Api.Data;
 
 public static class DatabaseSeeder
 {

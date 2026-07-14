@@ -770,7 +770,7 @@ const Settings = () => {
                       disabled={isSavingNotification}
                       className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono"
                     />
-                    <p className="text-[9px] text-muted-foreground leading-relaxed">The return address for system transaction logs (default: noreply@aiaudit.app).</p>
+                    <p className="text-[9px] text-muted-foreground leading-relaxed">The return address for system transaction logs (configure this for your deployment).</p>
                   </div>
                 </div>
 

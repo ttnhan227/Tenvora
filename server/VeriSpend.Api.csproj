@@ -2,6 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>VeriSpend.Api</AssemblyName>
+        <RootNamespace>VeriSpend.Api</RootNamespace>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>

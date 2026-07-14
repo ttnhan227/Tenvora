@@ -1,6 +1,6 @@
-# AiAudit Expense Tracker
+# VeriSpend
 
-AiAudit is a full-stack, multi-tenant expense operations platform for submitting, reviewing, approving, and auditing company expenses.
+VeriSpend is a full-stack, multi-tenant platform for AI-assisted expense review, approval, compliance, and audit operations.
 
 ## Overview
 
@@ -9,7 +9,7 @@ The application gives Owners, Managers, and Members role-specific workflows acro
 - [Live application](https://aiaudit-expensetracker-web.onrender.com)
 - [Swagger API](https://aiaudit-expensetracker.onrender.com/swagger)
 
-The hosted demo uses a free backend service, so its first response can take approximately one minute after a period without traffic.
+The links retain their existing Render service addresses until those external services are renamed. The hosted demo uses a free backend service, so its first response can take approximately one minute after a period without traffic.
 
 ## Key features
 
@@ -100,10 +100,10 @@ The credentials in `compose.yaml` are for local development only and must not be
 
 ### Manual setup
 
-Create a PostgreSQL database named `AiAuditExpenseTracker`, then set the required configuration in the terminal that will run the API:
+Create a PostgreSQL database named `VeriSpend`, then set the required configuration in the terminal that will run the API:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=AiAuditExpenseTracker;Username=postgres;Password=your_password"
+$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=VeriSpend;Username=postgres;Password=your_password"
 $env:JwtSettings__Secret = "use-a-long-random-development-secret"
 $env:MistralSettings__ApiKey = "your_optional_mistral_key"
 ```
@@ -135,6 +135,7 @@ Open [http://localhost:5173](http://localhost:5173). When `VITE_API_BASE_URL` is
 | `MistralSettings__ApiKey` | Optional Mistral credential for receipt extraction |
 | `CLIENT_ORIGINS` | Comma-separated frontend origins allowed by API CORS |
 | `PORT` | HTTP port used by the backend container |
+| `APP_BASE_URL` | Public frontend URL used in email and Slack links |
 | `VITE_API_BASE_URL` | Browser-visible API base URL used when building or running the Vite client |
 | `EmailSettings__SendGridApiKey` | Optional SendGrid credential for email delivery |
 | `EmailSettings__SmtpHost` | Optional SMTP server used when SMTP delivery is configured |
@@ -146,8 +147,8 @@ Never commit populated secrets. Set `VITE_API_BASE_URL` to the API URL, includin
 Run the backend build and tests from the repository root:
 
 ```powershell
-dotnet build AiAudit.ExpenseTracker.sln
-dotnet test AiAudit.ExpenseTracker.sln
+dotnet build VeriSpend.sln
+dotnet test VeriSpend.sln
 ```
 
 Run the frontend checks from `client/`:

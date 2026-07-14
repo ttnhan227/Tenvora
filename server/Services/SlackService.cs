@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using Server.Models;
-using Server.Repositories;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public class SlackService : ISlackService
 {
@@ -42,7 +42,7 @@ public class SlackService : ISlackService
             {
                 text = message,
                 channel = channel ?? tenant.SlackChannel ?? "#general",
-                username = "AiAudit Bot",
+                username = "VeriSpend Bot",
                 icon_emoji = ":robot_face:"
             };
 
@@ -59,6 +59,7 @@ public class SlackService : ISlackService
 
     public async Task SendAnomalyAlertAsync(string tenantId, Expense expense, string anomalyType, string anomalyReason, User employee)
     {
+        var appBaseUrl = (Environment.GetEnvironmentVariable("APP_BASE_URL") ?? "http://localhost:5173").TrimEnd('/');
         var message = $":warning: *Anomaly Detected*\n\n" +
                       $"*Expense:* {expense.Merchant} - ${expense.Amount}\n" +
                       $"*Employee:* {employee.Email}\n" +
@@ -66,7 +67,7 @@ public class SlackService : ISlackService
                       $"*Category:* {expense.Category}\n" +
                       $"*Type:* {anomalyType}\n" +
                       $"*Reason:* {anomalyReason}\n" +
-                      $"<https://app.aiaudit.app/expenses/{expense.Id}|Review in App>";
+                      $"<{appBaseUrl}/expenses/{expense.Id}|Review in VeriSpend>";
 
         await SendMessageAsync(tenantId, message);
     }

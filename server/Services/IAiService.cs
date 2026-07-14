@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Http;
-using Server.Common;
-using Server.Dtos.Ai;
-using Server.Dtos.Expenses;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Ai;
+using VeriSpend.Api.Dtos.Expenses;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IAiService
 {

@@ -6,9 +6,9 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using Server.Common;
+using VeriSpend.Api.Common;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IAiReceiptService
 {

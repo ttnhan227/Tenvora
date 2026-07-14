@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Server.Common;
-using Server.Dtos.Manager;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Manager;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IManagerService
 {

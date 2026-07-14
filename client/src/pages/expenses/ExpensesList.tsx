@@ -166,7 +166,7 @@ const ExpensesList = () => {
               </span>
               <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
                 <Cpu className="h-3 w-3 text-primary animate-pulse" />
-                AI Audit Guardrails Enabled
+                VeriSpend Guardrails Enabled
               </span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">Expenses</h1>

@@ -1,4 +1,4 @@
-namespace Server.Dtos.Analytics;
+namespace VeriSpend.Api.Dtos.Analytics;
 
 // ── Department Budget Pooling ──────────────────────────────────────────────────
 public sealed record DepartmentSpendSummary(

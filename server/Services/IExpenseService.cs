@@ -1,7 +1,7 @@
-using Server.Common;
-using Server.Dtos.Expenses;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Expenses;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public interface IExpenseService
 {

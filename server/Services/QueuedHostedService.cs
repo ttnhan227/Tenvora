@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Server.Services;
+namespace VeriSpend.Api.Services;
 
 public class QueuedHostedService : BackgroundService
 {

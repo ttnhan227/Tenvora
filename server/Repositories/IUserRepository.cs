@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore.Storage;
-using Server.Models;
+using VeriSpend.Api.Models;
 
-namespace Server.Repositories;
+namespace VeriSpend.Api.Repositories;
 
 public interface IUserRepository
 {

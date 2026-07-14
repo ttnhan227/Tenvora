@@ -1,4 +1,4 @@
-namespace Server.Dtos.Compliance;
+namespace VeriSpend.Api.Dtos.Compliance;
 
 // ── SOX Audit Trail ────────────────────────────────────────────────────────────
 public sealed record SoxAuditEntry(

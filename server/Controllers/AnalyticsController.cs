@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Server.Common;
-using Server.Services;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Services;
 
-namespace Server.Controllers;
+namespace VeriSpend.Api.Controllers;
 
 /// <summary>
 /// Phase 4 — Advanced Analytics endpoints:

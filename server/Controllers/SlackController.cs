@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using Server.Common;
-using Server.Dtos.Slack;
-using Server.Models;
-using Server.Repositories;
-using Server.Services;
+using VeriSpend.Api.Common;
+using VeriSpend.Api.Dtos.Slack;
+using VeriSpend.Api.Models;
+using VeriSpend.Api.Repositories;
+using VeriSpend.Api.Services;
 using System.Text.Json;
 
-namespace Server.Controllers;
+namespace VeriSpend.Api.Controllers;
 
 [ApiController]
 [Route("api/slack")]
@@ -42,7 +42,7 @@ public class SlackController : ControllerBase
 
         if (tenant == null || string.IsNullOrWhiteSpace(tenant.SlackVerificationToken))
         {
-            return Ok(new { response_type = "ephemeral", text = "⚠️ This Slack workspace is not connected to AiAudit. Contact your Owner to enable Slack integration." });
+            return Ok(new { response_type = "ephemeral", text = "⚠️ This Slack workspace is not connected to VeriSpend. Contact your Owner to enable Slack integration." });
         }
 
         // Verify the command is /expense
@@ -62,22 +62,22 @@ public class SlackController : ControllerBase
             return Ok(new { response_type = "ephemeral", text = "Invalid expense ID. Usage: `/expense approve <valid-guid>`" });
         }
 
-        // Map Slack userId → AiAudit email via tenant's SlackUserEmailMappings JSON
+        // Map Slack userId to a VeriSpend email via the tenant's SlackUserEmailMappings JSON.
         var email = await GetEmailFromSlackUserAsync(tenant, request.UserId);
         if (email == null)
         {
             return Ok(new
             {
                 response_type = "ephemeral",
-                text = $"❌ Your Slack user ID ({request.UserId}) is not mapped to an AiAudit account. Ask your Owner to add the mapping in Settings → Notifications."
+                text = $"❌ Your Slack user ID ({request.UserId}) is not mapped to a VeriSpend account. Ask your Owner to add the mapping in Settings → Notifications."
             });
         }
 
-        // Find the AiAudit user in this tenant
+        // Find the VeriSpend user in this tenant.
         var approver = await _userRepository.GetByEmailAndTenantAsync(email, tenant.Id);
         if (approver == null)
         {
-            return Ok(new { response_type = "ephemeral", text = $"❌ No AiAudit user found with email {email} in this workspace." });
+            return Ok(new { response_type = "ephemeral", text = $"❌ No VeriSpend user found with email {email} in this workspace." });
         }
 
         // Role check
@@ -99,12 +99,13 @@ public class SlackController : ControllerBase
         // Post confirmation to channel if configured
         if (tenant.SlackNotificationsEnabled && !string.IsNullOrWhiteSpace(tenant.SlackChannel))
         {
+            var appBaseUrl = (Environment.GetEnvironmentVariable("APP_BASE_URL") ?? "http://localhost:5173").TrimEnd('/');
             _ = Task.Run(async () =>
             {
                 try
                 {
                     await _slackService.SendMessageAsync(tenant.Id.ToString(),
-                        $"✅ Expense <https://app.aiaudit.app/expenses/{expenseId}|{expenseId}> approved by {email} via Slack slash command.",
+                        $"✅ Expense <{appBaseUrl}/expenses/{expenseId}|{expenseId}> approved by {email} via Slack slash command.",
                         tenant.SlackChannel);
                 }
                 catch { /* swallow */ }
