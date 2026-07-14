@@ -36,15 +36,36 @@ public sealed class AiCopilotService : IAiCopilotService
         var total = visible.Sum(e => e.BaseAmount == 0 ? e.Amount : e.BaseAmount);
         var topCategories = visible.GroupBy(e => e.Category).OrderByDescending(g => g.Sum(e => e.Amount)).Take(5).Select(g => new { category = g.Key, spend = g.Sum(e => e.Amount), count = g.Count() }).ToArray();
         var recent = visible.OrderByDescending(e => e.CreatedAt).Take(12).Select(e => new { e.Merchant, e.Amount, e.Currency, e.Category, e.Status, e.Flagged, e.FlagReason, employee = role == "Member" ? null : e.User?.Email }).ToArray();
-        var context = new { company = tenant.CompanyName, role, tenant.BaseCurrency, tenant.MaxSpendLimit, tenant.PolicyNotes, tenant.AutoApprovalEnabled, tenant.AutoApprovalMaxAmount, tenant.CategoryBudgets, expenseCount = visible.Count, totalSpend = total, pending, flagged, topCategories, recent };
-        var sources = new[] { "Company policy", "Authorized expenses", "Budget configuration", "Approval status", "Risk flags" };
+        var applicationGuide = new
+        {
+            onboarding = new[]
+            {
+                "Open Guided Setup from the welcome dashboard or navigate to /onboarding.",
+                "Define the company review threshold and written expense policy.",
+                "Set category budgets and low-risk auto-approval guardrails.",
+                "Optionally invite a finance manager.",
+                "Upload and confirm the first real receipt to create the first expense and audit event."
+            },
+            pages = new
+            {
+                dashboard = "/dashboard",
+                guidedSetup = "/onboarding",
+                receiptUpload = "/upload",
+                pendingReviews = "/manager/pending",
+                policyLab = "/policy-lab",
+                compliance = "/compliance",
+                userManagement = "/admin/users"
+            }
+        };
+        var context = new { company = tenant.CompanyName, role, tenant.BaseCurrency, tenant.MaxSpendLimit, tenant.PolicyNotes, tenant.AutoApprovalEnabled, tenant.AutoApprovalMaxAmount, tenant.CategoryBudgets, expenseCount = visible.Count, totalSpend = total, pending, flagged, topCategories, recent, applicationGuide };
+        var sources = new[] { "VeriSpend workflow guide", "Company policy", "Authorized expenses", "Budget configuration", "Approval status", "Risk flags" };
 
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
             return ApiResult<AiCopilotResponse>.Ok(Fallback(request.Message, context.expenseCount, pending, flagged, tenant.PolicyNotes, sources));
 
         var client = _clients.CreateClient("AiProviderClient");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
-        var messages = new List<object> { new { role = "system", content = $"You are Veri, a concise enterprise spend-control copilot. Answer only from the authorized workspace JSON. Never invent records or claim to change data. Explain what the user should do next. Workspace: {JsonSerializer.Serialize(context)}" } };
+        var messages = new List<object> { new { role = "system", content = $"You are Veri, a concise enterprise spend-control copilot. Use the authorized workspace JSON and its applicationGuide. You may actively guide users through VeriSpend setup, navigation, expense workflows, policies, reviews, and compliance. Format non-trivial answers in clean GitHub-flavored Markdown: use a short heading when useful, numbered steps for procedures, bullets for findings, and bold text only for key values. Avoid large headings and unnecessary preambles. Never invent company records, claim an action was completed, or imply you can click or mutate data. Instead, name the correct page and tell the user what to do there. Refuse unrelated general-knowledge questions. Workspace: {JsonSerializer.Serialize(context)}" } };
         foreach (var item in (request.History ?? []).TakeLast(6)) messages.Add(new { role = item.Role == "assistant" ? "assistant" : "user", content = item.Content[..Math.Min(item.Content.Length, 1000)] });
         messages.Add(new { role = "user", content = request.Message });
         var response = await client.PostAsJsonAsync(_settings.Endpoint, new { model = _settings.ChatModel, temperature = 0.2, max_tokens = 500, messages });

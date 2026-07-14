@@ -1,191 +1,129 @@
 # VeriSpend
 
-VeriSpend is a full-stack, multi-tenant platform for AI-assisted expense review, approval, compliance, and audit operations.
+VeriSpend is an AI-assisted expense management and spend-control platform for companies.
 
-## Overview
-
-The application gives Owners, Managers, and Members role-specific workflows across a shared expense lifecycle. Its technically interesting areas include AI-assisted receipt extraction, explainable risk scoring, tenant isolation, approval automation, audit history, compliance reporting, analytics, and notification integrations.
+Employees submit expenses and receipts, managers review risky claims, and company owners manage policies, budgets, users, analytics, and compliance evidence.
 
 - [Live application](https://aiaudit-expensetracker-web.onrender.com)
-- [Swagger API](https://aiaudit-expensetracker.onrender.com/swagger)
+- [API documentation](https://aiaudit-expensetracker.onrender.com/swagger)
 
-The links retain their existing Render service addresses until those external services are renamed. The hosted demo uses a free backend service, so its first response can take approximately one minute after a period without traffic.
+> The hosted backend uses a free service and may take about one minute to wake up.
 
-## Key features
+## What it does
 
-- JWT authentication, refresh-token rotation, and backend-enforced role authorization
-- Tenant-scoped users, expenses, subscriptions, settings, analytics, and audit records
-- Manual expense entry, provider-neutral AI receipt extraction, and a tenant-aware spend copilot
-- Draft, submission, approval, rejection, and auto-approval workflows
-- Explainable risk scoring for limits, duplicates, missing details, unusual amounts, restricted categories, and submission frequency
-- Manager review queues, audit insights, budget prediction, and accounting exports
-- Category budgets, policy settings, auto-categorization, and currency conversion
-- Email, Slack, scheduled digest, and in-app notification workflows
-- GDPR export/deletion, SOX audit history, and SOC 2-oriented compliance reporting
-- Public health endpoint used to check backend availability from the landing page
+- Extracts expense information from uploaded receipts
+- Detects duplicates, unusual spending, policy violations, and missing details
+- Supports draft, submission, approval, rejection, and auto-approval workflows
+- Gives Owners, Managers, and Members different permissions and workspaces
+- Tracks category budgets, forecasts, review performance, and spending trends
+- Maintains audit history and SOX, SOC 2, and GDPR-oriented reports
+- Exports approved expenses for QuickBooks and Xero
+- Includes a role-aware AI copilot grounded in authorized company data
+- Keeps every company's users, expenses, policies, and analytics isolated
 
-## Tech stack
+## Quick demo
 
-- Backend: .NET 10, ASP.NET Core, Entity Framework Core, JWT Bearer authentication
-- Web: React 18, TypeScript, Vite, Axios, TanStack Query, Tailwind CSS, shadcn/ui
-- Data: PostgreSQL and Entity Framework Core migrations
-- AI and integrations: OpenAI-compatible AI providers, SendGrid/SMTP, Slack, and exchange-rate providers
-- Testing/CI: xUnit, Vitest, Testing Library, ESLint, Docker, and GitHub Actions
+Open the live application and select **Explore populated demo**.
 
-## Architecture
+VeriSpend creates a temporary private organization containing realistic expenses, risk cases, budgets, policies, and audit history. The guided mission shows the main workflow.
 
-```text
-React client --> ASP.NET Core REST API --> PostgreSQL
-                       |
-                       +--> Configurable AI provider / exchange rates
-                       +--> Email / Slack notifications
-```
+## Technology
 
-HTTP controllers delegate business rules to services, which use repositories and Entity Framework Core for persistence. DTOs define public API contracts, JWT claims establish user and tenant identity, and authorization policies protect role-specific endpoints. Middleware propagates the authenticated tenant context to PostgreSQL for row-level isolation.
+- React, TypeScript, Vite, Tailwind CSS, TanStack Query
+- ASP.NET Core, .NET 10, Entity Framework Core
+- PostgreSQL with tenant isolation
+- OpenAI-compatible AI providers
+- Docker, xUnit, Vitest, ESLint, and GitHub Actions
 
-## Main roles
+## Run locally
 
-| Role | Primary capabilities |
-| --- | --- |
-| Owner | Manage users, policies, subscriptions, compliance, analytics, and company settings |
-| Manager | Review expenses, approve or reject submissions, inspect risk and audit history, and export reports |
-| Member | Create expenses, upload receipts, submit claims, and track personal expense status |
+Requirements: .NET 10, Node.js 20+, npm, and PostgreSQL.
 
-## Important workflows
+### 1. Configure the backend
 
-```text
-Receipt upload -> AI extraction -> user confirmation -> expense draft
-Expense draft -> risk assessment -> submission -> manager review -> approval/rejection
-Policy rules -> eligible pending expense -> automatic approval -> audit record/notification
-Authenticated request -> JWT claims -> tenant context -> tenant-scoped database query
-```
+From the repository root, copy the development settings template.
 
-## Project structure
-
-```text
-client/                 React pages, components, contexts, and API services
-server/                 ASP.NET Core API, services, repositories, and integrations
-server.Tests/           Backend unit tests
-compose.yaml            Local frontend, backend, and PostgreSQL orchestration
-.github/workflows/      Build, test, and Docker validation automation
-```
-
-## Local setup
-
-For the containerized stack, Docker Desktop is the only prerequisite. For manual development, install the .NET 10 SDK, Node.js 20 or newer, npm, and PostgreSQL 15 or newer. An AI provider key is optional; without one, receipt extraction and the copilot use deterministic fallback behavior.
-
-### Docker Compose
-
-From the repository root, start PostgreSQL, the API, and the Vite development server with:
-
-```powershell
-docker compose up -d --build
-```
-
-Open [http://localhost:5173](http://localhost:5173). The API is exposed at [http://localhost:8080](http://localhost:8080), its health endpoint is [http://localhost:8080/api/health](http://localhost:8080/api/health), and PostgreSQL is exposed at `localhost:5432`.
-
-The first startup builds the backend image, installs frontend packages, applies Entity Framework Core migrations, and creates demo data. PostgreSQL data is kept in a named Docker volume between runs.
-
-Useful lifecycle commands:
-
-```powershell
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose down
-docker compose down -v  # Also deletes the local database volume
-```
-
-The credentials in `compose.yaml` are for local development only and must not be reused in a public environment.
-
-### Manual setup
-
-Create a PostgreSQL database named `VeriSpend`, then copy `server/appsettings.Development.example.json` to `server/appsettings.Development.json` and fill in the local database password, JWT secret, and optional AI provider credential. ASP.NET loads this file automatically in Development, and Git ignores it because it may contain secrets.
-
-From the repository root, create the local development settings file with:
+PowerShell:
 
 ```powershell
 Copy-Item server/appsettings.Development.example.json server/appsettings.Development.json
 ```
 
-Open `server/appsettings.Development.json`, replace the placeholder values, and then start the backend from the repository root:
+Command Prompt:
+
+```bat
+copy server\appsettings.Development.example.json server\appsettings.Development.json
+```
+
+Edit `server/appsettings.Development.json` with your PostgreSQL password, JWT secret, and optional AI provider key. This file is ignored by Git.
+
+### 2. Start the application
+
+Backend:
 
 ```powershell
 dotnet run --project server
 ```
 
-The manual backend runs at `http://localhost:5291`. It applies pending migrations and creates demo data during startup.
-
-Start the client in another terminal:
+Frontend, in another terminal:
 
 ```powershell
 cd client
-npm ci
+npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). When `VITE_API_BASE_URL` is not set, the development client uses `http://localhost:5291/api`.
+Open [http://localhost:5173](http://localhost:5173).
 
-## Environment variables
+## Run with Docker
 
-| Variable | Purpose |
-| --- | --- |
-| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string used by the API |
-| `JwtSettings__Secret` | Secret used to sign and validate access tokens |
-| `AiProvider__Name` | Display name for the configured AI provider |
-| `AiProvider__ApiKey` | API credential for the selected provider |
-| `AiProvider__Endpoint` | OpenAI-compatible chat-completions endpoint |
-| `AiProvider__ChatModel` | Text model used by the Veri copilot |
-| `AiProvider__VisionModel` | Vision-capable model used for receipt extraction |
-| `CLIENT_ORIGINS` | Comma-separated frontend origins allowed by API CORS |
-| `PORT` | HTTP port used by the backend container |
-| `APP_BASE_URL` | Public frontend URL used in email and Slack links |
-| `VITE_API_BASE_URL` | Browser-visible API base URL used when building or running the Vite client |
-| `EmailSettings__SendGridApiKey` | Optional SendGrid credential for email delivery |
-| `EmailSettings__SmtpHost` | Optional SMTP server used when SMTP delivery is configured |
-
-Never commit populated secrets. Set `VITE_API_BASE_URL` to the API URL, including `/api`, when the frontend should connect to an API other than the default manual-development address.
-
-### AI provider configuration
-
-VeriSpend accepts providers that implement the OpenAI-compatible chat-completions request and response format. The chat model must support text; receipt extraction requires a model that also accepts image input.
-
-For local development, the simplest option is to place the provider settings in the ignored `server/appsettings.Development.json` file. User secrets remain available for developers who prefer keeping credentials completely outside the project directory:
+Copy the Docker environment template:
 
 ```powershell
-dotnet user-secrets set "AiProvider:Name" "Mistral" --project server
-dotnet user-secrets set "AiProvider:ApiKey" "your-key" --project server
-dotnet user-secrets set "AiProvider:Endpoint" "https://api.mistral.ai/v1/chat/completions" --project server
-dotnet user-secrets set "AiProvider:ChatModel" "mistral-small-latest" --project server
-dotnet user-secrets set "AiProvider:VisionModel" "mistral-small-latest" --project server
+Copy-Item .env.example .env
 ```
 
-For Docker, copy `.env.example` to `.env`, populate `AI_PROVIDER_API_KEY`, and adjust the endpoint and models for the selected provider. `.env` is ignored by Git. Existing `MistralSettings` configuration remains supported for backward compatibility.
+Open `.env` and add the AI provider key, endpoint, and model names. `compose.yaml` reads these values automatically; do not place real credentials directly in `compose.yaml`.
 
-## Testing
-
-Run the backend build and tests from the repository root:
+Then run:
 
 ```powershell
-dotnet build VeriSpend.sln
+docker compose up -d --build
+```
+
+Docker starts the frontend, backend, and PostgreSQL database. Do not commit `.env`.
+
+## AI providers
+
+VeriSpend supports providers with an OpenAI-compatible chat-completions API, including Mistral, OpenAI, OpenRouter, Groq, Together AI, and compatible self-hosted gateways.
+
+Configure these values in `appsettings.Development.json`, `.env`, or your hosting provider:
+
+```text
+AI provider name
+API key
+Chat-completions endpoint
+Text model
+Vision-capable receipt model
+```
+
+Without an AI key, VeriSpend uses deterministic fallback guidance.
+
+## Tests
+
+```powershell
 dotnet test VeriSpend.sln
-```
 
-Run the frontend checks from `client/`:
-
-```powershell
-npm ci
-npm run lint
+cd client
 npm test
 npm run build
 ```
 
-GitHub Actions validates the server build and tests, frontend lint/tests/build, and backend Docker image on pushes and pull requests.
+## Project structure
 
-## Current limitations
-
-- Uploaded receipts are stored on the API service's ephemeral local filesystem.
-- Background jobs use an in-process queue instead of a durable message broker.
-- The hosted demo can introduce a cold-start delay after periods without traffic.
-- Approval updates do not yet use optimistic concurrency tokens.
-- The frontend would benefit from route-level code splitting to reduce its initial bundle size.
+```text
+client/        React web application
+server/        ASP.NET Core API
+server.Tests/  Backend tests
+compose.yaml   Local container stack
+```
