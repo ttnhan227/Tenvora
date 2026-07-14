@@ -65,6 +65,7 @@ secrets.json
 !.env.example
 
 # ASP.NET Core local appsettings (may contain secrets)
+server/appsettings.Development.json
 server/appsettings.Local.json
 server/appsettings.*.local.json
 server/appsettings.*.Local.json

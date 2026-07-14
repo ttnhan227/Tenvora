@@ -100,15 +100,15 @@ The credentials in `compose.yaml` are for local development only and must not be
 
 ### Manual setup
 
-Create a PostgreSQL database named `VeriSpend`, then set the required configuration in the terminal that will run the API:
+Create a PostgreSQL database named `VeriSpend`, then copy `server/appsettings.Development.example.json` to `server/appsettings.Development.json` and fill in the local database password, JWT secret, and optional AI provider credential. ASP.NET loads this file automatically in Development, and Git ignores it because it may contain secrets.
+
+From the repository root, create the local development settings file with:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=VeriSpend;Username=postgres;Password=your_password"
-$env:JwtSettings__Secret = "use-a-long-random-development-secret"
-$env:AiProvider__ApiKey = "your_optional_provider_key"
+Copy-Item server/appsettings.Development.example.json server/appsettings.Development.json
 ```
 
-Start the backend from the repository root:
+Open `server/appsettings.Development.json`, replace the placeholder values, and then start the backend from the repository root:
 
 ```powershell
 dotnet run --project server
@@ -150,7 +150,7 @@ Never commit populated secrets. Set `VITE_API_BASE_URL` to the API URL, includin
 
 VeriSpend accepts providers that implement the OpenAI-compatible chat-completions request and response format. The chat model must support text; receipt extraction requires a model that also accepts image input.
 
-For local development, store the provider configuration once with .NET user secrets:
+For local development, the simplest option is to place the provider settings in the ignored `server/appsettings.Development.json` file. User secrets remain available for developers who prefer keeping credentials completely outside the project directory:
 
 ```powershell
 dotnet user-secrets set "AiProvider:Name" "Mistral" --project server
