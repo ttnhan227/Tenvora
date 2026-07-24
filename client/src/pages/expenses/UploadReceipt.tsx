@@ -390,6 +390,23 @@ const UploadReceipt = () => {
 
         {/* Review & Edit Step */}
         {step === "review" && (
+          <div className="space-y-4">
+            {uploadData?.requiresReview && (
+              <Alert className="rounded-xl border-amber-500/40 bg-amber-500/10">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription>
+                  <strong>Manual review required.</strong>{" "}
+                  {uploadData.extractionSource === "fallback"
+                    ? "The AI provider was unavailable, so placeholder values were generated."
+                    : "One or more fields could not be read reliably."}
+                  {uploadData.warnings?.length > 0 && (
+                    <ul className="mt-2 list-disc pl-5">
+                      {uploadData.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                    </ul>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Image Preview */}
             {receiptPreviewUrl && (
@@ -563,6 +580,7 @@ const UploadReceipt = () => {
                 </form>
               </CardContent>
             </Card>
+          </div>
           </div>
         )}
 

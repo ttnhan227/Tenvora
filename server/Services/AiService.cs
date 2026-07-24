@@ -69,7 +69,7 @@ public sealed class AiService : IAiService
             results.Category,
             results.Flagged);
 
-        var response = new AiUploadResponse(Guid.NewGuid(), results.Amount, results.Currency, results.Merchant, results.Category, results.Date, results.Flagged, fileUrl, results.Message, results.OcrRawData);
+        var response = new AiUploadResponse(Guid.NewGuid(), results.Amount, results.Currency, results.Merchant, results.Category, results.Date, results.Flagged, fileUrl, results.Message, results.OcrRawData, results.Source, results.RequiresReview, results.Warnings);
         return ApiResult<AiUploadResponse>.Ok(response);
     }
 

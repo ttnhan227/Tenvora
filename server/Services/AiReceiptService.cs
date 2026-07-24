@@ -12,8 +12,21 @@ namespace VeriSpend.Api.Services;
 public interface IAiReceiptService
 {
     Task<string> SaveReceiptFileAsync(IFormFile file);
-    Task<(decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData)> ExtractReceiptAsync(IFormFile file, decimal maxSpendLimit);
+    Task<ReceiptExtractionResult> ExtractReceiptAsync(IFormFile file, decimal maxSpendLimit);
 }
+
+public sealed record ReceiptExtractionResult(
+    decimal Amount,
+    string Currency,
+    string Merchant,
+    string Category,
+    DateTime Date,
+    bool Flagged,
+    string Message,
+    string? OcrRawData,
+    string Source,
+    bool RequiresReview,
+    string[] Warnings);
 
 public sealed class AiReceiptService : IAiReceiptService
 {
@@ -56,7 +69,7 @@ public sealed class AiReceiptService : IAiReceiptService
         return $"/uploads/{safeName}";
     }
 
-    public async Task<(decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData)> ExtractReceiptAsync(IFormFile file, decimal maxSpendLimit)
+    public async Task<ReceiptExtractionResult> ExtractReceiptAsync(IFormFile file, decimal maxSpendLimit)
     {
         _logger.LogInformation(
             "Starting receipt extraction. FileName={FileName}, Length={Length}, MaxSpendLimit={MaxSpendLimit}",
@@ -66,17 +79,17 @@ public sealed class AiReceiptService : IAiReceiptService
 
         var bytes = await ReadFileBytesAsync(file);
         var result = await TryExtractFromMistralAsync(bytes, file.FileName, file.ContentType, maxSpendLimit);
-        if (result.HasValue)
+        if (result is not null)
         {
             _logger.LogInformation(
                 "Receipt extraction completed using AI. FileName={FileName}, Merchant={Merchant}, Amount={Amount}, Category={Category}, Flagged={Flagged}",
                 file.FileName,
-                result.Value.Merchant,
-                result.Value.Amount,
-                result.Value.Category,
-                result.Value.Flagged);
+                result.Merchant,
+                result.Amount,
+                result.Category,
+                result.Flagged);
 
-            return result.Value;
+            return result;
         }
 
         var fallback = GetFallbackReceipt(file, maxSpendLimit);
@@ -98,7 +111,7 @@ public sealed class AiReceiptService : IAiReceiptService
         return memoryStream.ToArray();
     }
 
-    private async Task<(decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData)?> TryExtractFromMistralAsync(byte[] imageBytes, string fileName, string? contentType, decimal maxSpendLimit)
+    private async Task<ReceiptExtractionResult?> TryExtractFromMistralAsync(byte[] imageBytes, string fileName, string? contentType, decimal maxSpendLimit)
     {
         if (string.IsNullOrWhiteSpace(_providerSettings.ApiKey) || string.IsNullOrWhiteSpace(_providerSettings.Endpoint))
         {
@@ -189,7 +202,7 @@ public sealed class AiReceiptService : IAiReceiptService
             }
 
             var parsed = ParseReceiptFromMistralText(outputText, fileName, maxSpendLimit, content);
-            if (!parsed.HasValue)
+            if (parsed is null)
             {
                 _logger.LogWarning("Mistral receipt extraction returned text that could not be parsed into receipt JSON. FileName={FileName}", fileName);
                 return null;
@@ -263,7 +276,7 @@ public sealed class AiReceiptService : IAiReceiptService
         };
     }
 
-    private static (decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData)? ParseReceiptFromMistralText(string text, string fileName, decimal maxSpendLimit, string rawResponse)
+    private static ReceiptExtractionResult? ParseReceiptFromMistralText(string text, string fileName, decimal maxSpendLimit, string rawResponse)
     {
         var json = ExtractJsonSnippet(text);
         if (string.IsNullOrWhiteSpace(json))
@@ -276,13 +289,16 @@ public sealed class AiReceiptService : IAiReceiptService
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
 
-            var amount = TryGetDecimal(root, "amount", out var a)
-                ? a
-                : TryGetDecimal(root, "Amount", out var b) ? b : 0m;
-            var currency = TryGetString(root, "currency") ?? TryGetString(root, "Currency") ?? "VND";
-            var merchant = TryGetString(root, "merchant") ?? TryGetString(root, "Merchant") ?? "Generic Merchant";
-            var category = TryGetString(root, "category") ?? TryGetString(root, "Category") ?? "General";
-            var date =
+            var warnings = new List<string>();
+            var hasAmount = TryGetDecimal(root, "amount", out var a) || TryGetDecimal(root, "Amount", out a);
+            var amount = hasAmount ? a : 0m;
+            if (!hasAmount || amount <= 0) warnings.Add("Amount could not be read reliably.");
+            var currency = TryGetString(root, "currency") ?? TryGetString(root, "Currency") ?? "";
+            if (string.IsNullOrWhiteSpace(currency)) warnings.Add("Currency could not be read reliably.");
+            var merchant = TryGetString(root, "merchant") ?? TryGetString(root, "Merchant") ?? "";
+            if (string.IsNullOrWhiteSpace(merchant)) warnings.Add("Merchant could not be read reliably.");
+            var category = TryGetString(root, "category") ?? TryGetString(root, "Category") ?? "Other";
+            var parsedDate =
                 TryGetDate(root, "date") ??
                 TryGetDate(root, "Date") ??
                 TryGetDate(root, "transactionDate") ??
@@ -290,8 +306,9 @@ public sealed class AiReceiptService : IAiReceiptService
                 TryGetDate(root, "receiptDate") ??
                 TryGetDate(root, "receipt_date") ??
                 TryGetDate(root, "purchaseDate") ??
-                TryGetDate(root, "purchase_date") ??
-                UtcDateTime.UtcDate(DateTime.UtcNow);
+                TryGetDate(root, "purchase_date");
+            if (!parsedDate.HasValue) warnings.Add("Date could not be read reliably.");
+            var date = parsedDate ?? UtcDateTime.UtcDate(DateTime.UtcNow);
             var flagged = amount > maxSpendLimit || category.Contains("alcohol", StringComparison.OrdinalIgnoreCase);
             var message = TryGetString(root, "message");
             if (string.IsNullOrWhiteSpace(message) ||
@@ -300,7 +317,7 @@ public sealed class AiReceiptService : IAiReceiptService
                 message = BuildDescription(merchant, category, amount, currency);
             }
 
-            return (amount, currency, merchant, category, UtcDateTime.Normalize(date), flagged, message, rawResponse);
+            return new ReceiptExtractionResult(amount, currency, merchant, category, UtcDateTime.Normalize(date), flagged, message, rawResponse, "ai", warnings.Count > 0, warnings.ToArray());
         }
         catch
         {
@@ -408,43 +425,15 @@ public sealed class AiReceiptService : IAiReceiptService
         return $"Receipt from {safeMerchant} categorized as {safeCategory} ({amount:0.##} {currency}).";
     }
 
-    private static (decimal Amount, string Currency, string Merchant, string Category, DateTime Date, bool Flagged, string Message, string? OcrRawData) GetFallbackReceipt(IFormFile file, decimal maxSpendLimit)
+    private static ReceiptExtractionResult GetFallbackReceipt(IFormFile file, decimal maxSpendLimit)
     {
-        var name = file.FileName.ToLowerInvariant();
-        var merchant = "Generic Merchant";
-        var category = "General";
-        var currency = "VND";
-        var amount = (decimal)(Math.Abs(file.FileName.GetHashCode() % 2_000_000) + 50_000);
-        var date = UtcDateTime.UtcDate(DateTime.UtcNow).AddDays(-Math.Abs(file.FileName.GetHashCode() % 7));
-
-        if (name.Contains("coffee"))
-        {
-            merchant = "Coffee Corner";
-            category = "Food & Beverage";
-            amount = 120_000;
-        }
-        else if (name.Contains("taxi") || name.Contains("grab") || name.Contains("uber"))
-        {
-            merchant = "Ride Share";
-            category = "Transport";
-        }
-        else if (name.Contains("hotel") || name.Contains("nhahang") || name.Contains("restaurant"))
-        {
-            merchant = "Hotel & Dining";
-            category = "Travel";
-            amount = 950_000;
-        }
-        else if (name.Contains("alcohol") || name.Contains("beer") || name.Contains("wine"))
-        {
-            merchant = "Alcohol Store";
-            category = "Alcohol";
-            amount = 450_000;
-        }
-
-        var flagged = amount > maxSpendLimit || category.Contains("alcohol", StringComparison.OrdinalIgnoreCase);
-        var message = flagged
-            ? "AI flagged this receipt for policy review."
-            : "Receipt analysis completed successfully.";
+        const string merchant = "";
+        const string category = "Other";
+        const string currency = "";
+        const decimal amount = 0m;
+        var date = UtcDateTime.UtcDate(DateTime.UtcNow);
+        const bool flagged = false;
+        const string message = "Automatic extraction was unavailable. Enter and verify every field before creating the draft.";
 
         var fallbackRawData = JsonSerializer.Serialize(new
         {
@@ -459,6 +448,9 @@ public sealed class AiReceiptService : IAiReceiptService
             message,
         });
 
-        return (amount, currency, merchant, category, date, flagged, message, fallbackRawData);
+        return new ReceiptExtractionResult(
+            amount, currency, merchant, category, date, flagged, message, fallbackRawData,
+            "fallback", true,
+            ["The AI provider was unavailable; these values are heuristic placeholders and must be checked."]);
     }
 }

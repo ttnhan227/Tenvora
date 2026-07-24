@@ -13,6 +13,9 @@ export interface AiUploadResponse {
   fileUrl: string;
   message: string;
   ocrRawData?: string;
+  extractionSource: "ai" | "fallback";
+  requiresReview: boolean;
+  warnings: string[];
 }
 
 export interface AiConfirmRequest {
