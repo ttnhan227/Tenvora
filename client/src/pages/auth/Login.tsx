@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ShieldCheck, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2, Sparkles } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -62,14 +62,12 @@ const Login = () => {
         {/* Logo ribbon */}
         <div className="flex justify-center">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
+            <img src="/logo.png" alt="" className="h-11 w-11 object-contain" />
             <span className="text-xl font-extrabold tracking-tight text-foreground">VeriSpend</span>
           </Link>
         </div>
 
-        <Card className="rounded-3xl border border-border bg-card/65 shadow-2xl backdrop-blur-md overflow-hidden">
+        <Card className="rounded-lg border border-border bg-card overflow-hidden">
           <CardHeader className="space-y-1.5 border-b border-border bg-muted/20 px-6 py-5 text-center">
             <CardTitle className="text-xl font-extrabold text-foreground">Welcome Back</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">

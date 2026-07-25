@@ -15,7 +15,6 @@ import {
   Activity,
   CreditCard,
   Users,
-  ShieldCheck,
   FlaskConical,
 } from "lucide-react";
 import {
@@ -90,20 +89,18 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Sidebar Layout */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-card/95 shadow-2xl backdrop-blur-xl transition-transform md:relative md:translate-x-0 z-10 flex flex-col justify-between",
+          "fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-background transition-transform md:relative md:translate-x-0 z-10 flex flex-col justify-between",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div>
           {/* Friendly Logo */}
-          <div className="flex h-16 items-center justify-between border-b border-border px-5 bg-card/50">
+          <div className="flex h-16 items-center justify-between border-b border-border px-5">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all duration-300 hover:rotate-6">
-                <ShieldCheck className="h-5 w-5 font-bold" />
-              </div>
+              <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
               <div>
                 <span className="block font-bold tracking-tight text-sm">VeriSpend</span>
-                <span className="block text-[9px] uppercase tracking-[0.24em] text-muted-foreground font-semibold">Verified Spend Control</span>
+                <span className="block text-[9px] tracking-[0.08em] text-muted-foreground">Verified spend control</span>
               </div>
             </Link>
             <Button
@@ -124,9 +121,9 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-4 py-2.5 text-xs font-semibold tracking-wide transition-all border border-transparent",
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-xs font-medium transition-colors border border-transparent",
                   isActive(item.href)
-                    ? "bg-primary/10 text-primary border-primary/20 shadow-[0_0_12px_rgba(16,185,129,0.05)] font-bold"
+                    ? "bg-accent text-accent-foreground border-border font-semibold"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-border/40"
                 )}
               >
@@ -150,7 +147,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       {/* Main content area */}
       <div className="relative z-10 flex-1 overflow-hidden flex flex-col min-h-screen">
         {/* Top bar header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/60 px-4 backdrop-blur-xl md:px-8">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-8">
           <Button
             variant="ghost"
             size="icon"
@@ -164,11 +161,11 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
 
           {/* User profile console block */}
           <div className="flex items-center gap-3">
-            <ThemeToggle className="border border-border bg-card/45 hover:bg-card rounded-xl" />
+            <ThemeToggle className="border border-border bg-background hover:bg-secondary rounded-md" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-auto rounded-xl border border-border bg-card/45 px-3 py-1.5 hover:bg-card shadow-sm">
-                  <div className="mr-2 flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary border border-primary/20">
+                <Button variant="ghost" className="h-auto rounded-md border border-border bg-background px-3 py-1.5 hover:bg-secondary">
+                  <div className="mr-2 flex h-7 w-7 items-center justify-center rounded bg-accent text-xs font-bold text-accent-foreground border border-border">
                     {initials}
                   </div>
                   <div className="text-right leading-tight hidden sm:block">
