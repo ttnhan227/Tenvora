@@ -163,7 +163,7 @@ const Dashboard = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-muted/30 p-5">
             <div><p className="text-sm font-semibold">Want to understand the product before configuring it?</p><p className="mt-1 text-xs text-muted-foreground">The isolated demo workspace contains realistic review cases and is separate from this company.</p></div>
-            <Button asChild variant="outline" className="rounded-full"><Link to="/login">Open recruiter demo</Link></Button>
+            <Button asChild variant="outline" className="rounded-full"><Link to="/login">Open demo</Link></Button>
           </div>
         </div>
       </DashboardLayout>

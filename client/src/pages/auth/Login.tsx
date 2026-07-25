@@ -81,7 +81,7 @@ const Login = () => {
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-foreground">Recruiter demo workspace</p>
+                  <p className="text-sm font-bold text-foreground">Demo workspace</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Open a populated company with team roles, risk cases, approval work, forecasts, and compliance evidence.</p>
                   <Button type="button" variant="outline" disabled={isLoading} onClick={handleDemoLogin} className="mt-3 h-9 w-full rounded-xl border-primary/25 bg-background text-xs font-bold text-primary hover:bg-primary/10">
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}

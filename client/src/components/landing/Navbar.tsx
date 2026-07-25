@@ -20,23 +20,23 @@ const Navbar = () => {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2">
           <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
-          <span className="text-lg font-bold text-foreground dark:text-primary-foreground">VeriSpend</span>
+          <span className="text-lg font-bold text-foreground">VeriSpend</span>
         </Link>
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="text-sm text-foreground/70 transition hover:text-foreground dark:text-primary-foreground/70 dark:hover:text-primary-foreground">
+            <a key={link.href} href={link.href} className="text-sm text-foreground/70 transition hover:text-foreground">
               {link.label}
             </a>
           ))}
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle className="text-foreground/80 hover:bg-foreground/10 hover:text-foreground dark:text-primary-foreground/80 dark:hover:bg-primary-foreground/10 dark:hover:text-primary-foreground" iconClassName="h-4 w-4" />
+          <ThemeToggle className="text-foreground/80 hover:bg-foreground/10 hover:text-foreground" iconClassName="h-4 w-4" />
           {!isLoading && isAuthenticated ? (
             <>
-              <Button asChild variant="ghost" className="rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10 dark:text-primary-foreground/70 dark:hover:text-primary-foreground dark:hover:bg-primary-foreground/10">
+              <Button asChild variant="ghost" className="rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10">
                 <Link to="/dashboard">Dashboard</Link>
               </Button>
               <Button
@@ -50,7 +50,7 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" className="rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10 dark:text-primary-foreground/70 dark:hover:text-primary-foreground dark:hover:bg-primary-foreground/10">
+              <Button asChild variant="ghost" className="rounded-full text-foreground/70 hover:text-foreground hover:bg-foreground/10">
                 <Link to="/login">Log in</Link>
               </Button>
               <Button asChild className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -62,7 +62,7 @@ const Navbar = () => {
 
         {/* Hamburger */}
         <button
-          className="flex h-10 w-10 items-center justify-center rounded-full text-foreground dark:text-primary-foreground md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-foreground md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
         >
@@ -72,23 +72,23 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="border-t border-border/60 bg-background/95 backdrop-blur-xl dark:border-primary-foreground/10 dark:bg-hero/95 md:hidden">
+        <div className="border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
           <div className="container mx-auto flex flex-col gap-2 px-4 py-4">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className="rounded-lg px-4 py-3 text-sm text-foreground/80 transition hover:bg-foreground/10 hover:text-foreground dark:text-primary-foreground/80 dark:hover:bg-primary-foreground/10 dark:hover:text-primary-foreground"
+                className="rounded-lg px-4 py-3 text-sm text-foreground/80 transition hover:bg-foreground/10 hover:text-foreground"
                 onClick={() => setMobileOpen(false)}
               >
                 {link.label}
               </a>
             ))}
             <div className="mt-2 flex flex-col gap-2">
-              <ThemeToggle className="justify-start rounded-full text-foreground/80 hover:bg-foreground/10 hover:text-foreground dark:text-primary-foreground/80 dark:hover:bg-primary-foreground/10 dark:hover:text-primary-foreground" />
+              <ThemeToggle className="justify-start rounded-full text-foreground/80 hover:bg-foreground/10 hover:text-foreground" />
               {!isLoading && isAuthenticated ? (
                 <>
-                  <Button asChild variant="ghost" className="rounded-full justify-start text-foreground/70 hover:text-foreground hover:bg-foreground/10 dark:text-primary-foreground/70 dark:hover:text-primary-foreground dark:hover:bg-primary-foreground/10">
+                  <Button asChild variant="ghost" className="rounded-full justify-start text-foreground/70 hover:text-foreground hover:bg-foreground/10">
                     <Link to="/dashboard" onClick={() => setMobileOpen(false)}>Dashboard</Link>
                   </Button>
                   <Button
@@ -105,7 +105,7 @@ const Navbar = () => {
                 </>
               ) : (
                 <>
-                  <Button asChild variant="ghost" className="rounded-full justify-start text-foreground/70 hover:text-foreground hover:bg-foreground/10 dark:text-primary-foreground/70 dark:hover:text-primary-foreground dark:hover:bg-primary-foreground/10">
+                  <Button asChild variant="ghost" className="rounded-full justify-start text-foreground/70 hover:text-foreground hover:bg-foreground/10">
                     <Link to="/login">Log in</Link>
                   </Button>
                   <Button asChild className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
