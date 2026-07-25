@@ -15,6 +15,7 @@ import {
   Activity,
   CreditCard,
   Users,
+  ShieldCheck,
   FlaskConical,
 } from "lucide-react";
 import {
