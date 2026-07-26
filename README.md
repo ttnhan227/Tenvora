@@ -5,7 +5,7 @@ VeriSpend is an AI-assisted expense review system for small organizations. It re
 - [Live application](https://aiaudit-expensetracker-web.onrender.com)
 - [API documentation](https://aiaudit-expensetracker.onrender.com/swagger)
 
-> The free hosted backend may take about one minute to wake up. Use **Explore populated demo** for an isolated temporary workspace.
+> The free hosted backend may take about one minute to wake up. Use the **Open demo workspace** link below sign-in for an isolated temporary workspace. Set `VITE_DEMO_ENABLED=false` in the client build to hide public demo access.
 
 ## The problem
 

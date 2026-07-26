@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2, Sparkles } from "lucide-react";
 
+const DEMO_ENABLED = (import.meta.env.VITE_DEMO_ENABLED ?? "true").toLowerCase() !== "false";
+
 const Login = () => {
   const navigate = useNavigate();
   const { login, createDemo } = useAuth();
@@ -15,10 +17,12 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<"login" | "demo" | null>(null);
 
   const handleDemoLogin = async () => {
     setError("");
     setIsLoading(true);
+    setLoadingAction("demo");
     try {
       const success = await createDemo();
       if (success) navigate("/dashboard");
@@ -27,6 +31,7 @@ const Login = () => {
       setError("The demo workspace is still starting. Please try again in a moment.");
     } finally {
       setIsLoading(false);
+      setLoadingAction(null);
     }
   };
 
@@ -34,10 +39,12 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+    setLoadingAction("login");
 
     if (!email || !password) {
       setError("Please fill in all fields");
       setIsLoading(false);
+      setLoadingAction(null);
       return;
     }
 
@@ -52,6 +59,7 @@ const Login = () => {
       setError("An error occurred during login");
     } finally {
       setIsLoading(false);
+      setLoadingAction(null);
     }
   };
 
@@ -75,21 +83,6 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-foreground">Demo workspace</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Open a populated company with team roles, risk cases, approval work, forecasts, and compliance evidence.</p>
-                  <Button type="button" variant="outline" disabled={isLoading} onClick={handleDemoLogin} className="mt-3 h-9 w-full rounded-xl border-primary/25 bg-background text-xs font-bold text-primary hover:bg-primary/10">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                    Explore populated demo
-                  </Button>
-                </div>
-              </div>
-            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <Alert variant="destructive" className="rounded-xl">
@@ -129,10 +122,20 @@ const Login = () => {
                 disabled={isLoading}
                 className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10 text-xs gap-2 mt-2"
               >
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isLoading ? "Verifying Credentials..." : "Sign In to Portal"}
+                {loadingAction === "login" && <Loader2 className="h-4 w-4 animate-spin" />}
+                {loadingAction === "login" ? "Logging you in…" : "Sign In to Portal"}
               </Button>
             </form>
+
+            {isLoading && (
+              <div role="status" aria-live="polite" className="mt-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-left">
+                <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">{loadingAction === "demo" ? "Preparing the demo workspace" : "Connecting to your workspace"}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">The free demo server may take up to 30 seconds to wake. Please keep this page open.</p>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 text-center text-xs text-muted-foreground border-t border-border/40 pt-4">
               New workspaces include realistic starter data.{" "}
@@ -140,6 +143,12 @@ const Login = () => {
                 Register Tenant Organization
               </Link>
             </div>
+            {DEMO_ENABLED && (
+              <button type="button" disabled={isLoading} onClick={handleDemoLogin} className="mt-3 flex w-full items-center justify-center gap-1.5 border-0 bg-transparent py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary hover:underline disabled:cursor-wait disabled:opacity-60">
+                {loadingAction === "demo" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {loadingAction === "demo" ? "Opening demo workspace…" : "Just exploring? Open the demo workspace"}
+              </button>
+            )}
           </CardContent>
         </Card>
       </div>
