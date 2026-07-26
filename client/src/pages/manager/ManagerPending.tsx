@@ -38,7 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, CheckCircle, XCircle, Loader2, Eye, FileText, History, ShieldAlert } from "lucide-react";
+import { AlertCircle, CheckCircle, XCircle, Loader2, Eye, FileText, History, ShieldAlert, Download } from "lucide-react";
 
 const ALL_RISKS = "all-risks";
 const ALL_RECOMMENDATIONS = "all-recommendations";
@@ -62,6 +62,27 @@ const ManagerPending = () => {
   const [feedbackFalsePositive, setFeedbackFalsePositive] = useState(false);
   const [feedbackNotes, setFeedbackNotes] = useState("");
   const [feedbackStatus, setFeedbackStatus] = useState("");
+  const [downloadingReceipt, setDownloadingReceipt] = useState<number | null>(null);
+
+  const downloadReceipt = async (url: string, index: number) => {
+    setDownloadingReceipt(index);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Receipt download failed");
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `receipt-${index + 1}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } finally {
+      setDownloadingReceipt(null);
+    }
+  };
 
   useEffect(() => {
     const fetchPending = async () => {
@@ -663,14 +684,15 @@ const ManagerPending = () => {
                                   No Preview Available
                                 </div>
                               )}
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-2 block truncate text-xs text-primary hover:underline text-center font-bold"
+                              <button
+                                type="button"
+                                disabled={downloadingReceipt !== null}
+                                onClick={() => downloadReceipt(url, idx)}
+                                className="mt-2 flex w-full items-center justify-center gap-1.5 truncate text-center text-xs font-bold text-primary hover:underline disabled:cursor-wait disabled:opacity-60"
                               >
-                                View Raw File {idx + 1}
-                              </a>
+                                {downloadingReceipt === idx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                {downloadingReceipt === idx ? "Preparing file…" : `Download file ${idx + 1}`}
+                              </button>
                             </div>
                           ))}
                         </div>

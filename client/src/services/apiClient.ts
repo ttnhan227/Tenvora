@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
+import { reportRequestActivity } from "@/lib/requestActivity";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5291/api";
 
@@ -12,6 +13,8 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor to attach token
 apiClient.interceptors.request.use(
   (config) => {
+    reportRequestActivity(1);
+    (config as any)._activityTracked = true;
     const token = localStorage.getItem("accessToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -29,9 +32,19 @@ apiClient.interceptors.request.use(
 
 // Response interceptor to handle 401 and refresh token
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if ((response.config as any)._activityTracked) {
+      (response.config as any)._activityTracked = false;
+      reportRequestActivity(-1);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as any;
+    if (originalRequest?._activityTracked) {
+      originalRequest._activityTracked = false;
+      reportRequestActivity(-1);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

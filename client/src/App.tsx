@@ -25,6 +25,7 @@ import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics.tsx";
 import ComplianceHub from "./pages/compliance/ComplianceHub.tsx";
 import PolicyLab from "./pages/PolicyLab.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
+import { RequestActivityIndicator } from "@/components/RequestActivityIndicator";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <RequestActivityIndicator />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Index />} />
