@@ -10,60 +10,62 @@ const workflow = [
 ];
 
 const workspaces = [
-  { role: "Employee", title: "Frictionless submission", description: "Capture a receipt, verify extracted fields, submit, and follow every decision from one workspace.", metric: "OCR-assisted intake" },
-  { role: "Finance manager", title: "Risk-based operations", description: "Work a priority queue with policy triggers, related claims, missing evidence, and recommended actions.", metric: "Explainable review queue" },
-  { role: "Control owner", title: "Organization-wide governance", description: "Manage people, budgets, policy automation, tenant settings, compliance posture, and accounting exports.", metric: "SOX · SOC 2 · GDPR" },
+  { role: "Employee", title: "Frictionless Submission", description: "Capture a receipt, verify extracted fields, submit, and track decisions from one workspace.", metric: "OCR-assisted intake" },
+  { role: "Finance Manager", title: "Risk-Based Operations", description: "Review a prioritized queue with policy triggers, related claims, missing evidence, and recommended actions.", metric: "Explainable review queue" },
+  { role: "Control Owner", title: "Organization Governance", description: "Manage team members, budgets, policy automation, tenant settings, compliance posture, and accounting exports.", metric: "SOX · SOC 2 · GDPR" },
 ];
 
 const PlatformTour = () => (
-  <section id="platform" className="relative overflow-hidden border-y border-border/60 bg-card/45 py-24">
-    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_hsl(var(--primary)/0.10),_transparent_35%)]" />
+  <section id="platform" className="relative border-y border-border bg-card/40 py-24 font-sans">
     <div className="container relative mx-auto px-4">
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
           <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              <BarChart3 className="h-4 w-4" /> Enterprise product tour
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-4 py-1 text-xs font-medium text-muted-foreground">
+              <BarChart3 className="h-3.5 w-3.5 text-primary" /> Product Lifecycle
             </div>
-            <h2 className="text-3xl font-bold tracking-tight md:text-5xl">More than expense tracking. <span className="text-gradient">A complete control loop.</span></h2>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">More than expense tracking. <span className="text-primary">A complete control loop.</span></h2>
           </div>
-          <p className="text-lg leading-relaxed text-muted-foreground">Every claim moves through one connected lifecycle, while each role gets the context and controls needed to act confidently.</p>
+          <p className="text-base leading-relaxed text-muted-foreground">Every claim moves through one connected lifecycle, while each role gets the context and controls needed to act decisively.</p>
         </div>
 
         <div className="mt-12 grid gap-3 md:grid-cols-5">
           {workflow.map((step, index) => (
-            <div key={step.label} className="group relative rounded-2xl border border-border/70 bg-background/75 p-5 shadow-sm">
-              <div className="mb-8 flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground"><step.icon className="h-5 w-5" /></div>
+            <div key={step.label} className="relative rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <step.icon className="h-4 w-4" />
+                </div>
                 <span className="font-mono text-xs text-muted-foreground">0{index + 1}</span>
               </div>
-              <h3 className="font-semibold">{step.label}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
-              {index < workflow.length - 1 && <ArrowRight className="absolute -right-3 top-9 z-10 hidden h-5 w-5 text-primary md:block" />}
+              <h3 className="font-semibold text-sm text-foreground">{step.label}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-10 grid gap-5 lg:grid-cols-3">
           {workspaces.map((workspace) => (
-            <div key={workspace.role} className="rounded-[1.75rem] border border-border/70 bg-background/80 p-7 shadow-sm">
+            <div key={workspace.role} className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground">{workspace.role}</span>
+                <span className="rounded-md bg-muted px-2.5 py-0.5 text-[11px] font-semibold text-foreground">{workspace.role}</span>
                 <UsersRound className="h-4 w-4 text-muted-foreground" />
               </div>
-              <h3 className="mt-5 text-xl font-semibold">{workspace.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{workspace.description}</p>
-              <div className="mt-6 border-t border-border/70 pt-4 font-mono text-xs text-primary">{workspace.metric}</div>
+              <h3 className="mt-4 text-base font-bold text-foreground">{workspace.title}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{workspace.description}</p>
+              <div className="mt-5 border-t border-border pt-3 font-mono text-xs text-primary font-medium">{workspace.metric}</div>
             </div>
           ))}
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
           <div>
-            <p className="font-semibold">See the operating system with real seeded workflows</p>
-            <p className="mt-1 text-sm text-muted-foreground">Multi-company data, role-scoped screens, risk cases, approvals, budgets, and audit history are included.</p>
+            <p className="font-semibold text-sm text-foreground">Explore the platform with full multi-role workflows</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Multi-entity support, risk scoring, audit history, and accounting exports are ready to test.</p>
           </div>
-          <Link to="/login" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">Open secure workspace <ArrowRight className="h-4 w-4" /></Link>
+          <Link to="/login" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+            Open Secure Workspace <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </div>
     </div>

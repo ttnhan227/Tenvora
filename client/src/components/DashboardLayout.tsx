@@ -25,6 +25,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
@@ -37,19 +45,13 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isManager = user?.role === "Manager" || user?.role === "Owner";
   const isOwner = user?.role === "Owner";
-  const canUseSubmitterFeatures = user?.role === "Owner" || user?.role === "Member";
-  const isManagerOnly = user?.role === "Manager";
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "VS";
 
   const navItems = [
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
     { href: "/expenses", icon: FileText, label: "Expenses" },
-    ...(canUseSubmitterFeatures
-      ? [
-          { href: "/expenses/create", icon: Plus, label: "New Expense" },
-          { href: "/upload", icon: Upload, label: "Upload Receipt" },
-        ]
-      : []),
+    { href: "/expenses/create", icon: Plus, label: "New Expense" },
+    { href: "/upload", icon: Upload, label: "Upload Receipt" },
     ...(isManager
       ? [
           { href: "/manager/pending", icon: CheckCircle, label: "Pending Reviews" },
@@ -64,34 +66,14 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           { href: "/policy-lab", icon: FlaskConical, label: "Policy Lab" },
         ]
       : []),
-    ...(!isManagerOnly
-      ? [
-          { href: "/subscription", icon: CreditCard, label: "Subscription" },
-        ]
-      : []),
-    { href: "/settings", icon: Settings, label: "Settings" },
   ];
 
-  const isActive = (href: string) => location.pathname === href;
-
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-background text-foreground font-sans">
-      {/* Soft visual background gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.04),_transparent_28%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary)/0.01),_transparent_24%)] z-0" />
-      
-      {sidebarOpen && (
-        <button
-          aria-label="Close navigation"
-          className="fixed inset-0 z-40 bg-foreground/10 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
+    <div className="flex min-h-screen bg-muted/20">
       {/* Sidebar Layout */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-background transition-transform md:relative md:translate-x-0 z-10 flex flex-col justify-between",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div>

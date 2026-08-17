@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, History } from "lucide-react";
 
 const parseAuditPayload = (value?: string) => {
   if (!value) {
@@ -57,20 +57,20 @@ const AuditTrail = () => {
   const getActionBadge = (action: string) => {
     if (action === "Approved") {
       return (
-        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold py-0.5 rounded font-mono uppercase tracking-wider">
+        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-medium py-0.5 rounded">
           Approved
         </Badge>
       );
     }
     if (action === "Rejected" || action === "Deleted") {
       return (
-        <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[9px] font-bold py-0.5 rounded font-mono uppercase tracking-wider">
+        <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[9px] font-medium py-0.5 rounded">
           {action}
         </Badge>
       );
     }
     return (
-      <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-bold py-0.5 rounded font-mono uppercase tracking-wider">
+      <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-medium py-0.5 rounded">
         {action}
       </Badge>
     );
@@ -107,19 +107,20 @@ const AuditTrail = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl font-sans">
-        
-        {/* Header Ribbon */}
-        <div className="flex items-center gap-4 rounded-3xl border border-border bg-card/65 p-6 shadow-xl backdrop-blur-md">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/manager/pending")} className="h-10 w-10 rounded-full border border-border bg-card/50 hover:bg-muted text-muted-foreground hover:text-foreground">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => navigate("/manager/pending")} 
+            className="h-9 w-9 rounded-lg border-border text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <span className="text-[10px] font-mono tracking-[0.28em] text-primary bg-primary/5 px-2 py-0.5 border border-primary/10 rounded uppercase">
-              Forensic Log
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1.5">Audit Trail</h1>
-            <p className="text-xs text-muted-foreground font-sans">
-              Chain-of-custody immutable timeline for Expense Claim <span className="font-mono text-[10px] font-bold text-foreground bg-secondary/60 px-1.5 py-0.5 rounded border border-border">{id}</span>
+            <h1 className="text-2xl font-bold tracking-tight">Audit Trail</h1>
+            <p className="text-xs text-muted-foreground">
+              Immutable chain-of-custody log for claim ID: <span className="font-mono text-foreground font-medium">{id}</span>
             </p>
           </div>
         </div>
@@ -133,18 +134,18 @@ const AuditTrail = () => {
 
         {/* Timeline */}
         {logs.length === 0 ? (
-          <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <AlertCircle className="h-12 w-12 text-muted-foreground/35 mb-4" />
-              <p className="text-sm font-bold text-foreground">No Trail Logs Available</p>
-              <p className="text-xs text-muted-foreground mt-1">This expense has not triggered audit lifecycle states.</p>
+          <Card className="rounded-xl border border-border bg-card overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <AlertCircle className="h-10 w-10 text-muted-foreground/40 mb-3" />
+              <p className="text-sm font-semibold text-foreground">No Audit Logs Found</p>
+              <p className="text-xs text-muted-foreground mt-1">This expense has not triggered lifecycle state changes yet.</p>
             </CardContent>
           </Card>
         ) : (
-          <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden">
-            <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-              <CardTitle className="text-base font-bold text-foreground">Activity History</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">{logs.length} immutable events recorded in ledger.</CardDescription>
+          <Card className="rounded-xl border border-border bg-card overflow-hidden">
+            <CardHeader className="border-b border-border px-6 py-4">
+              <CardTitle className="text-sm font-bold text-foreground">Activity History</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground font-mono">{logs.length} recorded events</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
@@ -156,13 +157,13 @@ const AuditTrail = () => {
 
                       return (
                         <div className="flex gap-4 items-start text-xs leading-normal">
-                          {/* Timeline dot and line */}
-                          <div className="flex flex-col items-center flex-shrink-0">
-                            <div className={`h-8 w-8 rounded-full border-2 flex items-center justify-center ${getActionColor(log.action)} bg-card shadow-sm`}>
+                          {/* Timeline indicator */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center ${getActionColor(log.action)} bg-card`}>
                               <div className="h-2 w-2 rounded-full bg-current" />
                             </div>
                             {index !== logs.length - 1 && (
-                              <div className="h-12 w-0.5 bg-border/60 my-1" />
+                              <div className="h-12 w-px bg-border my-1" />
                             )}
                           </div>
 
@@ -170,7 +171,7 @@ const AuditTrail = () => {
                           <div className="flex-1 pt-0.5">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               {getActionBadge(log.action)}
-                              <span className="font-bold text-foreground">
+                              <span className="font-semibold text-foreground">
                                 {log.performedBy}
                               </span>
                             </div>
@@ -180,17 +181,17 @@ const AuditTrail = () => {
                             </p>
 
                             {log.notes && (
-                              <p className="text-xs mt-2 p-3 rounded-2xl bg-secondary/30 border border-border text-foreground leading-relaxed">
-                                <strong className="text-primary mr-1">Notes:</strong> {log.notes}
+                              <p className="text-xs mt-2 p-3 rounded-lg bg-muted/40 border border-border text-foreground leading-relaxed">
+                                <strong className="text-foreground mr-1">Note:</strong> {log.notes}
                               </p>
                             )}
 
                             {/* Changes details */}
                             {oldValue && newValue && (
-                              <div className="mt-3 space-y-2 text-xs border border-border/40 p-3 rounded-2xl bg-muted/20 font-mono">
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                                  <Sparkles className="h-3 w-3 text-primary" />
-                                  Ledger Diff Check
+                              <div className="mt-3 space-y-2 text-xs border border-border p-3 rounded-lg bg-muted/20 font-mono">
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                  <History className="h-3 w-3 text-muted-foreground" />
+                                  Field State Diff
                                 </p>
                                 {Object.keys(newValue).map((key) => {
                                   const oldVal = oldValue[key];
@@ -199,7 +200,7 @@ const AuditTrail = () => {
 
                                   return (
                                     <div key={key} className="flex gap-2 flex-wrap items-center">
-                                      <span className="font-bold text-foreground capitalize">
+                                      <span className="font-semibold text-foreground capitalize">
                                         {key}:
                                       </span>
                                       <div className="space-x-1.5">
@@ -209,7 +210,7 @@ const AuditTrail = () => {
                                             : String(oldVal)}
                                         </span>
                                         <span className="text-muted-foreground">→</span>
-                                        <span className="font-bold text-foreground bg-emerald-500/5 px-1 rounded border border-emerald-500/10">
+                                        <span className="font-semibold text-foreground bg-emerald-500/5 px-1 rounded border border-emerald-500/10">
                                           {typeof newVal === "object"
                                             ? JSON.stringify(newVal)
                                             : String(newVal)}
@@ -225,7 +226,7 @@ const AuditTrail = () => {
                       );
                     })()}
 
-                    {index !== logs.length - 1 && <Separator className="my-6 border-border/40" />}
+                    {index !== logs.length - 1 && <Separator className="my-6 border-border" />}
                   </div>
                 ))}
               </div>
@@ -235,7 +236,13 @@ const AuditTrail = () => {
 
         {/* Back navigation */}
         <div className="flex gap-2">
-          <Button onClick={() => navigate("/manager/pending")} className="rounded-full px-5 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground h-9 shadow-md">Back to Pending Queue</Button>
+          <Button 
+            onClick={() => navigate("/manager/pending")} 
+            variant="outline"
+            className="rounded-lg px-4 text-xs font-medium border-border h-9"
+          >
+            Back to Review Queue
+          </Button>
         </div>
       </div>
     </DashboardLayout>

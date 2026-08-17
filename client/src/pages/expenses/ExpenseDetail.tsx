@@ -127,27 +127,26 @@ const ExpenseDetail = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 font-sans">
-        {/* Header Ribbon - structurally matching other pages */}
-        <div className="flex items-center gap-4 rounded-3xl border border-border bg-card/65 p-6 shadow-xl backdrop-blur-md">
+      <div className="space-y-6 max-w-5xl font-sans">
+        {/* Header */}
+        <div className="flex items-center gap-4">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="icon" 
             onClick={() => navigate("/expenses")}
-            className="rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+            className="rounded-lg h-9 w-9 border-border text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <span className="text-[10px] font-mono tracking-[0.28em] text-primary bg-primary/5 px-2 py-0.5 border border-primary/10 rounded uppercase">
-              Audit Analysis
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1.5">{expense.merchant}</h1>
-            <p className="text-sm text-muted-foreground font-sans">
-              Detailed transaction claim and AI policy compliance verification log.
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{expense.merchant}</h1>
+              {getStatusBadge(expense.status)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Claim ID: <span className="font-mono">{expense.id}</span>
             </p>
           </div>
-          <div>{getStatusBadge(expense.status)}</div>
         </div>
 
         {error && (
@@ -163,12 +162,12 @@ const ExpenseDetail = () => {
           <div className="lg:col-span-2 space-y-6">
             
             {/* Expense details Card */}
-            <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-                <CardTitle className="text-base font-bold text-foreground">Expense Information</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Core transaction values recorded</CardDescription>
+            <Card className="rounded-xl border border-border bg-card overflow-hidden">
+              <CardHeader className="border-b border-border px-6 py-4">
+                <CardTitle className="text-sm font-bold">Transaction Overview</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Claim breakdown and business purpose</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Amount</p>
@@ -229,25 +228,25 @@ const ExpenseDetail = () => {
 
             {/* Risk Assessment Card */}
             {riskAssessment && (
-              <Card className={`rounded-3xl border border-border shadow-xl backdrop-blur-md overflow-hidden ${
-                riskAssessment.riskLevel === "High" ? "bg-red-500/[0.02]" : "bg-card/65"
+              <Card className={`rounded-xl border border-border overflow-hidden ${
+                riskAssessment.riskLevel === "High" ? "bg-red-500/[0.02]" : "bg-card"
               }`}>
-                <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
+                <CardHeader className="border-b border-border px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ShieldAlert className="h-4.5 w-4.5 text-primary" />
-                      <CardTitle className="text-base font-bold text-foreground">AI Compliance Assessment</CardTitle>
+                      <ShieldAlert className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-sm font-bold">Policy & Risk Evaluation</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
                       {getRiskBadge(riskAssessment.riskLevel)}
-                      <span className="text-xs font-mono font-bold text-foreground">{riskAssessment.riskScore}% risk score</span>
+                      <span className="text-xs font-mono text-muted-foreground">{riskAssessment.riskScore}% risk</span>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
                   {riskAssessment.policyTriggers.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-2">Triggered Guidelines:</p>
+                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-2">Triggered Policy Rules:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {riskAssessment.policyTriggers.map((trigger, idx) => (
                           <Badge key={idx} variant="destructive" className="text-[10px] px-2.5 py-0.5 rounded font-medium">
@@ -260,10 +259,10 @@ const ExpenseDetail = () => {
 
                   {riskAssessment.riskReasons.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-2">AI Analysis Notes:</p>
-                      <ul className="space-y-1 text-xs">
+                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-2">Evaluation Findings:</p>
+                      <ul className="space-y-1.5 text-xs text-muted-foreground">
                         {riskAssessment.riskReasons.map((reason, idx) => (
-                          <li key={idx} className="flex gap-2 text-muted-foreground">
+                          <li key={idx} className="flex gap-2">
                             <span className="text-primary font-bold">•</span>
                             <span>{reason}</span>
                           </li>
@@ -277,18 +276,18 @@ const ExpenseDetail = () => {
 
             {/* Review Insights Card */}
             {reviewAssistant && (
-              <Card className="rounded-3xl border border-primary/20 bg-primary/[0.02] shadow-xl backdrop-blur-md overflow-hidden">
-                <CardHeader className="border-b border-primary/10 bg-primary/5 px-6 py-4">
+              <Card className="rounded-xl border border-border bg-card overflow-hidden">
+                <CardHeader className="border-b border-border px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="h-4.5 w-4.5 text-primary animate-pulse" />
-                    <CardTitle className="text-base font-bold text-foreground">AI Smart Review Assistant</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm font-bold">Review Assistant Insights</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-5">
+                <CardContent className="p-6 space-y-4">
                   {reviewAssistant.recommendation && (
                     <div>
-                      <p className="text-xs uppercase text-primary font-bold tracking-wider mb-1">AI Recommendation</p>
-                      <p className="text-xs text-foreground font-medium bg-primary/10 border border-primary/20 p-3 rounded-2xl leading-relaxed">
+                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-1">Recommendation</p>
+                      <p className="text-xs text-foreground bg-muted/40 border border-border p-3 rounded-lg leading-relaxed font-medium">
                         {reviewAssistant.recommendation}
                       </p>
                     </div>
@@ -296,17 +295,17 @@ const ExpenseDetail = () => {
 
                   {reviewAssistant.summary && (
                     <div>
-                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-1">Analysis Summary</p>
+                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-1">Summary</p>
                       <p className="text-xs text-muted-foreground leading-relaxed">{reviewAssistant.summary}</p>
                     </div>
                   )}
 
                   {reviewAssistant.missingEvidence && reviewAssistant.missingEvidence.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase text-red-500 font-bold tracking-wider mb-2">Missing Evidence Requested</p>
-                      <ul className="space-y-1 text-xs">
+                      <p className="text-xs uppercase text-red-500 font-bold tracking-wider mb-1.5">Missing Documentation</p>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
                         {reviewAssistant.missingEvidence.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 text-muted-foreground">
+                          <li key={idx} className="flex gap-2">
                             <span className="text-red-500 font-bold">•</span>
                             <span>{item}</span>
                           </li>
@@ -317,10 +316,10 @@ const ExpenseDetail = () => {
 
                   {reviewAssistant.reviewerPrompts && reviewAssistant.reviewerPrompts.length > 0 && (
                     <div>
-                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-2">Suggested Reviewer Checklist</p>
-                      <ul className="space-y-1 text-xs">
+                      <p className="text-xs uppercase text-muted-foreground font-bold tracking-wider mb-1.5">Reviewer Checklist</p>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
                         {reviewAssistant.reviewerPrompts.slice(0, 3).map((prompt, idx) => (
-                          <li key={idx} className="flex gap-2 text-muted-foreground">
+                          <li key={idx} className="flex gap-2">
                             <span className="text-primary font-bold">•</span>
                             <span>{prompt}</span>
                           </li>
@@ -335,55 +334,55 @@ const ExpenseDetail = () => {
 
           {/* Right Column - Actions */}
           <div className="space-y-4">
-            <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md sticky top-4 overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-                <CardTitle className="text-base font-bold text-foreground">Actions Portal</CardTitle>
+            <Card className="rounded-xl border border-border bg-card sticky top-4 overflow-hidden">
+              <CardHeader className="border-b border-border px-6 py-4">
+                <CardTitle className="text-sm font-bold">Claim Status & Actions</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 
-                {expense.status === "Draft" && canUseSubmitterFeatures && (
+                {expense.status === "Draft" && (
                   <Button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="w-full gap-2 rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
+                    className="w-full gap-2 rounded-lg px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs shadow-sm"
                   >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? "Submitting Claim..." : "Submit for Approval"}
+                    {isSubmitting ? "Submitting..." : "Submit for Manager Review"}
                   </Button>
                 )}
 
                 {expense.status === "Pending" && (
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs">
-                    <p className="font-bold text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wider">Awaiting Manager Review</p>
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3.5 text-xs">
+                    <p className="font-semibold text-amber-600 dark:text-amber-400 mb-1">Awaiting Review</p>
                     <p className="text-muted-foreground leading-relaxed">
-                      Your claim has been successfully logged. AI has verified policies and it is pending approval by your team manager.
+                      Your claim is in the manager review queue. You will be notified once a decision is made.
                     </p>
                   </div>
                 )}
 
                 {expense.status === "Approved" && (
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs flex gap-2.5">
-                    <CheckCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-xs flex gap-2.5">
+                    <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Transaction Approved</p>
-                      <p className="text-muted-foreground mt-0.5 leading-relaxed">This claim has cleared governance checks and is scheduled for reimbursement.</p>
+                      <p className="font-semibold text-emerald-600 dark:text-emerald-400">Claim Approved</p>
+                      <p className="text-muted-foreground mt-0.5 leading-relaxed">This claim has cleared governance review and is authorized for reimbursement.</p>
                     </div>
                   </div>
                 )}
 
                 {expense.status === "Rejected" && (
-                  <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 text-xs">
-                    <p className="font-bold text-red-600 dark:text-red-400 mb-1 uppercase tracking-wider">Claim Rejected</p>
-                    <p className="text-muted-foreground leading-relaxed">{expense.flagReason || "This expense claim has been rejected due to budget or policy violations."}</p>
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3.5 text-xs">
+                    <p className="font-semibold text-red-600 dark:text-red-400 mb-1">Claim Rejected</p>
+                    <p className="text-muted-foreground leading-relaxed">{expense.flagReason || "This claim was rejected during review."}</p>
                   </div>
                 )}
 
                 <Button
                   variant="outline"
-                  className="w-full rounded-full border-border hover:bg-muted text-foreground font-medium"
+                  className="w-full rounded-lg border-border hover:bg-muted text-foreground text-xs font-medium h-9"
                   onClick={() => navigate("/expenses")}
                 >
-                  Back to Expense List
+                  Back to Expenses
                 </Button>
               </CardContent>
             </Card>

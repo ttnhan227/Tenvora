@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertCircle, Copy, Loader2, Users } from "lucide-react";
+import { AlertCircle, Copy, Loader2, UserPlus } from "lucide-react";
 
 const ROLES = ["Owner", "Manager", "Member"] as const;
 
@@ -155,21 +155,12 @@ const UserManagement = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-5xl font-sans">
-        
-        {/* Header Ribbon */}
-        <div className="flex items-center gap-4 rounded-3xl border border-border bg-card/65 p-6 shadow-xl backdrop-blur-md">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-            <Users className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <span className="text-[10px] font-mono tracking-[0.28em] text-primary bg-primary/5 px-2 py-0.5 border border-primary/10 rounded uppercase">
-              Tenant Admin
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1.5">User Management</h1>
-            <p className="text-sm text-muted-foreground font-sans">
-              Create tenant member accounts, generate workspace invite tokens, and manage roles.
-            </p>
-          </div>
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Team Members</h1>
+          <p className="text-xs text-muted-foreground">
+            Manage organization members, invite new users, and configure role-based access.
+          </p>
         </div>
 
         {error && (
@@ -181,39 +172,39 @@ const UserManagement = () => {
 
         {success && (
           <Alert className="rounded-xl border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
-            <AlertDescription className="text-xs font-bold font-mono">{success}</AlertDescription>
+            <AlertDescription className="text-xs font-medium">{success}</AlertDescription>
           </Alert>
         )}
 
         {/* Invite User Card */}
-        <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden">
-          <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-            <CardTitle className="text-base font-bold text-foreground">Invite New Colleague</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">Create an instant signup token linked to your tenant directory.</CardDescription>
+        <Card className="rounded-xl border border-border bg-card overflow-hidden">
+          <CardHeader className="border-b border-border px-6 py-4">
+            <CardTitle className="text-sm font-bold text-foreground">Invite New Team Member</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">Generate an invitation link with assigned role permissions.</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleInviteUser} className="grid gap-4 md:grid-cols-4">
               <div className="space-y-1.5 md:col-span-3">
-                <Label htmlFor="email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address</Label>
+                <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
                   value={invite.email}
                   onChange={(e) => setInvite((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="name@company.com"
+                  placeholder="colleague@company.com"
                   disabled={isInviting}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="bg-background border-border text-foreground text-xs rounded-lg h-9"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Default Role</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Role</Label>
                 <Select
                   value={invite.role}
                   onValueChange={(value) => setInvite((prev) => ({ ...prev, role: value as Role }))}
                   disabled={isInviting}
                 >
-                  <SelectTrigger className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10">
+                  <SelectTrigger className="bg-background border-border text-foreground text-xs rounded-lg h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
@@ -226,20 +217,20 @@ const UserManagement = () => {
                 </Select>
               </div>
 
-              <div className="md:col-span-4 pt-2">
-                <Button type="submit" disabled={isInviting} className="rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10 text-xs gap-2">
-                  {isInviting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isInviting ? "Generating Link..." : "Create Invite Token"}
+              <div className="md:col-span-4 pt-1">
+                <Button type="submit" disabled={isInviting} className="rounded-lg px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 text-xs gap-2 shadow-sm">
+                  {isInviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+                  {isInviting ? "Sending..." : "Create Invitation"}
                 </Button>
               </div>
 
               {latestInviteUrl && (
-                <div className="md:col-span-4 rounded-2xl border border-border bg-secondary/30 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Latest Invite Token URL</p>
-                  <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <p className="text-xs font-mono break-all text-foreground bg-card p-2 rounded-lg border border-border flex-1">{window.location.origin}{latestInviteUrl}</p>
-                    <Button type="button" variant="outline" size="sm" className="rounded-full px-4 border-border text-xs h-9 gap-1.5 hover:bg-muted shrink-0" onClick={copyInviteUrl}>
-                      <Copy className="h-4 w-4" />
+                <div className="md:col-span-4 rounded-lg border border-border bg-muted/20 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Generated Invite Link</p>
+                  <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <p className="text-xs font-mono break-all text-foreground bg-card p-2 rounded border border-border flex-1">{window.location.origin}{latestInviteUrl}</p>
+                    <Button type="button" variant="outline" size="sm" className="rounded-lg px-3 border-border text-xs h-8 gap-1.5 hover:bg-muted shrink-0" onClick={copyInviteUrl}>
+                      <Copy className="h-3.5 w-3.5" />
                       Copy Link
                     </Button>
                   </div>
@@ -250,33 +241,33 @@ const UserManagement = () => {
         </Card>
 
         {/* Tenant Users List Card */}
-        <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden">
-          <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-            <CardTitle className="text-base font-bold text-foreground">Workspace Roster</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">Manage active directory credentials and system roles.</CardDescription>
+        <Card className="rounded-xl border border-border bg-card overflow-hidden">
+          <CardHeader className="border-b border-border px-6 py-4">
+            <CardTitle className="text-sm font-bold text-foreground">Organization Members</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground font-mono">{users.length} active and invited users</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table className="text-xs text-left">
                   <TableHeader>
-                    <TableRow className="border-b border-border bg-muted/20 uppercase tracking-wider text-[10px] text-muted-foreground">
-                      <th className="py-3 px-4 font-semibold">User Email</th>
-                      <th className="py-3 px-4 font-semibold">Current Privilege</th>
-                      <th className="py-3 px-4 font-semibold">Revise Privilege</th>
-                      <th className="py-3 px-4 font-semibold">Roster Status</th>
-                      <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                    <TableRow className="border-b border-border bg-muted/30 uppercase tracking-wider text-[10px] text-muted-foreground">
+                      <TableHead className="py-3 px-4 font-semibold">User Email</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold">Current Role</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold">Change Role</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold">Status</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {users.map((user) => (
                       <TableRow key={user.id} className="border-b border-border hover:bg-muted/10 transition">
                         <TableCell className="py-3 px-4 font-semibold text-foreground">{user.email}</TableCell>
-                        <TableCell className="py-3 px-4 font-mono uppercase font-bold text-primary">{user.role}</TableCell>
+                        <TableCell className="py-3 px-4 font-mono font-semibold text-primary">{user.role}</TableCell>
                         <TableCell className="py-3 px-4">
                           <Select
                             value={roleDrafts[user.id] || user.role}
@@ -285,7 +276,7 @@ const UserManagement = () => {
                             }
                             disabled={roleUpdateLoading === user.id || user.id === currentUser?.id}
                           >
-                            <SelectTrigger className="w-[140px] bg-card border-border text-xs rounded-xl h-8">
+                            <SelectTrigger className="w-[130px] bg-background border-border text-xs rounded-lg h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
@@ -298,12 +289,15 @@ const UserManagement = () => {
                           </Select>
                         </TableCell>
                         <TableCell className="py-3 px-4">
-                          <Badge className={`text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded uppercase ${
-                            user.isActive ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
-                            user.invitationPending ? "bg-amber-500/10 text-amber-600 border border-amber-500/20 animate-pulse" :
-                            "bg-muted text-muted-foreground border border-border"
-                          }`}>
-                            {user.isActive ? "Active Account" : user.invitationPending ? "Invite Unaccepted" : "Suspended"}
+                          <Badge 
+                            variant="outline"
+                            className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                              user.isActive ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                              user.invitationPending ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                              "bg-muted text-muted-foreground border-border"
+                            }`}
+                          >
+                            {user.isActive ? "Active" : user.invitationPending ? "Invited" : "Inactive"}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 px-4 text-right">
@@ -313,23 +307,23 @@ const UserManagement = () => {
                               variant="outline"
                               disabled={roleUpdateLoading === user.id || user.id === currentUser?.id || (roleDrafts[user.id] || user.role) === user.role}
                               onClick={() => handleUpdateRole(user.id)}
-                              className="rounded-full px-4 text-[10px] font-bold border-border h-8 gap-1.5"
+                              className="rounded-lg px-3 text-xs font-medium border-border h-7"
                             >
-                              {roleUpdateLoading === user.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                              Save Privilege
+                              {roleUpdateLoading === user.id && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                              Save Role
                             </Button>
 
                             <Button
                               size="sm"
-                              variant={user.isActive ? "destructive" : "secondary"}
+                              variant={user.isActive ? "ghost" : "secondary"}
                               disabled={statusUpdateLoading === user.id || (user.id === currentUser?.id && user.isActive)}
                               onClick={() => handleToggleStatus(user)}
-                              className={`rounded-full px-4 text-[10px] font-bold h-8 gap-1.5 ${
-                                user.isActive ? "bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive hover:text-destructive-foreground" : "bg-primary/10 text-primary border border-primary/25 hover:bg-primary hover:text-primary-foreground"
+                              className={`rounded-lg px-3 text-xs font-medium h-7 ${
+                                user.isActive ? "text-destructive hover:bg-destructive/10" : "bg-primary/10 text-primary hover:bg-primary/20"
                               }`}
                             >
-                              {statusUpdateLoading === user.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                              {user.isActive ? "Suspend Filer" : "Reinstate Filer"}
+                              {statusUpdateLoading === user.id && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                              {user.isActive ? "Deactivate" : "Activate"}
                             </Button>
                           </div>
                         </TableCell>

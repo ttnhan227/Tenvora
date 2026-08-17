@@ -31,11 +31,12 @@ The guided demo contains representative safe, duplicate, over-limit, weekend, an
 | Business problem | VeriSpend response | Evidence |
 | --- | --- | --- |
 | Manual receipt entry | Vision-assisted field proposals and an editable confirmation form | [Receipt evaluation](docs/receipt-evaluation/README.md), upload UI |
-| Inconsistent reviews | Deterministic risk and policy signals with manager-facing explanations | `RiskAssessmentServiceTests` |
+| Inconsistent reviews | Deterministic risk and policy signals with manager-facing explanations | `RiskAssessmentServiceTests`, `ReviewAssistantServiceTests` |
 | Cross-company data exposure | Tenant ID is derived from authenticated claims and applied to repository queries | `ClaimsPrincipalExtensionsTests`, tenant-scoped repositories |
 | Missing audit evidence | Created, updated, submitted, approved, rejected, and deleted events include snapshots and actor details | `AuditLogService`, populated demo audit histories |
 | Policy and budget violations | Spend limits, restricted categories, duplicate checks, and category budget alerts | `RiskAssessmentServiceTests`, `BudgetGuardrailService` |
-| Too many claims to inspect equally | Risk level, reasons, policy triggers, and anomaly flags prioritize review | manager pending queue and expense detail UI |
+| Multi-currency conversion | Real-time exchange rate calculation with fallback identity conversion | `FxRateServiceTests` |
+| Too many claims to inspect equally | Risk level, reasons, policy triggers, and anomaly flags prioritize review | manager pending queue, spreadsheet grid, and expense detail UI |
 
 ## Guardrails and decision authority
 
@@ -160,7 +161,7 @@ npm test
 npm run build
 ```
 
-Backend tests cover risk signals, fail-closed tenant claims, demo audit evidence, and safe receipt fallback. The test suite should next add database-backed integration tests that attempt cross-tenant reads and exercise the complete approval workflow over HTTP.
+Backend xUnit tests cover risk scoring signals, missing evidence inspection, currency conversion rates, tenant scoping, and fail-safe fallback modes. Frontend Vitest suites validate UI components, routing, pricing tiers, and the spreadsheet grid editor. Production bundles are verified with Vite.
 
 ## Project structure
 

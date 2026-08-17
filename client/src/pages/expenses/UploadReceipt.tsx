@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Upload, ArrowLeft, Check, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2, Upload, ArrowLeft, Check } from "lucide-react";
 
 const CATEGORIES = [
   "Travel",
@@ -67,9 +67,13 @@ const rasterizeSvg = async (source: File): Promise<File> => {
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("SVG conversion failed.")), "image/png", 0.95));
+    const blob = await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob(value => value ? resolve(value) : reject(new Error("SVG conversion failed.")), "image/png", 0.95)
+    );
     return new File([blob], source.name.replace(/\.svg$/i, ".png"), { type: "image/png" });
-  } finally { URL.revokeObjectURL(svgUrl); }
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
 };
 
 const UploadReceipt = () => {
@@ -298,12 +302,12 @@ const UploadReceipt = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 font-sans">
-        {/* Header Ribbon */}
-        <div className="flex items-center gap-4 rounded-3xl border border-border bg-card/65 p-6 shadow-xl backdrop-blur-md">
+      <div className="space-y-6 max-w-4xl font-sans">
+        {/* Header */}
+        <div className="flex items-center gap-4">
           {step !== "upload" && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={() => {
                 setStep("upload");
@@ -312,20 +316,17 @@ const UploadReceipt = () => {
                 setReceiptPreviewUrl("");
                 setError("");
               }}
-              className="rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+              className="rounded-lg h-9 w-9 border-border text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
           <div className="flex-1">
-            <span className="text-[10px] font-mono tracking-[0.28em] text-primary bg-primary/5 px-2 py-0.5 border border-primary/10 rounded uppercase">
-              Receipt OCR
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1.5">Upload Receipt</h1>
-            <p className="text-sm text-muted-foreground font-sans">
-              {step === "upload" && "Upload a receipt image for automated AI field extraction."}
-              {step === "review" && "Review and edit AI extracted data before draft creation."}
-              {step === "confirm" && "Success! Your expense draft has been created."}
+            <h1 className="text-2xl font-bold tracking-tight">Upload Receipt</h1>
+            <p className="text-xs text-muted-foreground">
+              {step === "upload" && "Upload a receipt image or PDF for automated field extraction."}
+              {step === "review" && "Review and verify extracted fields before saving to your draft list."}
+              {step === "confirm" && "Draft created successfully. Redirecting..."}
             </p>
           </div>
         </div>
@@ -339,23 +340,23 @@ const UploadReceipt = () => {
 
         {/* Upload Step */}
         {step === "upload" && (
-          <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md max-w-2xl">
-            <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-              <CardTitle className="text-base font-bold text-foreground">Upload Image File</CardTitle>
+          <Card className="rounded-xl border border-border bg-card max-w-2xl">
+            <CardHeader className="border-b border-border px-6 py-4">
+              <CardTitle className="text-sm font-bold">Select Receipt Document</CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Upload a clear photo of your receipt (JPG, PNG, PDF supported up to 10MB)
+                Supported formats: PNG, JPG, JPEG, PDF, SVG (max 10MB)
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleUpload} className="space-y-6">
-                <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-secondary/20 p-8 text-center transition-all duration-300 hover:bg-secondary/40 cursor-pointer relative">
-                  <Upload className="h-12 w-12 text-primary mb-4" />
+                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/20 p-8 text-center transition-colors hover:bg-muted/40 cursor-pointer relative">
+                  <Upload className="h-10 w-10 text-primary mb-3" />
                   <label htmlFor="file-input" className="cursor-pointer block">
-                    <p className="text-sm font-bold text-foreground">
-                      Click to upload or drag and drop
+                    <p className="text-sm font-semibold text-foreground">
+                      Click to choose file or drag and drop
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {file ? file.name : "PNG, JPG, PDF up to 10MB"}
+                      {file ? file.name : "Receipt image or document"}
                     </p>
                   </label>
                   <Input
@@ -369,19 +370,19 @@ const UploadReceipt = () => {
                 </div>
 
                 {file && (
-                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center gap-3">
-                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate">{file.name}</span>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center gap-3">
+                    <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-medium text-foreground truncate">{file.name}</span>
                   </div>
                 )}
 
                 <Button
                   type="submit"
                   disabled={isUploading || !file}
-                  className="w-full gap-2 rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10"
+                  className="w-full gap-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs shadow-sm"
                 >
                   {isUploading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isUploading ? "Uploading & Scanning..." : "Scan Receipt with AI"}
+                  {isUploading ? "Extracting Receipt Fields..." : "Extract Fields with AI"}
                 </Button>
               </form>
             </CardContent>
@@ -394,11 +395,8 @@ const UploadReceipt = () => {
             {uploadData?.requiresReview && (
               <Alert className="rounded-xl border-amber-500/40 bg-amber-500/10">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription>
-                  <strong>Manual review required.</strong>{" "}
-                  {uploadData.extractionSource === "fallback"
-                    ? "The AI provider was unavailable, so placeholder values were generated."
-                    : "One or more fields could not be read reliably."}
+                <AlertDescription className="text-xs">
+                  <strong>Manual review recommended:</strong> One or more fields could not be extracted with high confidence. Please verify all fields below.
                   {uploadData.warnings?.length > 0 && (
                     <ul className="mt-2 list-disc pl-5">
                       {uploadData.warnings.map((warning) => <li key={warning}>{warning}</li>)}
@@ -407,195 +405,192 @@ const UploadReceipt = () => {
                 </AlertDescription>
               </Alert>
             )}
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Image Preview */}
-            {receiptPreviewUrl && (
-              <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md lg:col-span-1 overflow-hidden">
-                <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-                  <CardTitle className="text-base font-bold text-foreground">Scanned Document</CardTitle>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Image Preview */}
+              {receiptPreviewUrl && (
+                <Card className="rounded-xl border border-border bg-card lg:col-span-1 overflow-hidden">
+                  <CardHeader className="border-b border-border px-5 py-3.5">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Scanned Document</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <img
+                      src={receiptPreviewUrl}
+                      alt="Receipt preview"
+                      className="w-full rounded-lg border border-border object-contain max-h-96"
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Edit Form */}
+              <Card className={`rounded-xl border border-border bg-card overflow-hidden ${
+                receiptPreviewUrl ? "lg:col-span-2" : "lg:col-span-3"
+              }`}>
+                <CardHeader className="border-b border-border px-6 py-4">
+                  <CardTitle className="text-sm font-bold">Verify Extracted Fields</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Review the values detected from your document. You can adjust any field before saving.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="p-4">
-                  <img
-                    src={receiptPreviewUrl}
-                    alt="Receipt preview"
-                    className="w-full rounded-2xl border border-border"
-                  />
+                <CardContent className="p-6">
+                  <form onSubmit={handleConfirm} className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="amount" className="text-xs font-semibold text-muted-foreground uppercase">Amount *</Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          placeholder="0.00"
+                          step="0.01"
+                          name="amount"
+                          value={formData.amount}
+                          onChange={handleChange}
+                          disabled={isSubmitting}
+                          className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10 font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="currency" className="text-xs font-semibold text-muted-foreground uppercase">Currency *</Label>
+                        <Select
+                          value={formData.currency}
+                          onValueChange={(value) => handleSelectChange("currency", value)}
+                        >
+                          <SelectTrigger disabled={isSubmitting} className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10 font-mono">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border border-border text-xs text-popover-foreground font-mono">
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="VND">VND</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="merchant" className="text-xs font-semibold text-muted-foreground uppercase">Merchant / Vendor *</Label>
+                      <Input
+                        id="merchant"
+                        placeholder="e.g., Starbucks, Uber, Hotel ABC"
+                        name="merchant"
+                        value={formData.merchant}
+                        onChange={handleChange}
+                        disabled={isSubmitting}
+                        className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="category" className="text-xs font-semibold text-muted-foreground uppercase">Category *</Label>
+                        <Select
+                          value={formData.category}
+                          onValueChange={(value) => handleSelectChange("category", value)}
+                        >
+                          <SelectTrigger disabled={isSubmitting} className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
+                            {CATEGORIES.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="date" className="text-xs font-semibold text-muted-foreground uppercase">Transaction Date *</Label>
+                        <Input
+                          id="date"
+                          type="date"
+                          name="date"
+                          value={formData.date}
+                          onChange={handleChange}
+                          disabled={isSubmitting}
+                          className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {formData.category === "Other" && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="customCategory" className="text-xs font-semibold text-muted-foreground uppercase">Specify Category *</Label>
+                        <Input
+                          id="customCategory"
+                          placeholder="e.g., Fuel, Marketing, Client Entertainment"
+                          name="customCategory"
+                          value={formData.customCategory}
+                          onChange={handleChange}
+                          disabled={isSubmitting}
+                          className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 h-10"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="description" className="text-xs font-semibold text-muted-foreground uppercase">Description / Justification</Label>
+                      </div>
+                      <Textarea
+                        id="description"
+                        placeholder="Add business justification"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        disabled={isSubmitting}
+                        className="bg-card border-border text-foreground text-xs rounded-lg focus:ring-primary/20 min-h-[90px]"
+                        rows={3}
+                      />
+                    </div>
+
+                    {/* Actions buttons */}
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="gap-2 rounded-lg px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs shadow-sm"
+                      >
+                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Save as Draft Expense
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting}
+                        onClick={() => {
+                          setStep("upload");
+                          setFile(null);
+                          setUploadData(null);
+                          setReceiptPreviewUrl("");
+                        }}
+                        className="rounded-lg px-5 border-border hover:bg-muted text-foreground font-medium h-10 text-xs"
+                      >
+                        Upload Different Receipt
+                      </Button>
+                    </div>
+                  </form>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Edit Form */}
-            <Card className={`rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md overflow-hidden ${
-              receiptPreviewUrl ? "lg:col-span-2" : "lg:col-span-3"
-            }`}>
-              <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-                <CardTitle className="text-base font-bold text-foreground">Confirm Extracted Data</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  AI has extracted the following fields. Please review before saving as a draft.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <form onSubmit={handleConfirm} className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="amount" className="text-xs font-semibold text-muted-foreground uppercase">Extracted Amount *</Label>
-                      <Input
-                        id="amount"
-                        type="number"
-                        placeholder="0.00"
-                        step="0.01"
-                        name="amount"
-                        value={formData.amount}
-                        onChange={handleChange}
-                        disabled={isSubmitting}
-                        className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="currency" className="text-xs font-semibold text-muted-foreground uppercase">Currency *</Label>
-                      <Select
-                        value={formData.currency}
-                        onValueChange={(value) => handleSelectChange("currency", value)}
-                      >
-                        <SelectTrigger disabled={isSubmitting} className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover border border-border text-xs text-popover-foreground font-mono">
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="VND">VND</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="merchant" className="text-xs font-semibold text-muted-foreground uppercase">Merchant / Vendor *</Label>
-                    <Input
-                      id="merchant"
-                      placeholder="e.g., Starbucks, Uber, Hotel ABC"
-                      name="merchant"
-                      value={formData.merchant}
-                      onChange={handleChange}
-                      disabled={isSubmitting}
-                      className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
-                    />
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="category" className="text-xs font-semibold text-muted-foreground uppercase">Category *</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => handleSelectChange("category", value)}
-                      >
-                        <SelectTrigger disabled={isSubmitting} className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10">
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
-                          {CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="date" className="text-xs font-semibold text-muted-foreground uppercase">Transaction Date *</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        name="date"
-                        value={formData.date}
-                        onChange={handleChange}
-                        disabled={isSubmitting}
-                        className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {formData.category === "Other" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="customCategory" className="text-xs font-semibold text-muted-foreground uppercase">Specify Category *</Label>
-                      <Input
-                        id="customCategory"
-                        placeholder="e.g., Fuel, Marketing, Client Entertainment"
-                        name="customCategory"
-                        value={formData.customCategory}
-                        onChange={handleChange}
-                        disabled={isSubmitting}
-                        className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="description" className="text-xs font-semibold text-muted-foreground uppercase">Description / Justification</Label>
-                      <span className="flex items-center gap-1 text-[10px] font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                        <Sparkles className="h-3 w-3" />
-                        AI Suggested
-                      </span>
-                    </div>
-                    <Textarea
-                      id="description"
-                      placeholder="AI suggested description (editable)"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      disabled={isSubmitting}
-                      className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 min-h-[100px]"
-                      rows={3}
-                    />
-                  </div>
-
-                  {/* Actions buttons */}
-                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="gap-2 rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10"
-                    >
-                      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Create Expense Draft
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isSubmitting}
-                      onClick={() => {
-                        setStep("upload");
-                        setFile(null);
-                        setUploadData(null);
-                        setReceiptPreviewUrl("");
-                      }}
-                      className="rounded-full px-6 border-border hover:bg-muted text-foreground font-medium h-10"
-                    >
-                      Start Over
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
+            </div>
           </div>
         )}
 
         {/* Success Step */}
         {step === "confirm" && (
-          <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md max-w-2xl mx-auto overflow-hidden">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 mb-4 animate-bounce">
-                <Check className="h-8 w-8" />
+          <Card className="rounded-xl border border-border bg-card max-w-xl mx-auto overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 mb-3">
+                <Check className="h-6 w-6" />
               </div>
-              <h2 className="text-2xl font-extrabold text-foreground mb-2">Receipt Scanned & Created!</h2>
-              <p className="text-muted-foreground text-center text-xs mb-6 max-w-sm">
-                Your receipt was uploaded and parsed successfully. Your draft has been generated, opening details view...
+              <h2 className="text-lg font-bold text-foreground mb-1">Receipt Draft Created</h2>
+              <p className="text-muted-foreground text-xs mb-4 max-w-xs">
+                Your receipt data was saved to your expense drafts. Opening details...
               </p>
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
             </CardContent>
           </Card>
         )}

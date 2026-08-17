@@ -133,8 +133,9 @@ const CreateExpense = () => {
       if (result.success && result.data) {
         if (!saveDraft) {
           const submitResult = await expenseService.submit(result.data.id);
-          if (submitResult.success) {
-            navigate(`/expenses/${result.data.id}`);
+          if (!submitResult.success) {
+            setError(`Expense created as draft, but submission failed: ${submitResult.error || "Please submit from expense details."}`);
+            setIsLoading(false);
             return;
           }
         }
@@ -151,51 +152,44 @@ const CreateExpense = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 font-sans">
-        {/* Header Ribbon - matches list & dashboard */}
-        <div className="flex items-center gap-4 rounded-3xl border border-border bg-card/65 p-6 shadow-xl backdrop-blur-md">
+      <div className="space-y-6 max-w-4xl font-sans">
+        {/* Header Ribbon */}
+        <div className="flex items-center gap-4">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             onClick={() => navigate("/expenses")}
-            className="rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+            className="rounded-lg h-9 w-9 border-border text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <span className="text-[10px] font-mono tracking-[0.28em] text-primary bg-primary/5 px-2 py-0.5 border border-primary/10 rounded uppercase">
-              Capture Claims
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight mt-1.5">New Expense</h1>
-            <p className="text-sm text-muted-foreground">Add a new expense log and submit it to review channels.</p>
+            <h1 className="text-2xl font-bold tracking-tight">New Expense</h1>
+            <p className="text-xs text-muted-foreground">Enter transaction details to save a draft or submit for manager review.</p>
           </div>
         </div>
 
-        {/* Side-by-side Live Guides */}
+        {/* Side-by-side Guides */}
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground">Compliance Guardrails</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">Company spend policies and limits</CardDescription>
+          <Card className="rounded-xl border border-border bg-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Spend Policy Rules</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs text-muted-foreground">
-              <p>• Meal and accommodation records above $100 (or 2M VND) trigger manager oversight.</p>
-              <p>• Alcohol claims are flagged automatically for rigorous justification.</p>
-              <p>• Adding high-resolution receipts and descriptions speeds up approval times by 85%.</p>
+            <CardContent className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+              <p>• Claims over workspace threshold ($100 / 2M VND) require manager approval.</p>
+              <p>• Alcohol and restricted categories trigger compliance review flags.</p>
+              <p>• Clear business justification notes help expedite review decisions.</p>
             </CardContent>
           </Card>
 
-          <Card className="rounded-3xl border border-border bg-secondary/20 shadow-xl backdrop-blur-md">
-            <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-              <ShieldAlert className="h-4.5 w-4.5 text-primary" />
-              <div>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground">Real-Time Policy Check</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Live guidance as you type</CardDescription>
-              </div>
+          <Card className="rounded-xl border border-border bg-card">
+            <CardHeader className="pb-2 flex flex-row items-center gap-2 space-y-0">
+              <ShieldAlert className="h-4 w-4 text-primary" />
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Policy Guidance</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs">
+            <CardContent className="space-y-1.5 text-xs">
               {previewSignals.length === 0 ? (
-                <p className="text-primary font-semibold">✓ Looking good! All inputs align with current company policies.</p>
+                <p className="text-emerald-600 dark:text-emerald-400 font-medium">All entered details comply with standard policy rules.</p>
               ) : (
                 previewSignals.map((signal, idx) => (
                   <p key={idx} className="text-muted-foreground font-medium">• {signal}</p>
@@ -206,10 +200,10 @@ const CreateExpense = () => {
         </div>
 
         {/* Main Form */}
-        <Card className="max-w-3xl rounded-3xl border border-border bg-card/65 shadow-xl backdrop-blur-md">
-          <CardHeader className="border-b border-border bg-muted/20 px-6 py-4">
-            <CardTitle className="text-foreground text-base font-bold tracking-tight">Expense Fields</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">Fill in the required transaction information below</CardDescription>
+        <Card className="rounded-xl border border-border bg-card">
+          <CardHeader className="border-b border-border px-6 py-4">
+            <CardTitle className="text-sm font-bold">Transaction Details</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">Required fields are marked with an asterisk (*)</CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">

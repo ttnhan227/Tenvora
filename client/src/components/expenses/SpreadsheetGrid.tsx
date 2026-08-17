@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   AlertCircle, 
-  CheckCircle2, 
-  AlertTriangle, 
   Save, 
-  Clipboard, 
-  Sparkles, 
-  X, 
   Trash2, 
-  ArrowLeft,
-  ArrowRight,
-  TrendingDown,
   Info,
   Download,
   Upload
@@ -33,7 +25,7 @@ interface UnsavedChanges {
 
 interface CellValidationErrors {
   [expenseId: string]: {
-    [field: string]: string; // Field name to error message mapping
+    [field: string]: string;
   };
 }
 
@@ -46,7 +38,7 @@ interface SpreadsheetGridProps {
   userRole?: string;
 }
 
-export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: SpreadsheetGridProps) => {
+export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridProps) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [unsaved, setUnsaved] = useState<UnsavedChanges>({});
   const [errors, setErrors] = useState<CellValidationErrors>({});
@@ -69,7 +61,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
     if (field === "amount") {
       const num = Number(value);
       if (isNaN(num)) return "Amount must be a valid number";
-      if (num <= 0) return "Amount must be a positive number greater than 0";
+      if (num <= 0) return "Amount must be greater than 0";
     }
     if (field === "merchant") {
       if (!strVal) return "Merchant name is required";
@@ -79,13 +71,13 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       if (!strVal) return "Date is required";
       const date = new Date(strVal);
       if (isNaN(date.getTime())) return "Invalid date format";
-      if (date > new Date()) return "Date cannot be set in the future";
+      if (date > new Date()) return "Date cannot be in the future";
     }
     if (field === "category") {
-      if (!CATEGORIES.includes(value)) return "Please select a standard corporate category";
+      if (!CATEGORIES.includes(value)) return "Please select a standard category";
     }
     if (field === "currency") {
-      if (!CURRENCIES.includes(value)) return "Please select a standard currency (USD, VND, EUR)";
+      if (!CURRENCIES.includes(value)) return "Please select USD, VND, or EUR";
     }
     return "";
   };
@@ -145,7 +137,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
         if (currentExp.status === "Draft") {
           const emptyVal = fieldName === "amount" ? 0 : "";
           
-          // Validate empty value
           const err = validateCell(fieldName, emptyVal);
           setErrors(prev => {
             const rowErrors = { ...prev[currentExp.id] };
@@ -179,13 +170,13 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
     if (!activeCell) return;
     const expense = expenses[activeCell.row];
     if (expense.status !== "Draft") {
-      toast.error("Only draft expenses can be inline edited.");
+      toast.error("Only draft expenses can be edited inline.");
       return;
     }
 
     const field = columns[activeCell.col].toLowerCase();
     if (field === "risk score") {
-      toast.error("Risk score is calculated automatically by the VeriSpend risk engine.");
+      toast.error("Risk score is calculated by the policy engine.");
       return;
     }
 
@@ -204,7 +195,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       validatedValue = parseFloat(editValue) || 0;
     }
 
-    // Run custom data integrity validation checks
     const err = validateCell(field, validatedValue);
     
     setErrors(prev => {
@@ -292,11 +282,11 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
 
     toast.dismiss(toastId);
     if (importedCount > 0) {
-      toast.success(`Successfully imported ${importedCount} draft expenses!`);
+      toast.success(`Imported ${importedCount} draft expenses.`);
       onSaved();
     }
     if (failedCount > 0) {
-      toast.error(`Failed to import ${failedCount} items. Please verify data formats.`);
+      toast.error(`Failed to import ${failedCount} rows. Please verify column formatting.`);
     }
   };
 
@@ -319,7 +309,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       const hasHeader = lines[0].toLowerCase().includes("date") || lines[0].toLowerCase().includes("merchant");
       const dataLines = hasHeader ? lines.slice(1) : lines;
 
-      const toastId = toast.loading(`Parsing ${dataLines.length} rows from CSV...`);
+      const toastId = toast.loading(`Importing ${dataLines.length} rows from CSV...`);
       let importedCount = 0;
       let failedCount = 0;
 
@@ -345,7 +335,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
             currency = matched || "USD";
           }
 
-          const description = data[5] || "Bulk imported from CSV file";
+          const description = data[5] || "Bulk imported from CSV";
 
           const result = await expenseService.create({
             amount,
@@ -368,15 +358,15 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
 
       toast.dismiss(toastId);
       if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} draft expenses!`);
+        toast.success(`Imported ${importedCount} draft expenses.`);
         onSaved();
       }
       if (failedCount > 0) {
-        toast.error(`Failed to import ${failedCount} rows. Please verify formatting.`);
+        toast.error(`Failed to import ${failedCount} rows.`);
       }
     };
     reader.readAsText(file);
-    e.target.value = ""; // Reset
+    e.target.value = "";
   };
 
   // Support exporting current grid to CSV
@@ -407,19 +397,18 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("Spreadsheet data successfully exported to CSV!");
+    toast.success("Spreadsheet data exported to CSV.");
   };
 
   const handleBulkUpdate = async () => {
-    // Rigid Gate: Block submit completely if client-side validation errors exist
     const totalErrorsCount = Object.values(errors).reduce((acc, rowErr) => acc + Object.keys(rowErr).length, 0);
     if (totalErrorsCount > 0) {
-      toast.error(`Cannot save. Please correct the ${totalErrorsCount} validation errors highlighted in red.`);
+      toast.error(`Cannot save. Please correct the ${totalErrorsCount} validation errors.`);
       return;
     }
 
     setIsSubmitting(true);
-    const toastId = toast.loading("Saving spreadsheet changes...");
+    const toastId = toast.loading("Saving changes...");
     
     try {
       const payload = Object.entries(unsaved).map(([id, changes]) => {
@@ -439,7 +428,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       toast.dismiss(toastId);
 
       if (response.success) {
-        toast.success("Spreadsheet changes saved and reviewed by VeriSpend AI.");
+        toast.success("Spreadsheet changes saved successfully.");
         setUnsaved({});
         setErrors({});
         onSaved();
@@ -448,7 +437,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       }
     } catch (err) {
       toast.dismiss(toastId);
-      toast.error("A network error occurred while updating.");
+      toast.error("An error occurred while updating.");
     } finally {
       setIsSubmitting(false);
     }
@@ -460,7 +449,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
       if (result.success) {
         toast.success("Draft deleted");
         
-        // Clean up state
         setUnsaved(prev => {
           const next = { ...prev };
           delete next[id];
@@ -488,7 +476,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
     if (activeCell) {
       const exp = expenses[activeCell.row];
       const field = columns[activeCell.col].toLowerCase();
-      selectedAmount = unsaved[exp.id]?.[field as keyof UnsavedChanges[string]] as number ?? (exp as any)[field];
+      selectedAmount = unsaved[exp?.id]?.[field as keyof UnsavedChanges[string]] as number ?? (exp as any)?.[field];
     }
 
     const totalErrors = Object.values(errors).reduce((acc, rowErr) => acc + Object.keys(rowErr).length, 0);
@@ -519,20 +507,20 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
   const activeCellErrorMessage = getActiveCellErrorMessage();
 
   return (
-    <div className="space-y-4">
-      {/* Friendly Guide Banner */}
-      <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-primary shadow-sm backdrop-blur-md">
-        <Sparkles className="h-5 w-5 text-primary mt-0.5 animate-pulse shrink-0" />
-        <div className="text-xs space-y-1">
-          <p className="font-semibold text-foreground">Spreadsheet View (Enterprise Data Grid)</p>
+    <div className="space-y-4 font-sans">
+      {/* Shortcuts Guide */}
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">Spreadsheet Grid Controls</p>
           <p>
-            • **Quick Navigation:** Click any cell and use arrow keys <span className="font-mono bg-secondary border border-border px-1 rounded">↑ ↓ ← →</span> or <span className="font-mono bg-secondary border border-border px-1 rounded">Tab</span> to move.
+            • **Navigation:** Click any cell and use arrow keys <span className="font-mono bg-muted border border-border px-1 rounded">↑ ↓ ← →</span> or <span className="font-mono bg-muted border border-border px-1 rounded">Tab</span> to move.
           </p>
           <p>
-            • **Inline Editing:** Double-click or press <span className="font-mono bg-secondary border border-border px-1 rounded">Enter</span> on any **Draft** row to edit details instantly.
+            • **Inline Editing:** Double-click or press <span className="font-mono bg-muted border border-border px-1 rounded">Enter</span> on any **Draft** row to edit values inline.
           </p>
           <p>
-            • **Copy-Paste Sync:** Copy a row range from Excel/Sheets and press <span className="font-mono bg-secondary border border-border px-1 rounded">Ctrl+V</span> directly on the grid to bulk import drafts!
+            • **Bulk Import:** Paste rows directly from Excel (<span className="font-mono bg-muted border border-border px-1 rounded">Ctrl+V</span>) or use **Import CSV**.
           </p>
         </div>
       </div>
@@ -543,13 +531,12 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         tabIndex={0}
-        className="outline-none border border-border rounded-2xl overflow-hidden bg-card/75 backdrop-blur-xl shadow-2xl focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
+        className="outline-none border border-border rounded-xl overflow-hidden bg-card shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all"
       >
         {/* Ribbon toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-3 text-xs">
-          <div className="flex items-center gap-3">
-            <span className="flex h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_rgba(16,185,129,0.7)] animate-pulse" />
-            <span className="font-semibold tracking-wider text-[10px] uppercase">Corporate Grid Mode</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/20 px-4 py-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold tracking-wider text-[10px] uppercase text-muted-foreground">Spreadsheet Editor</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -564,7 +551,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
               variant="outline" 
               size="sm" 
               onClick={() => fileInputRef.current?.click()} 
-              className="h-8 rounded-xl border-border hover:bg-muted text-xs font-semibold gap-1.5"
+              className="h-8 rounded-lg border-border hover:bg-muted text-xs font-medium gap-1.5"
             >
               <Upload className="h-3.5 w-3.5" />
               Import CSV
@@ -573,7 +560,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
               variant="outline" 
               size="sm" 
               onClick={handleExportCSV} 
-              className="h-8 rounded-xl border-border hover:bg-muted text-xs font-semibold gap-1.5"
+              className="h-8 rounded-lg border-border hover:bg-muted text-xs font-medium gap-1.5"
             >
               <Download className="h-3.5 w-3.5" />
               Export CSV
@@ -581,12 +568,12 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
           </div>
         </div>
 
-        {/* Monospace fx Formula Bar & Real-Time Validator Message */}
-        <div className={`flex items-center gap-3 border-b border-border px-4 py-2.5 text-sm transition-colors ${
+        {/* Formula / active cell status bar */}
+        <div className={`flex items-center gap-3 border-b border-border px-4 py-2 text-xs transition-colors ${
           activeCellErrorMessage ? "bg-red-500/5 border-b-red-500/20" : "bg-card"
         }`}>
-          <span className={`font-bold select-none text-xs shrink-0 ${activeCellErrorMessage ? "text-red-500" : "text-primary"}`}>
-            {activeCellErrorMessage ? "⚠️ Cell Error:" : "Active Cell Value:"}
+          <span className={`font-semibold select-none shrink-0 ${activeCellErrorMessage ? "text-red-500" : "text-muted-foreground"}`}>
+            {activeCellErrorMessage ? "Validation error:" : "Cell Value:"}
           </span>
           <input 
             type="text" 
@@ -603,11 +590,11 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
             } 
             disabled={!editing}
             onChange={(e) => setEditValue(e.target.value)}
-            className="bg-transparent outline-none w-full text-xs text-foreground select-all border-none focus:ring-0 placeholder:text-muted-foreground/30 font-sans"
-            placeholder="Double-click a cell or press Enter to edit details..."
+            className="bg-transparent outline-none w-full text-xs text-foreground select-all border-none focus:ring-0 placeholder:text-muted-foreground/40 font-mono"
+            placeholder="Double-click a draft cell or press Enter to edit..."
           />
           {activeCellErrorMessage && (
-            <Badge variant="destructive" className="shrink-0 bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/10 font-bold font-sans text-[10px] rounded-lg px-2.5 py-0.5">
+            <Badge variant="destructive" className="shrink-0 bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/10 font-medium text-[10px] rounded-md px-2 py-0.5">
               {activeCellErrorMessage}
             </Badge>
           )}
@@ -635,7 +622,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
                   <tr 
                     key={expense.id} 
                     className={`hover:bg-muted/30 transition-colors border-b border-border ${
-                      rowUnsaved ? "bg-primary/[0.01]" : ""
+                      rowUnsaved ? "bg-primary/[0.02]" : ""
                     }`}
                   >
                     {/* Index count cell */}
@@ -682,22 +669,22 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
                               ? "bg-red-500/[0.08] ring-2 ring-red-500 text-red-500 z-10 font-semibold" 
                               : ""
                           } ${
-                            isHighRiskCell ? "bg-red-500/10 text-red-500 font-bold border-l-2 border-l-red-500" : ""
+                            isHighRiskCell ? "text-red-500 font-semibold" : ""
                           } ${
-                            isMediumRiskCell ? "text-amber-500 font-semibold" : ""
+                            isMediumRiskCell ? "text-amber-500 font-medium" : ""
                           } ${
                             col === "Amount" || col === "Date" || col === "Risk Score" ? "font-mono" : ""
                           }`}
                         >
-                          {/* Unsaved cell indicator (Green triangle top-right) */}
+                          {/* Unsaved cell indicator */}
                           {isCellEdited && !isCellInvalid && (
                             <span 
-                              className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-bl-full shadow-[0_0_4px_rgba(16,185,129,0.8)]" 
+                              className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-bl-full" 
                               title="Unsaved change" 
                             />
                           )}
 
-                          {/* Validation Error Corner indicator (Red triangle top-left) */}
+                          {/* Validation Error Corner indicator */}
                           {isCellInvalid && (
                             <span 
                               className="absolute top-0 left-0 w-2.5 h-2.5 bg-red-500 rounded-br-full" 
@@ -767,11 +754,11 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
                           expense.status === "Pending" ? "secondary" :
                           expense.status === "Rejected" ? "destructive" : "outline"
                         }
-                        className={`text-[10px] px-2 py-0.5 rounded ${
-                          expense.status === "Approved" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10" :
-                          expense.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/10" :
-                          expense.status === "Rejected" ? "bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/10" :
-                          "bg-muted text-muted-foreground border-border hover:bg-muted"
+                        className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                          expense.status === "Approved" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                          expense.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                          expense.status === "Rejected" ? "bg-red-500/10 text-red-600 border-red-500/20" :
+                          "bg-muted text-muted-foreground border-border"
                         }`}
                       >
                         {expense.status}
@@ -786,7 +773,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteDraft(expense.id)}
-                            className="h-7 w-7 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            className="h-7 w-7 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md"
                             title="Delete draft expense"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -800,8 +787,8 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
               {expenses.length === 0 && (
                 <tr>
                   <td colSpan={columns.length + 3} className="text-center py-16 text-muted-foreground text-xs font-sans">
-                    <Info className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50 animate-pulse" />
-                    No expenses found. Paste rows from Excel to populate drafts instantly.
+                    <Info className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                    No expenses found. Paste rows from Excel to populate drafts.
                   </td>
                 </tr>
               )}
@@ -810,26 +797,26 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
         </div>
 
         {/* Status bottom bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-center gap-4">
             <span className="flex items-center gap-1.5">
               <span>Expenses:</span>
-              <span className="text-foreground font-bold font-mono">{stats.totalCount}</span>
+              <span className="text-foreground font-semibold font-mono">{stats.totalCount}</span>
             </span>
             <span className="text-border">|</span>
             <span className="flex items-center gap-1.5">
               <span>Drafts:</span>
-              <span className="text-foreground font-bold font-mono">{stats.draftCount}</span>
+              <span className="text-foreground font-semibold font-mono">{stats.draftCount}</span>
             </span>
             <span className="text-border">|</span>
             <span className="flex items-center gap-1.5">
-              <span className="text-red-500">High Risk Claims:</span>
-              <span className="text-red-500 font-bold font-mono">{stats.highRiskCount}</span>
+              <span className="text-red-500">High Risk:</span>
+              <span className="text-red-500 font-semibold font-mono">{stats.highRiskCount}</span>
             </span>
             {stats.totalErrors > 0 && (
               <>
                 <span className="text-border">|</span>
-                <span className="flex items-center gap-1.5 text-red-500 font-semibold animate-pulse">
+                <span className="flex items-center gap-1.5 text-red-500 font-semibold">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>Validation Errors:</span>
                   <span className="font-bold font-mono">{stats.totalErrors}</span>
@@ -840,30 +827,27 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
 
           {activeCell && (
             <div className="flex items-center gap-2">
-              <span>Selected Value:</span>
-              <span className="text-primary font-bold font-mono">
+              <span>Selected:</span>
+              <span className="text-primary font-semibold font-mono">
                 {columns[activeCell.col] === "Amount" && typeof stats.selectedAmount === "number"
                   ? formatDisplayCurrency(stats.selectedAmount)
-                  : String(stats.selectedAmount || "EMPTY")}
+                  : String(stats.selectedAmount || "")}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Floating Save HUD Panel */}
+      {/* Floating Save Panel */}
       {Object.keys(unsaved).length > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-6 px-6 py-4 bg-popover/90 border border-primary/30 shadow-[0_0_30px_rgba(0,0,0,0.15)] rounded-full animate-in slide-in-from-bottom duration-300 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3 bg-popover border border-border shadow-lg rounded-xl">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-primary" />
             <p className="text-xs font-semibold text-popover-foreground">
-              You have <span className="text-primary font-bold font-mono">{Object.keys(unsaved).length}</span> unsaved changes
+              <span className="text-primary font-mono">{Object.keys(unsaved).length}</span> unsaved change(s)
               {stats.totalErrors > 0 && (
-                <span className="text-red-500 font-bold ml-1">
-                  ({stats.totalErrors} errors require correction)
+                <span className="text-red-500 font-semibold ml-1">
+                  ({stats.totalErrors} error(s))
                 </span>
               )}
             </p>
@@ -873,17 +857,17 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved, userRole }: Spreadsh
               size="sm" 
               variant="ghost" 
               onClick={() => { setUnsaved({}); setErrors({}); }} 
-              className="text-muted-foreground hover:text-foreground text-xs rounded-full hover:bg-secondary px-3 h-8"
+              className="text-muted-foreground hover:text-foreground text-xs rounded-lg px-3 h-8"
               disabled={isSubmitting}
             >
-              Reset
+              Discard
             </Button>
             <Button 
               size="sm" 
               disabled={isSubmitting || stats.totalErrors > 0}
-              className={`gap-1.5 rounded-full text-xs font-bold px-4 h-8 shadow-sm transition-all ${
+              className={`gap-1.5 rounded-lg text-xs font-semibold px-4 h-8 shadow-sm ${
                 stats.totalErrors > 0 
-                  ? "bg-red-500/10 text-red-500 border border-red-500/25 cursor-not-allowed hover:bg-red-500/10" 
+                  ? "bg-muted text-muted-foreground cursor-not-allowed" 
                   : "bg-primary hover:bg-primary/90 text-primary-foreground"
               }`} 
               onClick={handleBulkUpdate}
