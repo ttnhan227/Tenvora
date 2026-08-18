@@ -25,14 +25,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
@@ -46,6 +38,8 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const isManager = user?.role === "Manager" || user?.role === "Owner";
   const isOwner = user?.role === "Owner";
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "VS";
+
+  const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
     { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
@@ -74,6 +68,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-background transition-transform md:relative md:translate-x-0 z-10 flex flex-col justify-between",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div>
@@ -188,7 +183,7 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
           <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8 animate-fade-in">{children}</div>
         </main>
       </div>
-      <AiCopilot companyName={user?.companyName} />
+      <AiCopilot />
     </div>
   );
 };

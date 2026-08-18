@@ -33,7 +33,9 @@ export const AiCopilot: React.FC = () => {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (typeof endRef.current?.scrollIntoView === "function") {
+      endRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, loading]);
 
   const ask = async (promptText: string) => {

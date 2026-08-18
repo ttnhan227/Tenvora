@@ -14,6 +14,15 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 
+// ResizeObserver mock for Recharts ResponsiveContainer
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+window.ResizeObserver = ResizeObserverMock;
+global.ResizeObserver = ResizeObserverMock;
+
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
