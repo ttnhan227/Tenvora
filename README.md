@@ -2,7 +2,7 @@
 
 VeriSpend is an AI-assisted expense review system for small organizations. It reduces manual receipt entry and makes inconsistent or risky claims easier to review, while keeping approval authority and company data under backend-enforced controls.
 
-- [Live application](https://aiaudit-expensetracker-web.onrender.com)
+- [Live application](https://verispend-client.onrender.com)
 - [API documentation](https://aiaudit-expensetracker.onrender.com/swagger)
 
 > The free hosted backend may take about one minute to wake up. Use the **Open demo workspace** link below sign-in for an isolated temporary workspace. Set `VITE_DEMO_ENABLED=false` in the client build to hide public demo access.
