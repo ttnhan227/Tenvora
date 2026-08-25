@@ -4,7 +4,7 @@ import { expenseService, Expense } from "@/services/expenseService";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { SpreadsheetGrid } from "@/components/expenses/SpreadsheetGrid";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,32 +22,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  AlertCircle, 
-  Eye, 
-  Trash2, 
-  Loader2, 
-  Plus, 
-  LayoutGrid, 
-  TableProperties
+import {
+  AlertCircle,
+  Eye,
+  Trash2,
+  Loader2,
+  Plus,
+  TableProperties,
+  Upload,
+  Filter,
+  ArrowUpDown,
+  FileSpreadsheet,
+  Layers,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const ALL_STATUSES = "all-statuses";
 const ALL_RISKS = "all-risks";
 const SORT_MOST_RISKY = "most-risky";
 const SORT_LEAST_RISKY = "least-risky";
 const SORT_NEWEST = "newest";
+const SORT_AMOUNT_DESC = "amount-desc";
 
 const ExpensesList = () => {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
   const [riskFilter, setRiskFilter] = useState(ALL_RISKS);
-  const [sortMode, setSortMode] = useState(SORT_MOST_RISKY);
-  
+  const [sortMode, setSortMode] = useState(SORT_NEWEST);
   const [viewMode, setViewMode] = useState<"list" | "spreadsheet">("list");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchExpenses = async () => {
     const result = await expenseService.getAll();
@@ -65,6 +73,16 @@ const ExpensesList = () => {
   useEffect(() => {
     let filtered = expenses;
 
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (e) =>
+          e.merchant.toLowerCase().includes(q) ||
+          e.category.toLowerCase().includes(q) ||
+          (e.description && e.description.toLowerCase().includes(q))
+      );
+    }
+
     if (statusFilter !== ALL_STATUSES) {
       filtered = filtered.filter((e) => e.status === statusFilter);
     }
@@ -77,47 +95,59 @@ const ExpensesList = () => {
       if (sortMode === SORT_LEAST_RISKY) {
         return (a.riskAssessment?.riskScore || 0) - (b.riskAssessment?.riskScore || 0);
       }
-
-      if (sortMode === SORT_NEWEST) {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortMode === SORT_MOST_RISKY) {
+        return (b.riskAssessment?.riskScore || 0) - (a.riskAssessment?.riskScore || 0);
       }
-
-      return (b.riskAssessment?.riskScore || 0) - (a.riskAssessment?.riskScore || 0);
+      if (sortMode === SORT_AMOUNT_DESC) {
+        return b.amount - a.amount;
+      }
+      return new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime();
     });
 
     setFilteredExpenses(filtered);
-  }, [expenses, statusFilter, riskFilter, sortMode]);
+  }, [expenses, searchQuery, statusFilter, riskFilter, sortMode]);
 
-  const getStatusBadge = (status: string) => {
-    const variants: { [key: string]: string } = {
-      Draft: "bg-muted text-muted-foreground border-border",
-      Pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      Approved: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-      Rejected: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-    };
-    return (
-      <Badge 
-        variant="outline" 
-        className={`text-[10px] px-2 py-0.5 rounded font-medium ${variants[status] || "bg-muted text-muted-foreground border-border"}`}
-      >
-        {status}
-      </Badge>
-    );
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to remove this expense transaction?")) return;
+    setDeletingId(id);
+    const result = await expenseService.delete(id);
+    if (result.success) {
+      setExpenses((prev) => prev.filter((item) => item.id !== id));
+    }
+    setDeletingId(null);
   };
 
-  const getRiskBadge = (level: string) => {
-    const variants: { [key: string]: string } = {
-      High: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20 font-bold",
-      Medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-medium",
-      Low: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-medium",
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return <Badge variant="success">Approved</Badge>;
+      case "Pending":
+        return <Badge variant="warning">Pending Review</Badge>;
+      case "Rejected":
+        return <Badge variant="destructive">Rejected</Badge>;
+      case "Draft":
+      default:
+        return <Badge variant="outline">Draft</Badge>;
+    }
+  };
+
+  const getRiskBadge = (level?: string, score?: number) => {
+    if (!level) return <span className="text-muted-foreground text-[11px]">—</span>;
+    const variantMap: Record<string, "high" | "medium" | "low" | "outline"> = {
+      High: "high",
+      Medium: "medium",
+      Low: "low",
     };
     return (
-      <Badge 
-        variant="outline" 
-        className={`text-[10px] px-2 py-0.5 rounded ${variants[level] || "bg-muted text-muted-foreground border-border"}`}
-      >
-        {level}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge variant={variantMap[level] || "outline"}>{level}</Badge>
+        {score !== undefined && (
+          <span className="font-mono text-[10px] text-muted-foreground font-semibold">
+            {score}/100
+          </span>
+        )}
+      </div>
     );
   };
 
@@ -125,238 +155,288 @@ const ExpensesList = () => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US");
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this expense draft?")) {
-      const result = await expenseService.delete(id);
-      if (result.success) {
-        setExpenses(expenses.filter((e) => e.id !== id));
-      }
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return dateStr;
     }
   };
 
-  if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex h-96 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Metrics computation
+  const totalVolume = expenses.reduce((acc, curr) => acc + curr.amount, 0);
+  const pendingCount = expenses.filter((e) => e.status === "Pending").length;
+  const highRiskCount = expenses.filter((e) => e.riskAssessment?.riskLevel === "High").length;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 font-sans">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="space-y-5 max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
-            <p className="text-xs text-muted-foreground">
-              View, filter, and track status across all organization expenses.
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Transactions</h1>
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                {filteredExpenses.length} records
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Comprehensive organization ledger with real-time risk scoring and policy audits.
             </p>
           </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            {/* View toggles */}
-            <div className="flex items-center bg-muted/60 p-1 border border-border rounded-lg">
+
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Link to="/upload">
+              <Button size="xs" variant="outline" className="gap-1.5 font-semibold">
+                <Upload className="h-3 w-3" />
+                <span>Upload Receipt</span>
+              </Button>
+            </Link>
+            <Link to="/expenses/create">
+              <Button size="xs" variant="default" className="gap-1.5 font-bold">
+                <Plus className="h-3 w-3" />
+                <span>New Expense</span>
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Executive Metrics Bar */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-md border border-border bg-card p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Volume
+            </p>
+            <p className="mt-1 text-lg font-bold text-foreground font-mono">
+              {formatCurrency(totalVolume)}
+            </p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Pending Approvals
+            </p>
+            <p className="mt-1 text-lg font-bold text-amber-700 dark:text-amber-400 font-mono">
+              {pendingCount} claims
+            </p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Flagged Anomalies
+            </p>
+            <p className="mt-1 text-lg font-bold text-red-700 dark:text-red-400 font-mono">
+              {highRiskCount} high risk
+            </p>
+          </div>
+          <div className="rounded-md border border-border bg-card p-3.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Entry Mode
+            </p>
+            <div className="mt-1 flex items-center gap-1">
               <Button
-                variant="ghost"
-                size="sm"
+                size="xs"
+                variant={viewMode === "list" ? "secondary" : "ghost"}
                 onClick={() => setViewMode("list")}
-                className={`rounded-md px-3 py-1 h-7 text-xs font-semibold gap-1.5 transition-all ${
-                  viewMode === "list" 
-                    ? "bg-card text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                }`}
+                className="h-6 text-[11px] px-2 font-medium"
               >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                List View
+                <Layers className="h-3 w-3 mr-1" /> List View
               </Button>
               <Button
-                variant="ghost"
-                size="sm"
+                size="xs"
+                variant={viewMode === "spreadsheet" ? "secondary" : "ghost"}
                 onClick={() => setViewMode("spreadsheet")}
-                className={`rounded-md px-3 py-1 h-7 text-xs font-semibold gap-1.5 transition-all ${
-                  viewMode === "spreadsheet" 
-                    ? "bg-primary text-primary-foreground font-bold shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                }`}
+                className="h-6 text-[11px] px-2 font-medium"
               >
-                <TableProperties className="h-3.5 w-3.5" />
-                Spreadsheet Grid
+                <FileSpreadsheet className="h-3 w-3 mr-1" /> Ledger Grid
               </Button>
             </div>
-
-            <Button asChild className="gap-1.5 rounded-lg px-4 h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
-              <Link to="/expenses/create">
-                <Plus className="h-4 w-4" />
-                New Expense
-              </Link>
-            </Button>
           </div>
         </div>
 
-        {/* Filters Panel */}
-        <div className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-3">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground font-bold block">Status</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-background border-border text-foreground text-xs rounded-lg h-9">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
-                <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Pending">Pending Review</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground font-bold block">Risk Level</span>
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="bg-background border-border text-foreground text-xs rounded-lg h-9">
-                <SelectValue placeholder="Filter by risk level" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
-                <SelectItem value={ALL_RISKS}>All risk levels</SelectItem>
-                <SelectItem value="Low">Low Risk</SelectItem>
-                <SelectItem value="Medium">Medium Risk</SelectItem>
-                <SelectItem value="High">High Risk</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground font-bold block">Sort Order</span>
-            <Select value={sortMode} onValueChange={setSortMode}>
-              <SelectTrigger className="bg-background border-border text-foreground text-xs rounded-lg h-9">
-                <SelectValue placeholder="Sort" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
-                <SelectItem value={SORT_MOST_RISKY}>Highest risk first</SelectItem>
-                <SelectItem value={SORT_LEAST_RISKY}>Lowest risk first</SelectItem>
-                <SelectItem value={SORT_NEWEST}>Newest first</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* View Mode Router */}
+        {/* View Mode: Spreadsheet Grid */}
         {viewMode === "spreadsheet" ? (
-          <SpreadsheetGrid 
-            initialExpenses={filteredExpenses} 
-            onSaved={fetchExpenses} 
-            userRole={user?.role} 
-          />
+          <SpreadsheetGrid initialExpenses={expenses} onSaved={fetchExpenses} userRole={user?.role} />
         ) : (
-          /* Classic Grid Table */
-          <Card className="rounded-xl border border-border bg-card overflow-hidden">
-            <CardHeader className="border-b border-border px-6 py-4 bg-muted/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-foreground text-sm font-bold">Expense History</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground font-mono">
-                    Showing {filteredExpenses.length} records
-                  </CardDescription>
+          /* View Mode: Dense Table */
+          <div className="space-y-3">
+            {/* Filter Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-md border border-border bg-card p-2.5">
+              <div className="flex flex-1 items-center gap-2 min-w-[200px] max-w-sm">
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search merchant, category, memo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-8 text-xs bg-background"
+                  />
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {filteredExpenses.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <AlertCircle className="h-10 w-10 text-muted-foreground/50 mb-3" />
-                  <p className="text-foreground font-semibold text-sm">No expenses found</p>
-                  <p className="text-muted-foreground text-xs mb-4">No records match your selected status or risk filter.</p>
-                  <Button asChild className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 h-9 text-xs">
-                    <Link to="/expenses/create">Add New Expense</Link>
-                  </Button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Status selector */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-8 w-32 text-xs bg-background">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs">
+                    <SelectItem value={ALL_STATUSES}>All Statuses</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Risk selector */}
+                <Select value={riskFilter} onValueChange={setRiskFilter}>
+                  <SelectTrigger className="h-8 w-28 text-xs bg-background">
+                    <SelectValue placeholder="All Risks" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs">
+                    <SelectItem value={ALL_RISKS}>All Risks</SelectItem>
+                    <SelectItem value="High">High Risk</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Low">Low Risk</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Sort selector */}
+                <Select value={sortMode} onValueChange={setSortMode}>
+                  <SelectTrigger className="h-8 w-32 text-xs bg-background">
+                    <SelectValue placeholder="Sort By" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs">
+                    <SelectItem value={SORT_NEWEST}>Newest First</SelectItem>
+                    <SelectItem value={SORT_AMOUNT_DESC}>Highest Amount</SelectItem>
+                    <SelectItem value={SORT_MOST_RISKY}>Highest Risk</SelectItem>
+                    <SelectItem value={SORT_LEAST_RISKY}>Lowest Risk</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Table Container */}
+            <div className="rounded-md border border-border bg-card overflow-hidden">
+              {isLoading ? (
+                <div className="flex h-64 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredExpenses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-3">
+                    <TableProperties className="h-5 w-5" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">No transactions found</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                    {expenses.length === 0
+                      ? "Create your first company expense or upload a receipt to initiate verified spend controls."
+                      : "No transactions match the selected filter criteria. Try resetting your search filters."}
+                  </p>
+                  {expenses.length === 0 && (
+                    <Link to="/expenses/create" className="mt-4">
+                      <Button size="xs" variant="default">
+                        <Plus className="h-3 w-3 mr-1" /> Create Expense
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table className="text-xs">
-                    <TableHeader className="bg-muted/40 border-b border-border">
-                      <TableRow className="hover:bg-transparent border-b border-border">
-                        <TableHead className="text-muted-foreground h-10">Date</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Merchant</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Category</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Amount</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Status</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Risk Level</TableHead>
-                        <TableHead className="text-muted-foreground h-10">Signals</TableHead>
-                        <TableHead className="text-right text-muted-foreground h-10">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredExpenses.map((expense) => (
-                        <TableRow key={expense.id} className="hover:bg-muted/20 border-b border-border transition-colors">
-                          <TableCell className="font-mono text-foreground">
-                            {formatDate(expense.date)}
-                          </TableCell>
-                          <TableCell className="text-foreground font-semibold">{expense.merchant}</TableCell>
-                          <TableCell className="text-muted-foreground">{expense.category}</TableCell>
-                          <TableCell className="font-semibold text-foreground font-mono">
-                            {formatCurrency(expense.amount, expense.currency)}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(expense.status)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {expense.riskAssessment && (
-                                <>
-                                  {getRiskBadge(expense.riskAssessment.riskLevel)}
-                                  <span className="text-xs text-muted-foreground font-mono">
-                                    {expense.riskAssessment.riskScore}%
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[240px] text-xs text-muted-foreground truncate">
-                            {expense.riskAssessment?.riskReasons?.[0] || "Complies with policy rules"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-1.5 justify-end">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-28">Date</TableHead>
+                      <TableHead>Merchant / Vendor</TableHead>
+                      <TableHead className="w-32">Category</TableHead>
+                      <TableHead className="w-36">Risk Level</TableHead>
+                      <TableHead className="w-28">Status</TableHead>
+                      <TableHead className="text-right w-32">Amount</TableHead>
+                      <TableHead className="text-right w-20">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExpenses.map((expense) => (
+                      <TableRow key={expense.id} className="group">
+                        <TableCell className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                          {formatDate(expense.date || expense.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            to={`/expenses/${expense.id}`}
+                            className="font-semibold text-foreground hover:underline flex items-center gap-2"
+                          >
+                            <span className="truncate max-w-[200px] sm:max-w-xs">
+                              {expense.merchant}
+                            </span>
+                            {expense.receiptUrl && (
+                              <span className="text-[9px] font-mono uppercase px-1 rounded bg-muted text-muted-foreground">
+                                OCR
+                              </span>
+                            )}
+                          </Link>
+                          {expense.description && (
+                            <p className="text-[11px] text-muted-foreground truncate max-w-sm mt-0.5">
+                              {expense.description}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-block px-2 py-0.5 rounded bg-muted/60 text-[10px] font-medium text-foreground">
+                            {expense.category}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {getRiskBadge(
+                            expense.riskAssessment?.riskLevel,
+                            expense.riskAssessment?.riskScore
+                          )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(expense.status)}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-foreground tabular-nums whitespace-nowrap">
+                          {formatCurrency(expense.amount, expense.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Link to={`/expenses/${expense.id}`}>
                               <Button
-                                asChild
+                                size="icon-sm"
                                 variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground"
                                 title="View Details"
                               >
-                                <Link to={`/expenses/${expense.id}`}>
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Link>
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
-                              {expense.status === "Draft" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(expense.id)}
-                                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md"
-                                  title="Delete Draft"
-                                >
+                            </Link>
+                            {expense.status === "Draft" && (
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                onClick={(e) => handleDelete(expense.id, e)}
+                                disabled={deletingId === expense.id}
+                                title="Delete Draft"
+                              >
+                                {deletingId === expense.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
                                   <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </DashboardLayout>

@@ -17,6 +17,9 @@ import {
   Users,
   ShieldCheck,
   FlaskConical,
+  Building2,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,150 +42,258 @@ export const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ child
   const isOwner = user?.role === "Owner";
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "VS";
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/dashboard") return location.pathname === "/dashboard";
+    return location.pathname.startsWith(path);
+  };
 
-  const navItems = [
-    { href: "/dashboard", icon: BarChart3, label: "Dashboard" },
-    { href: "/expenses", icon: FileText, label: "Expenses" },
-    { href: "/expenses/create", icon: Plus, label: "New Expense" },
-    { href: "/upload", icon: Upload, label: "Upload Receipt" },
+  const navGroups = [
+    {
+      group: "Core Spend",
+      items: [
+        { href: "/dashboard", icon: BarChart3, label: "Overview" },
+        { href: "/expenses", icon: FileText, label: "Expenses" },
+        { href: "/expenses/create", icon: Plus, label: "New Expense" },
+        { href: "/upload", icon: Upload, label: "Upload Receipt" },
+      ],
+    },
     ...(isManager
       ? [
-          { href: "/manager/pending", icon: CheckCircle, label: "Pending Reviews" },
-          { href: "/manager/insights", icon: Activity, label: "Audit Insights" },
-          { href: "/analytics", icon: BarChart3, label: "Advanced Analytics" },
+          {
+            group: "Management & Reviews",
+            items: [
+              { href: "/manager/pending", icon: CheckCircle, label: "Approval Queue" },
+              { href: "/manager/insights", icon: Activity, label: "Spend Insights" },
+              { href: "/analytics", icon: BarChart3, label: "Advanced Analytics" },
+            ],
+          },
         ]
       : []),
     ...(isOwner
       ? [
-          { href: "/admin/users", icon: Users, label: "User Management" },
-          { href: "/compliance", icon: ShieldCheck, label: "Compliance Hub" },
-          { href: "/policy-lab", icon: FlaskConical, label: "Policy Lab" },
+          {
+            group: "Governance & Security",
+            items: [
+              { href: "/admin/users", icon: Users, label: "Team Members" },
+              { href: "/compliance", icon: ShieldCheck, label: "Compliance & SOX" },
+              { href: "/policy-lab", icon: FlaskConical, label: "Policy Simulation" },
+            ],
+          },
         ]
       : []),
   ];
 
   return (
-    <div className="flex min-h-screen bg-muted/20">
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Layout */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-background transition-transform md:relative md:translate-x-0 z-10 flex flex-col justify-between",
+          "fixed inset-y-0 left-0 z-50 w-60 border-r border-border bg-card transition-transform md:relative md:translate-x-0 flex flex-col justify-between select-none",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div>
-          {/* Friendly Logo */}
-          <div className="flex h-16 items-center justify-between border-b border-border px-5">
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo.png" alt="" className="h-9 w-9 object-contain" />
-              <div>
-                <span className="block font-bold tracking-tight text-sm">VeriSpend</span>
-                <span className="block text-[9px] tracking-[0.08em] text-muted-foreground">Verified spend control</span>
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Brand header */}
+          <div className="flex h-13 items-center justify-between border-b border-border px-4 py-3">
+            <Link to="/dashboard" className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded bg-primary flex items-center justify-center text-primary-foreground font-black text-xs tracking-tight">
+                V
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-bold text-xs tracking-tight text-foreground">VeriSpend</span>
+                <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mt-0.5">Enterprise</span>
               </div>
             </Link>
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               className="md:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setSidebarOpen(false)}
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Navigation links - Font Sans for elegant feel */}
-          <nav className="space-y-1 px-3 py-5">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-xs font-medium transition-colors border border-transparent",
-                  isActive(item.href)
-                    ? "bg-accent text-accent-foreground border-border font-semibold"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-border/40"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+          {/* Organization Selector / Context */}
+          <div className="p-3 border-b border-border/60 bg-muted/20">
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-md border border-border/70 bg-card text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-semibold text-foreground truncate text-xs">
+                  {user?.companyName ?? "Company Workspace"}
+                </span>
+              </div>
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-bold shrink-0">
+                {user?.role ?? "Member"}
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4 custom-scrollbar">
+            {navGroups.map((group) => (
+              <div key={group.group} className="space-y-1">
+                <p className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  {group.group}
+                </p>
+                <div className="space-y-0.5 mt-1">
+                  {group.items.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "group flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                          active
+                            ? "bg-primary text-primary-foreground font-semibold shadow-none"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <item.icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        {active && (
+                          <div className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--accent-signal))] shrink-0" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </nav>
-        </div>
 
-        {/* Workspace Display Card */}
-        <div className="mx-3 rounded-2xl border border-border bg-secondary/40 p-4 text-xs mb-4">
-          <p className="text-[9px] uppercase tracking-[0.24em] text-muted-foreground font-bold">Workspace</p>
-          <p className="mt-1 font-bold text-foreground truncate">{user?.companyName ?? "VeriSpend workspace"}</p>
-          <p className="mt-1.5 text-[10px] text-muted-foreground uppercase">
-            Role: <span className="text-primary font-bold">{user?.role ?? "Member"}</span>
-          </p>
+          {/* Footer Settings & Account */}
+          <div className="p-2 border-t border-border space-y-1 bg-card">
+            <Link
+              to="/settings"
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                isActive("/settings")
+                  ? "bg-secondary text-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              )}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              <span>Workspace Settings</span>
+            </Link>
+            {isOwner && (
+              <Link
+                to="/subscription"
+                className={cn(
+                  "flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  isActive("/subscription")
+                    ? "bg-secondary text-foreground font-semibold"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CreditCard className="h-3.5 w-3.5" />
+                  <span>Plan & Billing</span>
+                </div>
+                <span className="text-[9px] font-mono font-bold px-1 rounded bg-secondary text-foreground border border-border">
+                  PRO
+                </span>
+              </Link>
+            )}
+          </div>
         </div>
       </aside>
 
       {/* Main content area */}
-      <div className="relative z-10 flex-1 overflow-hidden flex flex-col min-h-screen">
+      <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden text-muted-foreground hover:text-foreground"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-
-          <div className="flex-1" />
-
-          {/* User profile console block */}
+        <header className="sticky top-0 z-30 flex h-13 items-center justify-between border-b border-border bg-card/90 px-4 backdrop-blur-sm md:px-6 select-none">
           <div className="flex items-center gap-3">
-            <ThemeToggle className="border border-border bg-background hover:bg-secondary rounded-md" />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="md:hidden text-muted-foreground hover:text-foreground"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+              <span>verispend</span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+              <span className="text-foreground font-sans font-medium capitalize">
+                {location.pathname.split("/")[1] || "dashboard"}
+              </span>
+            </div>
+          </div>
+
+          {/* Header Action Controls */}
+          <div className="flex items-center gap-2.5">
+            <Link to="/expenses/create">
+              <Button size="xs" variant="default" className="gap-1.5 text-[11px] font-bold">
+                <Plus className="h-3 w-3" />
+                <span className="hidden sm:inline">Add Expense</span>
+              </Button>
+            </Link>
+
+            <ThemeToggle className="h-7 w-7 rounded-md border border-border bg-card hover:bg-secondary" />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-auto rounded-md border border-border bg-background px-3 py-1.5 hover:bg-secondary">
-                  <div className="mr-2 flex h-7 w-7 items-center justify-center rounded bg-accent text-xs font-bold text-accent-foreground border border-border">
+                <button className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 hover:bg-secondary transition-colors focus:outline-none">
+                  <div className="flex h-5 w-5 items-center justify-center rounded bg-primary text-[10px] font-bold text-primary-foreground font-mono">
                     {initials}
                   </div>
-                  <div className="text-right leading-tight hidden sm:block">
-                    <p className="text-xs font-bold text-foreground">{user?.email}</p>
-                    <p className="text-[9px] uppercase text-muted-foreground tracking-wider mt-0.5">{user?.role}</p>
-                  </div>
-                </Button>
+                  <span className="text-xs font-medium text-foreground max-w-[120px] truncate hidden md:inline">
+                    {user?.email}
+                  </span>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-popover border border-border text-popover-foreground text-xs">
-                <DropdownMenuLabel className="text-muted-foreground">
+              <DropdownMenuContent align="end" className="w-56 bg-card border border-border text-xs rounded-md shadow-lg">
+                <DropdownMenuLabel className="p-3 pb-2 text-muted-foreground">
                   <div>
-                    <p className="font-bold text-foreground">{user?.email}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1 uppercase">{user?.companyName}</p>
+                    <p className="font-semibold text-foreground truncate">{user?.email}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase mt-0.5">
+                      {user?.companyName} • {user?.role}
+                    </p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="focus:bg-secondary focus:text-foreground cursor-pointer">
-                  <Link to="/settings">Settings</Link>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/settings">Organization Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/subscription">Billing & Invoices</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={logout}
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  <LogOut className="mr-2 h-3.5 w-3.5" />
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
 
+        {/* Demo banner indicator */}
         <DemoMission email={user?.email} />
 
-        {/* Page content wrapper */}
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8 animate-fade-in">{children}</div>
+        {/* Page Content Viewport */}
+        <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 custom-scrollbar">
+          <div className="mx-auto max-w-7xl animate-fade-in">{children}</div>
         </main>
       </div>
+
+      {/* Assistant Copilot */}
       <AiCopilot />
     </div>
   );

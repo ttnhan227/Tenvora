@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -24,13 +24,13 @@ const Register = () => {
     setIsLoading(true);
 
     if (!companyName || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields");
+      setError("Please fill in all required fields");
       setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
@@ -46,47 +46,45 @@ const Register = () => {
       if (success) {
         navigate("/onboarding");
       } else {
-        setError("Registration failed. Please try again.");
+        setError("Registration failed. Please verify credentials.");
       }
-    } catch (err) {
-      setError("An error occurred during registration");
+    } catch {
+      setError("An error occurred during account creation");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md space-y-6">
-        
-        {/* Logo ribbon */}
-        <div className="flex justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-xs">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-foreground">VeriSpend</span>
+            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+            <span className="text-base font-bold tracking-tight text-foreground">VeriSpend</span>
           </Link>
+          <p className="text-xs text-muted-foreground">Provision a new corporate finance workspace</p>
         </div>
 
-        <Card className="rounded-3xl border border-border bg-card/65 shadow-2xl backdrop-blur-md overflow-hidden">
-          <CardHeader className="space-y-1.5 border-b border-border bg-muted/20 px-6 py-5 text-center">
-            <CardTitle className="text-xl font-extrabold text-foreground">Create Organization</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Register your tenant account and automate spend governance
-            </CardDescription>
+        <Card>
+          <CardHeader className="border-b border-border/60 pb-3 text-center">
+            <CardTitle>Create Organization</CardTitle>
+            <CardDescription>Setup your company spend controls</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {error && (
-                <Alert variant="destructive" className="rounded-xl">
+                <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="company" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Company Name</Label>
+              <div className="space-y-1">
+                <Label htmlFor="company" className="text-xs font-semibold text-muted-foreground">
+                  Company Name
+                </Label>
                 <Input
                   id="company"
                   type="text"
@@ -94,12 +92,14 @@ const Register = () => {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Admin Email Address</Label>
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground">
+                  Admin Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -107,12 +107,14 @@ const Register = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Master Password</Label>
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -120,12 +122,14 @@ const Register = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Confirm Password</Label>
+              <div className="space-y-1">
+                <Label htmlFor="confirm" className="text-xs font-semibold text-muted-foreground">
+                  Confirm Password
+                </Label>
                 <Input
                   id="confirm"
                   type="password"
@@ -133,25 +137,29 @@ const Register = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10 text-xs gap-2 mt-2"
+                size="sm"
+                variant="default"
+                className="w-full font-bold h-9 mt-1"
               >
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isLoading ? "Provisioning Directory..." : "Create Tenant Account"}
+                {isLoading && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                {isLoading ? "Provisioning Organization…" : "Create Workspace"}
               </Button>
             </form>
 
-            <div className="mt-5 text-center text-xs text-muted-foreground border-t border-border/40 pt-4">
-              Already registered your workspace?{" "}
-              <Link to="/login" className="text-primary hover:underline font-bold">
-                Sign In to Portal
-              </Link>
+            <div className="mt-4 pt-3 border-t border-border/60 text-center">
+              <p className="text-[11px] text-muted-foreground">
+                Already registered?{" "}
+                <Link to="/login" className="font-semibold text-foreground hover:underline">
+                  Sign In
+                </Link>
+              </p>
             </div>
           </CardContent>
         </Card>

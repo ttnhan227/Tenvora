@@ -4,14 +4,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold tracking-tight transition-colors border tabular-nums",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "border-border bg-secondary text-foreground",
+        secondary: "border-border/60 bg-muted text-muted-foreground",
+        signal: "border-[hsl(var(--accent-signal))] bg-[hsl(var(--accent-signal))] text-[hsl(var(--accent-signal-fg))] font-bold",
+        success: "border-emerald-600/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium",
+        warning: "border-amber-600/20 bg-amber-500/10 text-amber-800 dark:text-amber-300 font-medium",
+        destructive: "border-red-600/20 bg-red-500/10 text-red-700 dark:text-red-400 font-semibold",
+        outline: "border-border text-muted-foreground bg-transparent",
+        high: "border-red-600/25 bg-red-500/10 text-red-700 dark:text-red-400 font-bold",
+        medium: "border-amber-600/25 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium",
+        low: "border-emerald-600/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium",
       },
     },
     defaultVariants: {

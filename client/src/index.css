@@ -1,136 +1,87 @@
+@import "./styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 48 20% 97%;
-    --foreground: 75 10% 9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 75 10% 9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 75 10% 9%;
-
-    --primary: 76 52% 44%;
-    --primary-foreground: 75 15% 8%;
-
-    --secondary: 60 12% 92%;
-    --secondary-foreground: 75 10% 16%;
-
-    --muted: 48 10% 93%;
-    --muted-foreground: 60 4% 42%;
-
-    --accent: 75 42% 90%;
-    --accent-foreground: 75 18% 18%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 48 8% 84%;
-    --input: 48 8% 84%;
-    --ring: 76 52% 44%;
-
-    --radius: 0.75rem;
-
-    --sidebar-background: 48 20% 97%;
-    --sidebar-foreground: 75 10% 16%;
-    --sidebar-primary: 76 52% 44%;
-    --sidebar-primary-foreground: 75 15% 8%;
-    --sidebar-accent: 48 10% 91%;
-    --sidebar-accent-foreground: 75 10% 9%;
-    --sidebar-border: 48 8% 84%;
-    --sidebar-ring: 76 52% 44%;
-  }
-
-  .dark {
-    --background: 75 10% 6%;
-    --foreground: 54 18% 92%;
-    --card: 75 8% 9%;
-    --card-foreground: 54 18% 92%;
-    --popover: 75 8% 9%;
-    --popover-foreground: 54 18% 92%;
-    --primary: 76 61% 62%;
-    --primary-foreground: 75 15% 8%;
-    --secondary: 75 7% 13%;
-    --secondary-foreground: 72 25% 82%;
-    --muted: 75 6% 12%;
-    --muted-foreground: 60 7% 66%;
-    --accent: 75 10% 16%;
-    --accent-foreground: 72 25% 82%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 75 5% 20%;
-    --input: 75 5% 20%;
-    --ring: 76 61% 62%;
-    --sidebar-background: 75 10% 6%;
-    --sidebar-foreground: 215 20% 85%;
-    --sidebar-primary: 76 61% 62%;
-    --sidebar-primary-foreground: 75 15% 8%;
-    --sidebar-accent: 75 7% 13%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 75 5% 20%;
-    --sidebar-ring: 76 61% 62%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    letter-spacing: -0.011em;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
-  }
-  .font-mono, [data-tabular] {
-    font-feature-settings: "tnum" 1, "cv05" 1;
-  }
-  button, input, select, textarea {
-    @apply shadow-none;
-  }
-
+  
   html {
     color-scheme: light;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html.dark {
     color-scheme: dark;
   }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.011em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+
+  /* Universal tabular figures for finance precision */
+  .font-mono, 
+  .tabular-nums,
+  [data-tabular],
+  table td,
+  .metric-value,
+  .currency-amount {
+    font-feature-settings: "tnum" 1, "zero" 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  button, input, select, textarea {
+    @apply shadow-none;
+  }
 }
 
 @layer utilities {
+  /* Restrained hairline scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 9999px;
+    border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* Micro-label style for high-density finance UIs */
+  .micro-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground;
+  }
+
+  /* High-Signal Accent Badge / Pill */
+  .badge-signal {
+    background-color: hsl(var(--accent-signal));
+    color: hsl(var(--accent-signal-fg));
+    font-weight: 700;
   }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes request-progress {
-  0% { transform: translateX(-110%); }
-  55% { transform: translateX(150%); }
-  100% { transform: translateX(330%); }
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out forwards;
+  animation: fade-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, ArrowLeft, ShieldAlert } from "lucide-react";
+import { AlertCircle, Loader2, ArrowLeft, ShieldAlert, CheckCircle, Save, Send } from "lucide-react";
 
 const CATEGORIES = [
   "Travel",
@@ -71,17 +71,17 @@ const CreateExpense = () => {
     }
 
     if (!formData.merchant.trim()) {
-      setError("Merchant is required");
+      setError("Merchant or vendor name is required");
       return false;
     }
 
     if (!formData.category) {
-      setError("Category is required");
+      setError("Please select a spend category");
       return false;
     }
 
     if (!formData.date) {
-      setError("Date is required");
+      setError("Transaction date is required");
       return false;
     }
 
@@ -93,17 +93,17 @@ const CreateExpense = () => {
     const signals: string[] = [];
 
     if (amount >= 2_000_000 && formData.currency === "VND") {
-      signals.push("VND amount exceeds 2,000,000. Will require manager signature.");
+      signals.push("Amount exceeds 2,000,000 VND — requires manager sign-off.");
     } else if (amount >= 100 && formData.currency === "USD") {
-      signals.push("USD amount exceeds $100. Will require manager signature.");
+      signals.push("Amount exceeds $100.00 USD — will require manager approval.");
     }
 
     if (formData.category.toLowerCase().includes("alcohol")) {
-      signals.push("Restricted category (Alcohol) triggers strict policy compliance check.");
+      signals.push("Restricted category (Alcohol) triggers compliance review flag.");
     }
 
     if (!formData.description.trim()) {
-      signals.push("Please add a business purpose description to speed up review approvals.");
+      signals.push("Business memo is recommended to prevent approval delays.");
     }
 
     return signals;
@@ -112,9 +112,7 @@ const CreateExpense = () => {
   const handleSubmit = async (e: React.FormEvent, saveDraft: boolean = false) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
@@ -134,17 +132,17 @@ const CreateExpense = () => {
         if (!saveDraft) {
           const submitResult = await expenseService.submit(result.data.id);
           if (!submitResult.success) {
-            setError(`Expense created as draft, but submission failed: ${submitResult.error || "Please submit from expense details."}`);
+            setError(`Expense created as draft, but auto-submit encountered an error: ${submitResult.error || "Please submit from expense details."}`);
             setIsLoading(false);
             return;
           }
         }
         navigate(`/expenses/${result.data.id}`);
       } else {
-        setError(result.error || "Failed to create expense");
+        setError(result.error || "Failed to create expense transaction");
       }
     } catch (err) {
-      setError("An error occurred while creating the expense");
+      setError("An unexpected error occurred while creating the expense.");
     } finally {
       setIsLoading(false);
     }
@@ -152,126 +150,141 @@ const CreateExpense = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-4xl font-sans">
-        {/* Header Ribbon */}
-        <div className="flex items-center gap-4">
+      <div className="space-y-5 max-w-4xl mx-auto font-sans">
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center gap-3 border-b border-border/80 pb-3">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => navigate("/expenses")}
-            className="rounded-lg h-9 w-9 border-border text-muted-foreground hover:text-foreground"
+            title="Back to Expenses"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">New Expense</h1>
-            <p className="text-xs text-muted-foreground">Enter transaction details to save a draft or submit for manager review.</p>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">New Expense</h1>
+            <p className="text-xs text-muted-foreground">
+              Create a manual spend entry to save as draft or route to approval.
+            </p>
           </div>
         </div>
 
-        {/* Side-by-side Guides */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="rounded-xl border border-border bg-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Spend Policy Rules</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
-              <p>• Claims over workspace threshold ($100 / 2M VND) require manager approval.</p>
-              <p>• Alcohol and restricted categories trigger compliance review flags.</p>
-              <p>• Clear business justification notes help expedite review decisions.</p>
-            </CardContent>
-          </Card>
+        {/* Policy Guidance Strip */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-md border border-border bg-card p-3.5 space-y-1">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+              Spend Policy Rules
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• Claims over $100 / 2M VND require manager signature</li>
+              <li>• Category limits apply based on department budgets</li>
+            </ul>
+          </div>
 
-          <Card className="rounded-xl border border-border bg-card">
-            <CardHeader className="pb-2 flex flex-row items-center gap-2 space-y-0">
-              <ShieldAlert className="h-4 w-4 text-primary" />
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Policy Guidance</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1.5 text-xs">
-              {previewSignals.length === 0 ? (
-                <p className="text-emerald-600 dark:text-emerald-400 font-medium">All entered details comply with standard policy rules.</p>
-              ) : (
-                previewSignals.map((signal, idx) => (
-                  <p key={idx} className="text-muted-foreground font-medium">• {signal}</p>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-md border border-border bg-card p-3.5 space-y-1">
+            <div className="flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 text-foreground" />
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                Live Pre-flight Check
+              </p>
+            </div>
+            {previewSignals.length === 0 ? (
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                All details clear standard internal controls.
+              </p>
+            ) : (
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                {previewSignals.map((s, i) => (
+                  <li key={i} className="text-amber-800 dark:text-amber-300">• {s}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
-        {/* Main Form */}
-        <Card className="rounded-xl border border-border bg-card">
-          <CardHeader className="border-b border-border px-6 py-4">
-            <CardTitle className="text-sm font-bold">Transaction Details</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">Required fields are marked with an asterisk (*)</CardDescription>
+        {/* Transaction Form Card */}
+        <Card>
+          <CardHeader className="border-b border-border/60 pb-3">
+            <CardTitle>Expense Information</CardTitle>
+            <CardDescription>All fields marked with an asterisk (*) are required</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+          <CardContent className="pt-4">
+            <form className="space-y-4">
               {error && (
-                <Alert variant="destructive" className="rounded-xl">
+                <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="amount" className="text-xs font-semibold text-muted-foreground uppercase">Amount *</Label>
+              {/* Amount & Currency */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <Label htmlFor="amount" className="text-xs font-semibold text-muted-foreground">
+                    Amount *
+                  </Label>
                   <Input
                     id="amount"
                     type="number"
-                    placeholder="0.00"
                     step="0.01"
+                    placeholder="0.00"
                     name="amount"
                     value={formData.amount}
                     onChange={handleChange}
                     disabled={isLoading}
-                    className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono"
+                    className="font-mono text-sm font-bold"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="currency" className="text-xs font-semibold text-muted-foreground uppercase">Currency *</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="currency" className="text-xs font-semibold text-muted-foreground">
+                    Currency *
+                  </Label>
                   <Select
                     value={formData.currency}
-                    onValueChange={(value) => handleSelectChange("currency", value)}
+                    onValueChange={(val) => handleSelectChange("currency", val)}
                   >
-                    <SelectTrigger disabled={isLoading} className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono">
+                    <SelectTrigger className="font-mono text-xs">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-popover border border-border text-xs text-popover-foreground font-mono">
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="VND">VND</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectContent className="font-mono text-xs">
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="VND">VND (₫)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="merchant" className="text-xs font-semibold text-muted-foreground uppercase">Merchant / Vendor *</Label>
-                <Input
-                  id="merchant"
-                  placeholder="e.g., Starbucks, Uber, Hotel ABC"
-                  name="merchant"
-                  value={formData.merchant}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
-                />
-              </div>
+              {/* Merchant & Category */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="merchant" className="text-xs font-semibold text-muted-foreground">
+                    Merchant / Vendor *
+                  </Label>
+                  <Input
+                    id="merchant"
+                    type="text"
+                    placeholder="e.g. AWS, Delta Airlines, Uber, Figma"
+                    name="merchant"
+                    value={formData.merchant}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="category" className="text-xs font-semibold text-muted-foreground uppercase">Category *</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="category" className="text-xs font-semibold text-muted-foreground">
+                    Category *
+                  </Label>
                   <Select
                     value={formData.category}
-                    onValueChange={(value) => handleSelectChange("category", value)}
+                    onValueChange={(val) => handleSelectChange("category", val)}
                   >
-                    <SelectTrigger disabled={isLoading} className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10">
-                      <SelectValue placeholder="Select a category" />
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Select Category" />
                     </SelectTrigger>
-                    <SelectContent className="bg-popover border border-border text-xs text-popover-foreground">
+                    <SelectContent className="text-xs">
                       {CATEGORIES.map((cat) => (
                         <SelectItem key={cat} value={cat}>
                           {cat}
@@ -280,62 +293,68 @@ const CreateExpense = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="date" className="text-xs font-semibold text-muted-foreground uppercase">Transaction Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10 font-mono"
-                  />
-                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-xs font-semibold text-muted-foreground uppercase">Business Purpose / Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Explain why this expense was made (e.g. lunch with client, software renewal)"
-                  name="description"
-                  value={formData.description}
+              {/* Date */}
+              <div className="space-y-1">
+                <Label htmlFor="date" className="text-xs font-semibold text-muted-foreground">
+                  Transaction Date *
+                </Label>
+                <Input
+                  id="date"
+                  type="date"
+                  name="date"
+                  value={formData.date}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 min-h-[100px]"
-                  rows={4}
+                  className="font-mono text-xs"
                 />
               </div>
 
-              {/* Action Control Buttons */}
-              <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
-                <Button
-                  type="submit"
+              {/* Description */}
+              <div className="space-y-1">
+                <Label htmlFor="description" className="text-xs font-semibold text-muted-foreground">
+                  Business Memo & Purpose (Optional)
+                </Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  placeholder="Provide context on project, client meeting, or business justification..."
+                  value={formData.description}
+                  onChange={handleChange}
                   disabled={isLoading}
-                  className="gap-2 rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md"
-                >
-                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Submit Expense
-                </Button>
+                  rows={3}
+                  className="text-xs resize-none"
+                />
+              </div>
+
+              {/* Form Action Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-3 border-t border-border/40">
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={isLoading}
+                  size="xs"
                   onClick={(e) => handleSubmit(e, true)}
-                  className="gap-2 rounded-full px-6 border-border hover:bg-muted text-foreground font-medium"
+                  disabled={isLoading}
+                  className="w-full sm:w-auto font-medium"
                 >
+                  <Save className="h-3 w-3 mr-1" />
                   Save as Draft
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="signal"
+                  size="xs"
+                  onClick={(e) => handleSubmit(e, false)}
                   disabled={isLoading}
-                  onClick={() => navigate("/expenses")}
-                  className="rounded-full px-6 text-muted-foreground hover:text-foreground font-medium"
+                  className="w-full sm:w-auto font-bold"
                 >
-                  Cancel
+                  {isLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Send className="h-3 w-3 mr-1" />
+                  )}
+                  {isLoading ? "Submitting..." : "Submit for Approval"}
                 </Button>
               </div>
             </form>

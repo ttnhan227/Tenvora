@@ -5,7 +5,10 @@ import {
   Trash2, 
   Info,
   Download,
-  Upload
+  Upload,
+  Plus,
+  Check,
+  FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +58,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     setExpenses(initialExpenses);
   }, [initialExpenses]);
 
-  // Client-Side Validator to enforce strict data integrity rules
   const validateCell = (field: string, value: any): string => {
     const strVal = String(value).trim();
     if (field === "amount") {
@@ -82,7 +84,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     return "";
   };
 
-  // Handle cell navigation via Arrow Keys, Tab, and Enter
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!activeCell) return;
     
@@ -136,748 +137,345 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
         const fieldName = columns[col].toLowerCase() as keyof UnsavedChanges[string];
         if (currentExp.status === "Draft") {
           const emptyVal = fieldName === "amount" ? 0 : "";
-          
           const err = validateCell(fieldName, emptyVal);
-          setErrors(prev => {
-            const rowErrors = { ...prev[currentExp.id] };
-            if (err) rowErrors[fieldName] = err;
-            else delete rowErrors[fieldName];
-            
-            const newErrors = { ...prev };
-            if (Object.keys(rowErrors).length > 0) newErrors[currentExp.id] = rowErrors;
-            else delete newErrors[currentExp.id];
-            return newErrors;
-          });
+          
+          setErrors(prev => ({
+            ...prev,
+            [currentExp.id]: {
+              ...(prev[currentExp.id] || {}),
+              [fieldName]: err
+            }
+          }));
 
           setUnsaved(prev => ({
             ...prev,
             [currentExp.id]: {
-              ...prev[currentExp.id],
+              ...(prev[currentExp.id] || {}),
               [fieldName]: emptyVal
             }
           }));
         }
-        break;
-      default:
-        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          startEditing(e.key);
-        }
+        e.preventDefault();
         break;
     }
   };
 
-  const startEditing = (initialChar = "") => {
+  const startEditing = () => {
     if (!activeCell) return;
-    const expense = expenses[activeCell.row];
+    const { row, col } = activeCell;
+    const expense = expenses[row];
     if (expense.status !== "Draft") {
-      toast.error("Only draft expenses can be edited inline.");
+      toast.info("Only draft expenses can be modified in the ledger");
       return;
     }
 
-    const field = columns[activeCell.col].toLowerCase();
-    if (field === "risk score") {
-      toast.error("Risk score is calculated by the policy engine.");
-      return;
-    }
-
+    const fieldName = columns[col].toLowerCase();
+    const currentVal = unsaved[expense.id]?.[fieldName as keyof UnsavedChanges[string]] ?? (expense as any)[fieldName];
+    setEditValue(currentVal !== undefined ? String(currentVal) : "");
     setEditing(true);
-    const currentValue = unsaved[expense.id]?.[field as keyof UnsavedChanges[string]] ?? (expense as any)[field];
-    setEditValue(initialChar || String(currentValue));
   };
 
   const saveCellEdit = () => {
     if (!activeCell) return;
-    const expense = expenses[activeCell.row];
-    const field = columns[activeCell.col].toLowerCase();
-    let validatedValue: string | number = editValue;
-    
-    if (field === "amount") {
-      validatedValue = parseFloat(editValue) || 0;
+    const { row, col } = activeCell;
+    const expense = expenses[row];
+    const fieldName = columns[col].toLowerCase();
+
+    let parsedVal: any = editValue.trim();
+    if (fieldName === "amount") {
+      parsedVal = Number(parsedVal);
     }
 
-    const err = validateCell(field, validatedValue);
-    
+    const err = validateCell(fieldName, parsedVal);
+
     setErrors(prev => {
-      const rowErrors = { ...prev[expense.id] };
+      const currentExpErrors = { ...(prev[expense.id] || {}) };
       if (err) {
-        rowErrors[field] = err;
+        currentExpErrors[fieldName] = err;
       } else {
-        delete rowErrors[field];
+        delete currentExpErrors[fieldName];
       }
-      
-      const newErrors = { ...prev };
-      if (Object.keys(rowErrors).length > 0) {
-        newErrors[expense.id] = rowErrors;
-      } else {
-        delete newErrors[expense.id];
-      }
-      return newErrors;
+      return {
+        ...prev,
+        [expense.id]: currentExpErrors
+      };
     });
 
     setUnsaved(prev => ({
       ...prev,
       [expense.id]: {
-        ...prev[expense.id],
-        [field]: validatedValue
+        ...(prev[expense.id] || {}),
+        [fieldName]: parsedVal
       }
     }));
+
     setEditing(false);
   };
 
-  // Support direct Ctrl+V copy paste from Excel/Sheets (TSV data format)
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text");
-    if (!text) return;
-
-    const rows = text.split(/\r?\n/).filter(line => line.trim() !== "");
-    if (rows.length === 0) return;
-
-    const parsedRows = rows.map(row => row.split("\t"));
-    const toastId = toast.loading(`Parsing ${parsedRows.length} items from clipboard...`);
-
-    let importedCount = 0;
-    let failedCount = 0;
-
-    for (const data of parsedRows) {
-      try {
-        if (data.length < 3) continue;
-
-        const dateStr = data[0] || new Date().toISOString().split("T")[0];
-        const merchant = data[1] || "Excel Import";
-        
-        let category = data[2] || "Other";
-        if (!CATEGORIES.includes(category)) {
-          const matched = CATEGORIES.find(c => c.toLowerCase() === category.toLowerCase());
-          category = matched || "Other";
-        }
-
-        const amount = parseFloat(data[3].replace(/[$,VND]/g, "")) || 0;
-        
-        let currency = data[4] || "USD";
-        if (!CURRENCIES.includes(currency)) {
-          const matched = CURRENCIES.find(c => c.toLowerCase() === currency.toLowerCase());
-          currency = matched || "USD";
-        }
-
-        const description = data[5] || "Bulk imported from spreadsheet";
-
-        const result = await expenseService.create({
-          amount,
-          currency,
-          merchant,
-          category,
-          date: dateStr,
-          description
-        });
-
-        if (result.success && result.data) {
-          importedCount++;
-        } else {
-          failedCount++;
-        }
-      } catch (err) {
-        failedCount++;
-      }
-    }
-
-    toast.dismiss(toastId);
-    if (importedCount > 0) {
-      toast.success(`Imported ${importedCount} draft expenses.`);
-      onSaved();
-    }
-    if (failedCount > 0) {
-      toast.error(`Failed to import ${failedCount} rows. Please verify column formatting.`);
-    }
-  };
-
-  // Support Importing standard CSV files
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const csvText = event.target?.result as string;
-      if (!csvText) return;
-
-      const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
-      if (lines.length <= 1) {
-        toast.error("CSV file is empty or missing data rows.");
-        return;
-      }
-
-      const hasHeader = lines[0].toLowerCase().includes("date") || lines[0].toLowerCase().includes("merchant");
-      const dataLines = hasHeader ? lines.slice(1) : lines;
-
-      const toastId = toast.loading(`Importing ${dataLines.length} rows from CSV...`);
-      let importedCount = 0;
-      let failedCount = 0;
-
-      for (const line of dataLines) {
-        const data = line.split(",").map(cell => cell.replace(/^["']|["']$/g, "").trim());
-        try {
-          if (data.length < 3) continue;
-
-          const dateStr = data[0] || new Date().toISOString().split("T")[0];
-          const merchant = data[1] || "CSV Import";
-          
-          let category = data[2] || "Other";
-          if (!CATEGORIES.includes(category)) {
-            const matched = CATEGORIES.find(c => c.toLowerCase() === category.toLowerCase());
-            category = matched || "Other";
-          }
-
-          const amount = parseFloat(data[3].replace(/[$,VND]/g, "")) || 0;
-          
-          let currency = data[4] || "USD";
-          if (!CURRENCIES.includes(currency)) {
-            const matched = CURRENCIES.find(c => c.toLowerCase() === currency.toLowerCase());
-            currency = matched || "USD";
-          }
-
-          const description = data[5] || "Bulk imported from CSV";
-
-          const result = await expenseService.create({
-            amount,
-            currency,
-            merchant,
-            category,
-            date: dateStr,
-            description
-          });
-
-          if (result.success && result.data) {
-            importedCount++;
-          } else {
-            failedCount++;
-          }
-        } catch (err) {
-          failedCount++;
-        }
-      }
-
-      toast.dismiss(toastId);
-      if (importedCount > 0) {
-        toast.success(`Imported ${importedCount} draft expenses.`);
-        onSaved();
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to import ${failedCount} rows.`);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  // Support exporting current grid to CSV
-  const handleExportCSV = () => {
-    if (expenses.length === 0) {
-      toast.error("No data available to export.");
-      return;
-    }
-
-    const headers = ["Date", "Merchant", "Category", "Amount", "Currency", "Risk Score", "Status"];
-    const rows = expenses.map(e => [
-      e.date.split("T")[0],
-      `"${e.merchant.replace(/"/g, '""')}"`,
-      e.category,
-      e.amount,
-      e.currency,
-      `${e.riskAssessment?.riskScore || 0}%`,
-      e.status
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `expenses-export-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success("Spreadsheet data exported to CSV.");
-  };
-
   const handleBulkUpdate = async () => {
-    const totalErrorsCount = Object.values(errors).reduce((acc, rowErr) => acc + Object.keys(rowErr).length, 0);
-    if (totalErrorsCount > 0) {
-      toast.error(`Cannot save. Please correct the ${totalErrorsCount} validation errors.`);
-      return;
-    }
-
     setIsSubmitting(true);
-    const toastId = toast.loading("Saving changes...");
-    
     try {
-      const payload = Object.entries(unsaved).map(([id, changes]) => {
-        const original = expenses.find(e => e.id === id)!;
-        return {
-          id,
-          amount: changes.amount !== undefined ? changes.amount : original.amount,
-          currency: changes.currency !== undefined ? changes.currency : original.currency,
-          merchant: changes.merchant !== undefined ? changes.merchant : original.merchant,
-          category: changes.category !== undefined ? changes.category : original.category,
-          date: changes.date !== undefined ? changes.date : original.date,
-          description: changes.description !== undefined ? changes.description : original.description || "Updated inline",
-        };
+      const updates = Object.entries(unsaved).map(([id, payload]) => {
+        return expenseService.update(id, payload as any);
       });
 
-      const response = await expenseService.bulkUpdate(payload);
-      toast.dismiss(toastId);
-
-      if (response.success) {
-        toast.success("Spreadsheet changes saved successfully.");
-        setUnsaved({});
-        setErrors({});
-        onSaved();
-      } else {
-        toast.error(response.error || "Failed to save edits.");
-      }
-    } catch (err) {
-      toast.dismiss(toastId);
-      toast.error("An error occurred while updating.");
+      await Promise.all(updates);
+      toast.success("Ledger saved successfully");
+      setUnsaved({});
+      setErrors({});
+      onSaved();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save ledger updates");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteDraft = async (id: string) => {
-    if (confirm("Are you sure you want to delete this draft expense?")) {
-      const result = await expenseService.delete(id);
-      if (result.success) {
-        toast.success("Draft deleted");
-        
-        setUnsaved(prev => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-        setErrors(prev => {
-          const next = { ...prev };
-          delete next[id];
-          return next;
-        });
-
-        onSaved();
-      } else {
-        toast.error(result.error || "Failed to delete");
-      }
-    }
-  };
-
-  const stats = (() => {
-    const totalCount = expenses.length;
-    const drafts = expenses.filter(e => e.status === "Draft");
-    const highRisk = expenses.filter(e => e.riskAssessment?.riskLevel === "High");
-    
-    let selectedAmount = 0;
-    if (activeCell) {
-      const exp = expenses[activeCell.row];
-      const field = columns[activeCell.col].toLowerCase();
-      selectedAmount = unsaved[exp?.id]?.[field as keyof UnsavedChanges[string]] as number ?? (exp as any)?.[field];
-    }
-
-    const totalErrors = Object.values(errors).reduce((acc, rowErr) => acc + Object.keys(rowErr).length, 0);
-
-    return {
-      totalCount,
-      draftCount: drafts.length,
-      highRiskCount: highRisk.length,
-      selectedAmount,
-      totalErrors
-    };
-  })();
-
-  const formatDisplayCurrency = (amount: number, currency: string = "USD") => {
+  const formatDisplayCurrency = (val: number, cur: string = "USD") => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency,
-    }).format(amount);
+      currency: cur,
+    }).format(val);
   };
 
-  const getActiveCellErrorMessage = (): string | null => {
-    if (!activeCell) return null;
-    const exp = expenses[activeCell.row];
-    const field = columns[activeCell.col].toLowerCase();
-    return errors[exp?.id]?.[field] || null;
+  const stats = {
+    totalCount: expenses.length,
+    draftCount: expenses.filter(e => e.status === "Draft").length,
+    highRiskCount: expenses.filter(e => e.riskAssessment?.riskLevel === "High").length,
+    totalErrors: Object.values(errors).reduce((acc, errs) => acc + Object.keys(errs).length, 0),
+    selectedAmount: activeCell ? (expenses[activeCell.row]?.amount || 0) : null
   };
-
-  const activeCellErrorMessage = getActiveCellErrorMessage();
 
   return (
-    <div className="space-y-4 font-sans">
-      {/* Shortcuts Guide */}
-      <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground">
-        <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-        <div className="space-y-1">
-          <p className="font-semibold text-foreground">Spreadsheet Grid Controls</p>
-          <p>
-            • **Navigation:** Click any cell and use arrow keys <span className="font-mono bg-muted border border-border px-1 rounded">↑ ↓ ← →</span> or <span className="font-mono bg-muted border border-border px-1 rounded">Tab</span> to move.
-          </p>
-          <p>
-            • **Inline Editing:** Double-click or press <span className="font-mono bg-muted border border-border px-1 rounded">Enter</span> on any **Draft** row to edit values inline.
-          </p>
-          <p>
-            • **Bulk Import:** Paste rows directly from Excel (<span className="font-mono bg-muted border border-border px-1 rounded">Ctrl+V</span>) or use **Import CSV**.
-          </p>
+    <div className="space-y-3 font-sans">
+      {/* Action controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-card p-3 border border-border rounded-md">
+        <div className="flex items-center gap-2">
+          <FileSpreadsheet className="h-4 w-4 text-foreground" />
+          <span className="text-xs font-bold text-foreground">Rapid Ledger Fast-Entry</span>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            (Arrow keys to navigate, Enter to edit, Esc to cancel)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {Object.keys(unsaved).length > 0 && (
+            <Button
+              size="xs"
+              variant="signal"
+              onClick={handleBulkUpdate}
+              disabled={isSubmitting || stats.totalErrors > 0}
+              className="gap-1.5"
+            >
+              <Save className="h-3 w-3" />
+              Save {Object.keys(unsaved).length} Changes
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Spreadsheet container */}
-      <div 
+      {/* Spreadsheet Grid Viewport */}
+      <div
         ref={gridRef}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
         tabIndex={0}
-        className="outline-none border border-border rounded-xl overflow-hidden bg-card shadow-sm focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+        onKeyDown={handleKeyDown}
+        className="rounded-md border border-border bg-card overflow-hidden focus:outline-none focus:ring-1 focus:ring-primary/40"
       >
-        {/* Ribbon toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/20 px-4 py-2.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold tracking-wider text-[10px] uppercase text-muted-foreground">Spreadsheet Editor</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileImport} 
-              accept=".csv" 
-              className="hidden" 
-            />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => fileInputRef.current?.click()} 
-              className="h-8 rounded-lg border-border hover:bg-muted text-xs font-medium gap-1.5"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Import CSV
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleExportCSV} 
-              className="h-8 rounded-lg border-border hover:bg-muted text-xs font-medium gap-1.5"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* Formula / active cell status bar */}
-        <div className={`flex items-center gap-3 border-b border-border px-4 py-2 text-xs transition-colors ${
-          activeCellErrorMessage ? "bg-red-500/5 border-b-red-500/20" : "bg-card"
-        }`}>
-          <span className={`font-semibold select-none shrink-0 ${activeCellErrorMessage ? "text-red-500" : "text-muted-foreground"}`}>
-            {activeCellErrorMessage ? "Validation error:" : "Cell Value:"}
-          </span>
-          <input 
-            type="text" 
-            value={
-              editing 
-                ? editValue 
-                : activeCell 
-                  ? String(
-                      unsaved[expenses[activeCell.row]?.id]?.[columns[activeCell.col].toLowerCase() as keyof UnsavedChanges[string]] ?? 
-                      (expenses[activeCell.row] as any)?.[columns[activeCell.col].toLowerCase()] ?? 
-                      ""
-                    ) 
-                  : ""
-            } 
-            disabled={!editing}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="bg-transparent outline-none w-full text-xs text-foreground select-all border-none focus:ring-0 placeholder:text-muted-foreground/40 font-mono"
-            placeholder="Double-click a draft cell or press Enter to edit..."
-          />
-          {activeCellErrorMessage && (
-            <Badge variant="destructive" className="shrink-0 bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/10 font-medium text-[10px] rounded-md px-2 py-0.5">
-              {activeCellErrorMessage}
-            </Badge>
-          )}
-        </div>
-
-        {/* Spreadsheet Data Grid */}
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full border-collapse text-left">
+          <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="bg-muted/50 text-[11px] font-medium tracking-wider text-muted-foreground uppercase border-b border-border">
-                <th className="px-4 py-3 border-r border-border w-12 text-center select-none bg-muted/20">#</th>
-                {columns.map((col, idx) => (
-                  <th key={idx} className="px-4 py-3 border-r border-border text-foreground font-semibold">{col}</th>
-                ))}
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+              <tr className="bg-muted/40 border-b border-border text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                <th className="w-10 px-2 py-2 text-center border-r border-border/60">#</th>
+                <th className="w-32 px-3 py-2 text-left border-r border-border/60">Date</th>
+                <th className="px-3 py-2 text-left border-r border-border/60">Merchant</th>
+                <th className="w-36 px-3 py-2 text-left border-r border-border/60">Category</th>
+                <th className="w-28 px-3 py-2 text-right border-r border-border/60">Amount</th>
+                <th className="w-20 px-3 py-2 text-center border-r border-border/60">Currency</th>
+                <th className="w-28 px-3 py-2 text-center">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/60">
               {expenses.map((expense, rIdx) => {
                 const isDraft = expense.status === "Draft";
-                const rowUnsaved = unsaved[expense.id] !== undefined;
+                const rowUnsaved = unsaved[expense.id] || {};
+                const rowErrors = errors[expense.id] || {};
 
                 return (
-                  <tr 
-                    key={expense.id} 
-                    className={`hover:bg-muted/30 transition-colors border-b border-border ${
-                      rowUnsaved ? "bg-primary/[0.02]" : ""
-                    }`}
-                  >
-                    {/* Index count cell */}
-                    <td className="px-4 py-2 border-r border-border text-center text-xs text-muted-foreground bg-muted/10 select-none font-mono">
+                  <tr key={expense.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-2 py-1.5 text-center font-mono text-[10px] text-muted-foreground border-r border-border/60 bg-muted/10">
                       {rIdx + 1}
                     </td>
 
-                    {/* Columns mapping */}
-                    {columns.map((col, cIdx) => {
-                      const field = col.toLowerCase() as keyof UnsavedChanges[string];
-                      const isSelected = activeCell?.row === rIdx && activeCell?.col === cIdx;
-                      const cellUnsavedValue = unsaved[expense.id]?.[field];
-                      const isCellEdited = cellUnsavedValue !== undefined;
-                      const isCellInvalid = errors[expense.id]?.[field] !== undefined;
-                      const rawVal = (expense as any)[field];
-                      
-                      let displayValue = isCellEdited ? cellUnsavedValue : rawVal;
+                    {/* Date */}
+                    <td
+                      onClick={() => setActiveCell({ row: rIdx, col: 0 })}
+                      onDoubleClick={() => isDraft && startEditing()}
+                      className={`px-3 py-1.5 font-mono text-[11px] border-r border-border/60 cursor-pointer ${
+                        activeCell?.row === rIdx && activeCell?.col === 0
+                          ? "bg-secondary ring-1 ring-inset ring-foreground font-semibold"
+                          : ""
+                      } ${rowUnsaved.date ? "text-foreground font-bold" : "text-muted-foreground"}`}
+                    >
+                      {editing && activeCell?.row === rIdx && activeCell?.col === 0 ? (
+                        <input
+                          autoFocus
+                          type="date"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveCellEdit}
+                          className="w-full bg-card px-1 py-0.5 text-xs rounded border border-primary focus:outline-none"
+                        />
+                      ) : (
+                        rowUnsaved.date || expense.date || expense.createdAt.split("T")[0]
+                      )}
+                    </td>
 
-                      let cellContent = String(displayValue || "");
-                      if (col === "Amount") {
-                        const currencyField = unsaved[expense.id]?.currency || expense.currency;
-                        cellContent = formatDisplayCurrency(Number(displayValue) || 0, currencyField);
-                      } else if (col === "Date") {
-                        cellContent = new Date(String(displayValue)).toLocaleDateString("en-US");
-                      } else if (col === "Risk Score") {
-                        displayValue = expense.riskAssessment?.riskScore || 0;
-                        cellContent = `${displayValue}%`;
-                      }
-
-                      const isHighRiskCell = col === "Risk Score" && (expense.riskAssessment?.riskScore || 0) > 75;
-                      const isMediumRiskCell = col === "Risk Score" && (expense.riskAssessment?.riskScore || 0) > 30 && (expense.riskAssessment?.riskScore || 0) <= 75;
-
-                      return (
-                        <td 
-                          key={cIdx}
-                          onClick={() => { setActiveCell({ row: rIdx, col: cIdx }); setEditing(false); }}
-                          onDoubleClick={() => startEditing()}
-                          className={`px-4 py-2 border-r border-border relative text-xs select-none transition-all cursor-pointer ${
-                            isSelected 
-                              ? "ring-2 ring-primary bg-primary/[0.04] ring-offset-0 z-10" 
-                              : ""
-                          } ${
-                            isCellInvalid 
-                              ? "bg-red-500/[0.08] ring-2 ring-red-500 text-red-500 z-10 font-semibold" 
-                              : ""
-                          } ${
-                            isHighRiskCell ? "text-red-500 font-semibold" : ""
-                          } ${
-                            isMediumRiskCell ? "text-amber-500 font-medium" : ""
-                          } ${
-                            col === "Amount" || col === "Date" || col === "Risk Score" ? "font-mono" : ""
-                          }`}
-                        >
-                          {/* Unsaved cell indicator */}
-                          {isCellEdited && !isCellInvalid && (
-                            <span 
-                              className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-bl-full" 
-                              title="Unsaved change" 
-                            />
-                          )}
-
-                          {/* Validation Error Corner indicator */}
-                          {isCellInvalid && (
-                            <span 
-                              className="absolute top-0 left-0 w-2.5 h-2.5 bg-red-500 rounded-br-full" 
-                              title={errors[expense.id]?.[field]} 
-                            />
-                          )}
-
-                          {/* Editable overlays */}
-                          {editing && isSelected ? (
-                            col === "Category" ? (
-                              <select
-                                autoFocus
-                                value={String(displayValue)}
-                                onChange={(e) => { setEditValue(e.target.value); }}
-                                onBlur={saveCellEdit}
-                                className="absolute inset-0 w-full h-full px-4 py-1.5 bg-card border border-primary text-foreground outline-none text-xs font-sans"
-                              >
-                                {CATEGORIES.map((cat) => (
-                                  <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                              </select>
-                            ) : col === "Currency" ? (
-                              <select
-                                autoFocus
-                                value={String(displayValue)}
-                                onChange={(e) => { setEditValue(e.target.value); }}
-                                onBlur={saveCellEdit}
-                                className="absolute inset-0 w-full h-full px-4 py-1.5 bg-card border border-primary text-foreground outline-none text-xs font-mono"
-                              >
-                                {CURRENCIES.map((cur) => (
-                                  <option key={cur} value={cur}>{cur}</option>
-                                ))}
-                              </select>
-                            ) : col === "Date" ? (
-                              <input 
-                                type="date"
-                                autoFocus
-                                value={String(displayValue).split("T")[0]}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={saveCellEdit}
-                                className="absolute inset-0 w-full h-full px-4 py-1.5 bg-card border border-primary text-foreground outline-none text-xs font-mono"
-                              />
-                            ) : (
-                              <input 
-                                type={col === "Amount" ? "number" : "text"}
-                                autoFocus
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={saveCellEdit}
-                                className="absolute inset-0 w-full h-full px-4 py-1.5 bg-card border border-primary text-foreground outline-none text-xs font-sans"
-                              />
-                            )
-                          ) : (
-                            <span className={isDraft ? "text-foreground" : "text-muted-foreground font-medium"}>
-                              {cellContent}
+                    {/* Merchant */}
+                    <td
+                      onClick={() => setActiveCell({ row: rIdx, col: 1 })}
+                      onDoubleClick={() => isDraft && startEditing()}
+                      className={`px-3 py-1.5 border-r border-border/60 cursor-pointer ${
+                        activeCell?.row === rIdx && activeCell?.col === 1
+                          ? "bg-secondary ring-1 ring-inset ring-foreground font-semibold"
+                          : ""
+                      }`}
+                    >
+                      {editing && activeCell?.row === rIdx && activeCell?.col === 1 ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveCellEdit}
+                          className="w-full bg-card px-1 py-0.5 text-xs rounded border border-primary focus:outline-none"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground truncate">
+                            {rowUnsaved.merchant || expense.merchant}
+                          </span>
+                          {rowErrors.merchant && (
+                            <span title={rowErrors.merchant}>
+                              <AlertCircle className="h-3 w-3 text-destructive" />
                             </span>
                           )}
-                        </td>
-                      );
-                    })}
+                        </div>
+                      )}
+                    </td>
 
-                    {/* Status Badge */}
-                    <td className="px-4 py-2 border-r border-border text-center">
-                      <Badge 
+                    {/* Category */}
+                    <td
+                      onClick={() => setActiveCell({ row: rIdx, col: 2 })}
+                      onDoubleClick={() => isDraft && startEditing()}
+                      className={`px-3 py-1.5 border-r border-border/60 cursor-pointer ${
+                        activeCell?.row === rIdx && activeCell?.col === 2
+                          ? "bg-secondary ring-1 ring-inset ring-foreground font-semibold"
+                          : ""
+                      }`}
+                    >
+                      {editing && activeCell?.row === rIdx && activeCell?.col === 2 ? (
+                        <select
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveCellEdit}
+                          className="w-full bg-card px-1 py-0.5 text-xs rounded border border-primary focus:outline-none"
+                        >
+                          {CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="inline-block px-1.5 py-0.5 rounded bg-muted/60 text-[10px] font-medium text-foreground">
+                          {rowUnsaved.category || expense.category}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Amount */}
+                    <td
+                      onClick={() => setActiveCell({ row: rIdx, col: 3 })}
+                      onDoubleClick={() => isDraft && startEditing()}
+                      className={`px-3 py-1.5 text-right font-mono font-bold tabular-nums border-r border-border/60 cursor-pointer ${
+                        activeCell?.row === rIdx && activeCell?.col === 3
+                          ? "bg-secondary ring-1 ring-inset ring-foreground"
+                          : ""
+                      }`}
+                    >
+                      {editing && activeCell?.row === rIdx && activeCell?.col === 3 ? (
+                        <input
+                          autoFocus
+                          type="number"
+                          step="0.01"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveCellEdit}
+                          className="w-full text-right bg-card px-1 py-0.5 text-xs rounded border border-primary focus:outline-none font-mono"
+                        />
+                      ) : (
+                        formatDisplayCurrency(
+                          rowUnsaved.amount !== undefined ? rowUnsaved.amount : expense.amount,
+                          rowUnsaved.currency || expense.currency
+                        )
+                      )}
+                    </td>
+
+                    {/* Currency */}
+                    <td
+                      onClick={() => setActiveCell({ row: rIdx, col: 4 })}
+                      className="px-2 py-1.5 text-center font-mono text-[10px] text-muted-foreground border-r border-border/60"
+                    >
+                      {rowUnsaved.currency || expense.currency}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-3 py-1.5 text-center">
+                      <Badge
                         variant={
-                          expense.status === "Approved" ? "default" :
-                          expense.status === "Pending" ? "secondary" :
-                          expense.status === "Rejected" ? "destructive" : "outline"
+                          expense.status === "Approved"
+                            ? "success"
+                            : expense.status === "Pending"
+                            ? "warning"
+                            : expense.status === "Rejected"
+                            ? "destructive"
+                            : "outline"
                         }
-                        className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                          expense.status === "Approved" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
-                          expense.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-                          expense.status === "Rejected" ? "bg-red-500/10 text-red-600 border-red-500/20" :
-                          "bg-muted text-muted-foreground border-border"
-                        }`}
                       >
                         {expense.status}
                       </Badge>
                     </td>
-
-                    {/* Actions column */}
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex gap-2 justify-end">
-                        {isDraft && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteDraft(expense.id)}
-                            className="h-7 w-7 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-md"
-                            title="Delete draft expense"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
-              {expenses.length === 0 && (
-                <tr>
-                  <td colSpan={columns.length + 3} className="text-center py-16 text-muted-foreground text-xs font-sans">
-                    <Info className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    No expenses found. Paste rows from Excel to populate drafts.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
 
-        {/* Status bottom bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <span>Expenses:</span>
-              <span className="text-foreground font-semibold font-mono">{stats.totalCount}</span>
+        {/* Ledger Bottom Stats Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 text-[11px]">
+            <span>
+              Total: <strong className="font-mono text-foreground">{stats.totalCount}</strong>
             </span>
-            <span className="text-border">|</span>
-            <span className="flex items-center gap-1.5">
-              <span>Drafts:</span>
-              <span className="text-foreground font-semibold font-mono">{stats.draftCount}</span>
+            <span>•</span>
+            <span>
+              Drafts: <strong className="font-mono text-foreground">{stats.draftCount}</strong>
             </span>
-            <span className="text-border">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-red-500">High Risk:</span>
-              <span className="text-red-500 font-semibold font-mono">{stats.highRiskCount}</span>
+            <span>•</span>
+            <span>
+              High Risk: <strong className="font-mono text-red-600">{stats.highRiskCount}</strong>
             </span>
-            {stats.totalErrors > 0 && (
-              <>
-                <span className="text-border">|</span>
-                <span className="flex items-center gap-1.5 text-red-500 font-semibold">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>Validation Errors:</span>
-                  <span className="font-bold font-mono">{stats.totalErrors}</span>
-                </span>
-              </>
-            )}
           </div>
 
           {activeCell && (
-            <div className="flex items-center gap-2">
-              <span>Selected:</span>
-              <span className="text-primary font-semibold font-mono">
-                {columns[activeCell.col] === "Amount" && typeof stats.selectedAmount === "number"
-                  ? formatDisplayCurrency(stats.selectedAmount)
-                  : String(stats.selectedAmount || "")}
-              </span>
+            <div className="text-[11px] font-mono text-muted-foreground">
+              Row {activeCell.row + 1}, Col: {columns[activeCell.col]}
             </div>
           )}
         </div>
       </div>
-
-      {/* Floating Save Panel */}
-      {Object.keys(unsaved).length > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3 bg-popover border border-border shadow-lg rounded-xl">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            <p className="text-xs font-semibold text-popover-foreground">
-              <span className="text-primary font-mono">{Object.keys(unsaved).length}</span> unsaved change(s)
-              {stats.totalErrors > 0 && (
-                <span className="text-red-500 font-semibold ml-1">
-                  ({stats.totalErrors} error(s))
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => { setUnsaved({}); setErrors({}); }} 
-              className="text-muted-foreground hover:text-foreground text-xs rounded-lg px-3 h-8"
-              disabled={isSubmitting}
-            >
-              Discard
-            </Button>
-            <Button 
-              size="sm" 
-              disabled={isSubmitting || stats.totalErrors > 0}
-              className={`gap-1.5 rounded-lg text-xs font-semibold px-4 h-8 shadow-sm ${
-                stats.totalErrors > 0 
-                  ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
-              }`} 
-              onClick={handleBulkUpdate}
-            >
-              <Save className="h-3.5 w-3.5" />
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

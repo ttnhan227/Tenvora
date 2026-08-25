@@ -4,45 +4,47 @@ const steps = [
   {
     icon: Upload,
     step: "01",
-    title: "Connect Your Data",
-    description: "Integrate with your existing expense tools, credit cards, and accounting software in minutes.",
+    title: "Ingest Receipts & Data",
+    description: "Drag and drop receipts or enter transactions directly in the fast-entry ledger.",
   },
   {
     icon: Cpu,
     step: "02",
-    title: "AI Analyzes Everything",
-    description: "Our AI engine scans every transaction, receipt, and report for anomalies, duplicates, and policy violations.",
+    title: "Automated Policy Evaluation",
+    description: "The risk engine evaluates transactions against corporate budgets and fraud heuristics in real-time.",
   },
   {
     icon: CheckCircle,
     step: "03",
-    title: "Review & Act",
-    description: "Get a prioritized list of flagged expenses with recommended actions. Approve or escalate in one click.",
+    title: "Review, Approve & Sync",
+    description: "Managers review prioritized queues with clear signal tags and sync approved claims to QuickBooks or Xero.",
   },
 ];
 
 const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="relative bg-muted/45 py-24 dark:bg-muted/20">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,hsl(var(--background)/0.15),transparent_28%,transparent_72%,hsl(var(--background)/0.12))]" />
-      <div className="container mx-auto px-4">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            How it <span className="text-gradient">works</span>
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Get up and running in three simple steps.
+    <section id="how-it-works" className="border-t border-border bg-muted/10 py-16 font-sans text-xs">
+      <div className="container mx-auto px-4 max-w-5xl space-y-10">
+        <div className="text-center space-y-2 max-w-lg mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Simple Onboarding
           </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Operational in three steps
+          </h2>
         </div>
-        <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-3">
-          {steps.map((s, i) => (
-            <div key={s.step} className="relative rounded-[1.8rem] border border-border/60 bg-card/80 p-8 text-center shadow-sm backdrop-blur" style={{ animation: `fade-in-up 0.6s ease-out ${i * 0.15}s forwards`, opacity: 0 }}>
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[0_18px_42px_-22px_hsl(var(--primary))]">
-                <s.icon className="h-7 w-7" />
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {steps.map((s) => (
+            <div key={s.step} className="rounded-md border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex h-8 w-8 items-center justify-center rounded border border-border bg-muted/30 text-foreground">
+                  <s.icon className="h-4 w-4" />
+                </div>
+                <span className="font-mono text-xs font-bold text-muted-foreground">{s.step}</span>
               </div>
-              <div className="mb-2 text-sm font-bold text-primary">{s.step}</div>
-              <h3 className="mb-2 text-xl font-semibold text-foreground">{s.title}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">{s.description}</p>
+              <p className="font-bold text-sm text-foreground">{s.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{s.description}</p>
             </div>
           ))}
         </div>

@@ -8,10 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Check, ChevronRight, Loader2, ReceiptText, ShieldCheck, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Building2,
+  Check,
+  ChevronRight,
+  Loader2,
+  ReceiptText,
+  ShieldCheck,
+  Users,
+  AlertCircle,
+} from "lucide-react";
 
-const steps = ["Company policy", "Budgets & automation", "Team & first expense"];
+const steps = ["Company Policy", "Category Budgets & Automation", "Finance Reviewer Setup"];
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -19,50 +29,264 @@ const Onboarding = () => {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [policy, setPolicy] = useState({ maxSpendLimit: "1000", policyNotes: "Receipts are required for reimbursable expenses." });
-  const [budgets, setBudgets] = useState({ Travel: "5000", Meals: "2000", Software: "3000", Equipment: "5000" });
+  const [policy, setPolicy] = useState({
+    maxSpendLimit: "1000",
+    policyNotes: "Itemized receipts are required for all reimbursable business expenses.",
+  });
+  const [budgets, setBudgets] = useState({
+    Travel: "5000",
+    Meals: "2000",
+    Software: "3000",
+    Equipment: "5000",
+  });
   const [automation, setAutomation] = useState(true);
   const [managerEmail, setManagerEmail] = useState("");
 
   const next = async () => {
-    setSaving(true); setError("");
+    setSaving(true);
+    setError("");
     try {
       if (step === 0) {
-        const response = await settingsService.updatePolicy({ maxSpendLimit: Number(policy.maxSpendLimit), policyNotes: policy.policyNotes });
+        const response = await settingsService.updatePolicy({
+          maxSpendLimit: Number(policy.maxSpendLimit),
+          policyNotes: policy.policyNotes,
+        });
         if (!response.success) throw new Error(response.error);
       }
       if (step === 1) {
-        const budgetResponse = await settingsService.updateCategoryBudgets(Object.fromEntries(Object.entries(budgets).map(([key, value]) => [key, Number(value)])));
+        const budgetResponse = await settingsService.updateCategoryBudgets(
+          Object.fromEntries(
+            Object.entries(budgets).map(([key, value]) => [key, Number(value)])
+          )
+        );
         if (!budgetResponse.success) throw new Error(budgetResponse.error);
-        const rulesResponse = await settingsService.updateAutoApprovalRules({ enabled: automation, maxAmount: 100, maxRiskScore: 20, excludeWeekends: true, excludedCategories: ["Entertainment", "Equipment"], minAgeHours: 12 });
+
+        const rulesResponse = await settingsService.updateAutoApprovalRules({
+          enabled: automation,
+          maxAmount: 100,
+          maxRiskScore: 20,
+          excludeWeekends: true,
+          excludedCategories: ["Entertainment", "Equipment"],
+          minAgeHours: 12,
+        });
         if (!rulesResponse.success) throw new Error(rulesResponse.error);
       }
       if (step === 2) {
         if (managerEmail.trim()) {
-          const inviteResponse = await adminUserService.inviteUser({ email: managerEmail.trim(), role: "Manager" });
+          const inviteResponse = await adminUserService.inviteUser({
+            email: managerEmail.trim(),
+            role: "Manager",
+          });
           if (!inviteResponse.success) throw new Error(inviteResponse.error);
         }
         localStorage.setItem(`verispend-onboarding-${user?.tenantId}`, "complete");
-        navigate("/upload"); return;
+        navigate("/upload");
+        return;
       }
-      setStep(current => current + 1);
+      setStep((current) => current + 1);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : "Setup could not be saved.");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  return <div className="min-h-screen bg-background px-4 py-10">
-    <div className="mx-auto max-w-4xl">
-      <div className="mb-8 flex items-center justify-between"><div className="flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><ShieldCheck className="h-6 w-6"/></div><div><p className="font-bold">VeriSpend</p><p className="text-xs text-muted-foreground">Organization setup</p></div></div><span className="text-xs text-muted-foreground">{user?.companyName}</span></div>
-      <div className="mb-8 grid gap-2 md:grid-cols-3">{steps.map((label, index) => <div key={label} className={`flex items-center gap-3 rounded-xl border p-3 text-xs font-semibold ${index === step ? "border-primary bg-primary/5 text-primary" : index < step ? "border-primary/20 text-foreground" : "border-border text-muted-foreground"}`}><span className={`flex h-6 w-6 items-center justify-center rounded-full ${index <= step ? "bg-primary text-primary-foreground" : "bg-muted"}`}>{index < step ? <Check className="h-3.5 w-3.5"/> : index + 1}</span>{label}</div>)}</div>
-      <Card className="rounded-3xl shadow-xl"><CardContent className="p-7 md:p-10">
-        {step === 0 && <div className="space-y-6"><div><Building2 className="mb-4 h-7 w-7 text-primary"/><h1 className="text-2xl font-bold">Define your company controls</h1><p className="mt-2 text-sm text-muted-foreground">These rules become the baseline for risk scoring and manager review.</p></div><div className="space-y-2"><Label>Expense review threshold (USD)</Label><Input type="number" value={policy.maxSpendLimit} onChange={e => setPolicy({...policy,maxSpendLimit:e.target.value})}/></div><div className="space-y-2"><Label>Expense policy</Label><Textarea rows={5} value={policy.policyNotes} onChange={e => setPolicy({...policy,policyNotes:e.target.value})} placeholder="Describe receipt, travel, meal, and approval requirements..."/></div></div>}
-        {step === 1 && <div className="space-y-6"><div><ShieldCheck className="mb-4 h-7 w-7 text-primary"/><h1 className="text-2xl font-bold">Set budgets and safe automation</h1><p className="mt-2 text-sm text-muted-foreground">Start with your real operating limits. You can change them later.</p></div><div className="grid gap-4 sm:grid-cols-2">{Object.entries(budgets).map(([category,value]) => <div key={category} className="space-y-2"><Label>{category} budget</Label><Input type="number" value={value} onChange={e => setBudgets({...budgets,[category]:e.target.value})}/></div>)}</div><div className="flex items-center justify-between rounded-2xl border border-border p-4"><div><p className="text-sm font-semibold">Low-risk auto-approval</p><p className="mt-1 text-xs text-muted-foreground">Automatically approve claims under $100 with a risk score below 20.</p></div><Switch checked={automation} onCheckedChange={setAutomation}/></div></div>}
-        {step === 2 && <div className="space-y-6"><div><Users className="mb-4 h-7 w-7 text-primary"/><h1 className="text-2xl font-bold">Invite finance and add real data</h1><p className="mt-2 text-sm text-muted-foreground">Optionally invite a manager, then upload your first receipt to activate the workspace.</p></div><div className="space-y-2"><Label>Finance manager email (optional)</Label><Input type="email" value={managerEmail} onChange={e => setManagerEmail(e.target.value)} placeholder="finance@company.com"/></div><div className="rounded-2xl border border-primary/20 bg-primary/5 p-5"><ReceiptText className="mb-3 h-6 w-6 text-primary"/><p className="font-semibold">Next: upload your first company receipt</p><p className="mt-1 text-xs text-muted-foreground">VeriSpend will extract its fields, assess risk, and create the first real audit event.</p></div></div>}
-        {error && <p className="mt-5 rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{error}</p>}
-        <div className="mt-8 flex items-center justify-between"><Button variant="ghost" disabled={step === 0 || saving} onClick={() => setStep(step - 1)}>Back</Button><Button onClick={next} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}{step === 2 ? "Continue to receipt upload" : "Save and continue"}<ChevronRight className="ml-2 h-4 w-4"/></Button></div>
-      </CardContent></Card>
+  return (
+    <div className="min-h-screen bg-background px-4 py-8 font-sans text-xs">
+      <div className="mx-auto max-w-2xl space-y-6">
+        {/* Workspace Brand Bar */}
+        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="" className="h-6 w-6 object-contain" />
+            <span className="font-bold text-sm text-foreground">VeriSpend Setup</span>
+          </div>
+          <span className="font-mono text-xs text-muted-foreground font-semibold">
+            {user?.companyName}
+          </span>
+        </div>
+
+        {/* Step Progress Pills */}
+        <div className="grid gap-2 sm:grid-cols-3">
+          {steps.map((label, index) => (
+            <div
+              key={label}
+              className={`flex items-center gap-2 rounded-md border p-2.5 text-xs font-semibold ${
+                index === step
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : index < step
+                  ? "border-border bg-card text-foreground"
+                  : "border-border/60 bg-muted/20 text-muted-foreground"
+              }`}
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-mono ${
+                  index < step
+                    ? "bg-emerald-600 text-white"
+                    : index === step
+                    ? "bg-primary text-primary-foreground font-bold"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {index < step ? <Check className="h-3 w-3" /> : index + 1}
+              </span>
+              <span className="truncate">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Wizard Card */}
+        <Card>
+          <CardHeader className="border-b border-border/60 pb-3">
+            {step === 0 && (
+              <>
+                <CardTitle>Define Corporate Spend Policy</CardTitle>
+                <CardDescription>
+                  Set the threshold that triggers mandatory manager review
+                </CardDescription>
+              </>
+            )}
+            {step === 1 && (
+              <>
+                <CardTitle>Category Budgets & Automation</CardTitle>
+                <CardDescription>
+                  Establish monthly caps and configure auto-approval safety rules
+                </CardDescription>
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <CardTitle>Finance Manager & Ingestion</CardTitle>
+                <CardDescription>
+                  Invite your reviewer and test the first OCR extraction
+                </CardDescription>
+              </>
+            )}
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {step === 0 && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="spendLimit" className="text-xs font-semibold text-muted-foreground">
+                    Expense Review Threshold ($)
+                  </Label>
+                  <Input
+                    id="spendLimit"
+                    type="number"
+                    value={policy.maxSpendLimit}
+                    onChange={(e) => setPolicy({ ...policy, maxSpendLimit: e.target.value })}
+                    className="font-mono text-xs max-w-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Transactions exceeding this value require explicit approval before payment.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="policyNotes" className="text-xs font-semibold text-muted-foreground">
+                    Expense Guidelines & Rules
+                  </Label>
+                  <Textarea
+                    id="policyNotes"
+                    rows={4}
+                    value={policy.policyNotes}
+                    onChange={(e) => setPolicy({ ...policy, policyNotes: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {Object.entries(budgets).map(([category, value]) => (
+                    <div key={category} className="space-y-1">
+                      <Label className="text-xs font-semibold text-muted-foreground">
+                        {category} Budget ($/mo)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={value}
+                        onChange={(e) => setBudgets({ ...budgets, [category]: e.target.value })}
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-md bg-muted/20 border border-border">
+                  <div>
+                    <p className="font-semibold text-foreground">Safe Auto-Approval Engine</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Auto-approve low-risk expenses under $100 with zero policy flags
+                    </p>
+                  </div>
+                  <Switch checked={automation} onCheckedChange={setAutomation} />
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label htmlFor="mgrEmail" className="text-xs font-semibold text-muted-foreground">
+                    Finance Manager Email (Optional)
+                  </Label>
+                  <Input
+                    id="mgrEmail"
+                    type="email"
+                    value={managerEmail}
+                    onChange={(e) => setManagerEmail(e.target.value)}
+                    placeholder="finance@company.com"
+                    className="font-mono text-xs"
+                  />
+                </div>
+
+                <div className="rounded-md border border-border bg-muted/10 p-3 text-xs space-y-1">
+                  <p className="font-semibold text-foreground flex items-center gap-1.5">
+                    <ReceiptText className="h-4 w-4" /> Next Step: Ingest First Receipt
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Upload an itemized receipt image to test OCR field extraction, policy risk scoring, and tamper-evident audit logging in real-time.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Actions Bar */}
+            <div className="flex items-center justify-between pt-4 border-t border-border/60">
+              <Button
+                variant="ghost"
+                size="xs"
+                disabled={step === 0 || saving}
+                onClick={() => setStep(step - 1)}
+              >
+                Back
+              </Button>
+              <Button
+                onClick={next}
+                disabled={saving}
+                size="xs"
+                variant={step === 2 ? "signal" : "default"}
+                className="font-bold gap-1"
+              >
+                {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                {step === 2 ? "Upload First Receipt" : "Continue"}
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  </div>;
+  );
 };
+
 export default Onboarding;

@@ -2,71 +2,81 @@ import { ArrowRight, BadgeCheck, BarChart3, BrainCircuit, FileCheck2, ReceiptTex
 import { Link } from "react-router-dom";
 
 const workflow = [
-  { icon: ReceiptText, label: "Capture", detail: "Receipt OCR and structured expense intake" },
-  { icon: BrainCircuit, label: "Assess", detail: "Explainable scoring and duplicate detection" },
-  { icon: ShieldAlert, label: "Control", detail: "Budgets, policies, and approval guardrails" },
-  { icon: BadgeCheck, label: "Decide", detail: "Prioritized review with AI recommendations" },
-  { icon: FileCheck2, label: "Evidence", detail: "Immutable history and compliance exports" },
+  { icon: ReceiptText, label: "Capture", detail: "OCR extraction and structured ledger entry" },
+  { icon: BrainCircuit, label: "Assess", detail: "Explainable scoring and duplicate prevention" },
+  { icon: ShieldAlert, label: "Control", detail: "Category limits and automated policy gates" },
+  { icon: BadgeCheck, label: "Decide", detail: "Priority queue with AI review recommendations" },
+  { icon: FileCheck2, label: "Evidence", detail: "Immutable SHA-256 logs and accounting sync" },
 ];
 
 const workspaces = [
-  { role: "Employee", title: "Frictionless Submission", description: "Capture a receipt, verify extracted fields, submit, and track decisions from one workspace.", metric: "OCR-assisted intake" },
-  { role: "Finance Manager", title: "Risk-Based Operations", description: "Review a prioritized queue with policy triggers, related claims, missing evidence, and recommended actions.", metric: "Explainable review queue" },
-  { role: "Control Owner", title: "Organization Governance", description: "Manage team members, budgets, policy automation, tenant settings, compliance posture, and accounting exports.", metric: "SOX · SOC 2 · GDPR" },
+  {
+    role: "Employee",
+    title: "Fast Claim Ingestion",
+    description: "Scan receipts, verify auto-extracted line items, edit via spreadsheet ledger, and submit claims seamlessly.",
+    metric: "Instant OCR extraction",
+  },
+  {
+    role: "Finance Manager",
+    title: "Risk-Ranked Approval Queue",
+    description: "Review transactions with transparent policy violation pills, itemized evidence, and one-click approvals.",
+    metric: "48h SLA turnaround",
+  },
+  {
+    role: "Organization Owner",
+    title: "Governance & Compliance",
+    description: "Configure policy limits, auto-approval thresholds, team roles, SOX audit trails, and QuickBooks/Xero exports.",
+    metric: "SOX • SOC 2 • GDPR ready",
+  },
 ];
 
 const PlatformTour = () => (
-  <section id="platform" className="relative border-y border-border bg-card/40 py-24 font-sans">
-    <div className="container relative mx-auto px-4">
-      <div className="mx-auto max-w-6xl">
-        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-4 py-1 text-xs font-medium text-muted-foreground">
-              <BarChart3 className="h-3.5 w-3.5 text-primary" /> Product Lifecycle
+  <section id="platform" className="border-y border-border bg-muted/10 py-16 font-sans text-xs">
+    <div className="container mx-auto px-4 max-w-6xl space-y-10">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+            System Architecture
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            A complete expense control loop.
+          </h2>
+        </div>
+        <p className="text-xs text-muted-foreground max-w-md">
+          Every transaction moves through an immutable state lifecycle with transparent risk assessments at every milestone.
+        </p>
+      </div>
+
+      {/* 5-step lifecycle tiles */}
+      <div className="grid gap-3 sm:grid-cols-5">
+        {workflow.map((w, index) => (
+          <div key={w.label} className="rounded-md border border-border bg-card p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <w.icon className="h-4 w-4 text-foreground" />
+              <span className="font-mono text-[10px] font-bold text-muted-foreground">0{index + 1}</span>
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">More than expense tracking. <span className="text-primary">A complete control loop.</span></h2>
+            <p className="font-bold text-foreground text-xs">{w.label}</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{w.detail}</p>
           </div>
-          <p className="text-base leading-relaxed text-muted-foreground">Every claim moves through one connected lifecycle, while each role gets the context and controls needed to act decisively.</p>
-        </div>
+        ))}
+      </div>
 
-        <div className="mt-12 grid gap-3 md:grid-cols-5">
-          {workflow.map((step, index) => (
-            <div key={step.label} className="relative rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <step.icon className="h-4 w-4" />
-                </div>
-                <span className="font-mono text-xs text-muted-foreground">0{index + 1}</span>
-              </div>
-              <h3 className="font-semibold text-sm text-foreground">{step.label}</h3>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.detail}</p>
+      {/* 3 role workspaces */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {workspaces.map((ws) => (
+          <div key={ws.role} className="rounded-md border border-border bg-card p-4 space-y-3 flex flex-col justify-between">
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-foreground inline-block">
+                {ws.role}
+              </span>
+              <p className="font-bold text-sm text-foreground">{ws.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{ws.description}</p>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
-          {workspaces.map((workspace) => (
-            <div key={workspace.role} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="rounded-md bg-muted px-2.5 py-0.5 text-[11px] font-semibold text-foreground">{workspace.role}</span>
-                <UsersRound className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-foreground">{workspace.title}</h3>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{workspace.description}</p>
-              <div className="mt-5 border-t border-border pt-3 font-mono text-xs text-primary font-medium">{workspace.metric}</div>
+            <div className="pt-3 border-t border-border/60 font-mono text-[10px] font-bold text-foreground">
+              {ws.metric}
             </div>
-          ))}
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
-          <div>
-            <p className="font-semibold text-sm text-foreground">Explore the platform with full multi-role workflows</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Multi-entity support, risk scoring, audit history, and accounting exports are ready to test.</p>
           </div>
-          <Link to="/login" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-            Open Secure Workspace <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        ))}
       </div>
     </div>
   </section>

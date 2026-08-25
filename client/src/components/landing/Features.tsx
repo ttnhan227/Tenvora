@@ -4,65 +4,62 @@ const features = [
   {
     icon: Brain,
     title: "Explainable Risk Engine",
-    description: "Score claims across duplicate, policy, amount, category, evidence, and behavioral signals with reasons reviewers can inspect.",
+    description: "Evaluates transactions across duplicate patterns, amount anomalies, policy rule violations, and behavioral history with clear audit justifications.",
   },
   {
     icon: Workflow,
     title: "Approval Orchestration",
-    description: "Move claims from draft through risk review and decision, with safe auto-approval for eligible low-risk expenses.",
+    description: "Route claims through tiered manager approvals with safe auto-clearance for low-risk, compliant micro-expenses.",
   },
   {
     icon: FileBarChart,
     title: "Finance Intelligence",
-    description: "Monitor budgets, seasonal spend, review SLAs, policy trends, forecasted overruns, and operational KPIs.",
+    description: "Track departmental budget pools, seasonal expenditure trends, reviewer turnaround SLAs, and AI-driven budget overrun predictions.",
   },
   {
     icon: Building2,
     title: "Multi-tenant Architecture",
-    description: "Keep organizations isolated across users, expenses, policies, analytics, subscriptions, and audit records.",
+    description: "Strict logical separation across corporate users, receipts, policy parameters, subscription tiers, and financial ledgers.",
   },
   {
     icon: ShieldCheck,
     title: "Compliance Evidence",
-    description: "Generate SOX-oriented audit trails, SOC 2 control reports, and GDPR export or deletion workflows.",
+    description: "Cryptographically linked SOX 404 SHA-256 hash chains, SOC 2 Type II controls readiness reports, and GDPR Right-to-Erasure tools.",
   },
   {
     icon: GitPullRequestArrow,
     title: "Connected Operations",
-    description: "Use email, Slack, scheduled digests, and in-app alerts; export approved spend to QuickBooks or Xero.",
+    description: "Seamlessly export cleared spend records to QuickBooks, Xero, and CSV ledgers with complete line-item breakdown.",
   },
 ];
 
 const Features = () => {
   return (
-    <section id="features" className="relative py-24 font-sans">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-4 py-1 text-xs font-medium text-muted-foreground">
-            <Brain className="h-3.5 w-3.5 text-primary" />
+    <section id="features" className="py-16 font-sans text-xs">
+      <div className="container mx-auto px-4 max-w-6xl space-y-10">
+        <div className="text-center space-y-2 max-w-xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Platform Capabilities
-          </div>
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Built for the full{" "}
-            <span className="text-primary">spend lifecycle</span>
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Built for the full spend lifecycle
           </h2>
-          <p className="text-base text-muted-foreground">
-            A connected system of record, decision engine, control layer, and evidence trail.
+          <p className="text-xs text-muted-foreground">
+            Unified system of record, risk evaluation engine, policy guardrails, and audit integrity logs.
           </p>
         </div>
 
-        {/* Grid of features */}
-        <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feat) => (
             <div
-              key={feature.title}
-              className="rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
+              key={feat.title}
+              className="rounded-md border border-border bg-card p-4 space-y-2 hover:border-foreground/40 transition-colors"
             >
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <feature.icon className="h-5 w-5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded border border-border bg-muted/20 text-foreground">
+                <feat.icon className="h-4 w-4" />
               </div>
-              <h3 className="mb-2 text-base font-bold text-foreground">{feature.title}</h3>
-              <p className="text-xs leading-relaxed text-muted-foreground">{feature.description}</p>
+              <p className="font-bold text-sm text-foreground">{feat.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{feat.description}</p>
             </div>
           ))}
         </div>

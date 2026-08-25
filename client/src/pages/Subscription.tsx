@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { subscriptionService, SubscriptionPlan, CurrentSubscription, BillingHistoryItem } from "@/services/subscriptionService";
+import {
+  subscriptionService,
+  SubscriptionPlan,
+  CurrentSubscription,
+  BillingHistoryItem,
+} from "@/services/subscriptionService";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Loader2, CheckCircle, CreditCard, Calendar, TrendingUp } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  CheckCircle,
+  CreditCard,
+  Calendar,
+  TrendingUp,
+  Check,
+} from "lucide-react";
 
 const Subscription = () => {
   const { user, refreshProfile } = useAuth();
@@ -55,7 +68,7 @@ const Subscription = () => {
 
   const handleSubscribe = async (planId: string) => {
     if (!canManageSubscription) {
-      setError("Only Owner can manage subscription changes.");
+      setError("Only Workspace Owners can manage subscription tiers.");
       return;
     }
     setError("");
@@ -63,7 +76,6 @@ const Subscription = () => {
     setIsSubscribing(true);
 
     const result = await subscriptionService.subscribe(planId, billingCycle);
-
     if (result.success) {
       await refreshProfile();
       setCurrentSubscription(null);
@@ -82,13 +94,12 @@ const Subscription = () => {
   const handleUpgrade = async (planId: string) => {
     if (!currentSubscription) return;
     if (!canManageSubscription) {
-      setError("Only Owner can manage subscription changes.");
+      setError("Only Workspace Owners can manage subscription tiers.");
       return;
     }
 
     setError("");
     setIsUpgrading(planId);
-
     const result = await subscriptionService.upgradeSubscription(planId);
 
     if (result.success) {
@@ -106,16 +117,15 @@ const Subscription = () => {
 
   const handleCancel = async () => {
     if (!canManageSubscription) {
-      setError("Only Owner can manage subscription changes.");
+      setError("Only Workspace Owners can manage subscription tiers.");
       return;
     }
-    if (!confirm("Are you sure you want to cancel your subscription? You will lose access to premium tier limits.")) {
+    if (!confirm("Are you sure you want to cancel your plan?")) {
       return;
     }
 
     setError("");
     setIsCancelling(true);
-
     const result = await subscriptionService.cancelSubscription();
 
     if (result.success) {
@@ -131,8 +141,8 @@ const Subscription = () => {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
     );
@@ -140,87 +150,87 @@ const Subscription = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-5xl font-sans">
+      <div className="space-y-5 max-w-5xl mx-auto font-sans text-xs">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Subscription & Billing</h1>
-          <p className="text-xs text-muted-foreground">
+        <div className="border-b border-border/80 pb-3">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Subscription & Billing</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Manage organization tier limits, seat allowances, and invoice history.
           </p>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="rounded-xl">
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {!canManageSubscription && (
-          <Alert className="rounded-xl border-border bg-muted/30 text-xs">
+          <Alert variant="default">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-muted-foreground leading-relaxed">
-              Your plan is managed by the workspace Owner. You can view plan limits below, but only Owner accounts can edit subscriptions.
+            <AlertDescription>
+              Your plan is managed by the organization owner. Contact your workspace administrator to modify billing tiers.
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Current Subscription Card */}
+        {/* Current Active Plan Card */}
         {currentSubscription && (
-          <Card className="rounded-xl border border-primary/30 bg-card overflow-hidden">
-            <CardHeader className="border-b border-border bg-muted/10 px-6 py-4">
+          <Card>
+            <CardHeader className="border-b border-border/60 pb-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] rounded font-medium">
-                      {currentSubscription.status}
-                    </Badge>
-                    {currentSubscription.planName} Plan Active
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">Active organization plan limits</CardDescription>
+                <div className="flex items-center gap-2">
+                  <Badge variant="success">{currentSubscription.status}</Badge>
+                  <CardTitle>{currentSubscription.planName} Plan Active</CardTitle>
                 </div>
-                <Badge variant="outline" className="text-xs font-mono uppercase rounded border-border">
+                <Badge variant="outline" className="font-mono uppercase">
                   {currentSubscription.billingCycle}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Current Price</p>
-                  <p className="text-2xl font-bold text-foreground font-mono">
+            <CardContent className="pt-4">
+              <div className="grid gap-3 sm:grid-cols-4 font-mono text-xs">
+                <div>
+                  <p className="text-[10px] font-sans uppercase font-bold text-muted-foreground">Price</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">
                     ${currentSubscription.price.toFixed(2)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-mono">per {currentSubscription.billingCycle}</p>
+                  <p className="text-[10px] text-muted-foreground">/{currentSubscription.billingCycle}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Started On</p>
-                  <p className="text-sm font-semibold text-foreground font-mono">{new Date(currentSubscription.startDate).toLocaleDateString()}</p>
+                <div>
+                  <p className="text-[10px] font-sans uppercase font-bold text-muted-foreground">Start Date</p>
+                  <p className="font-semibold text-foreground mt-1">
+                    {new Date(currentSubscription.startDate).toLocaleDateString()}
+                  </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Renewal Date</p>
-                  {currentSubscription.renewalDate ? (
-                    <p className="text-sm font-semibold text-foreground font-mono">{new Date(currentSubscription.renewalDate).toLocaleDateString()}</p>
-                  ) : (
-                    <p className="text-sm font-semibold text-muted-foreground">-</p>
-                  )}
+                <div>
+                  <p className="text-[10px] font-sans uppercase font-bold text-muted-foreground">Renewal Date</p>
+                  <p className="font-semibold text-foreground mt-1">
+                    {currentSubscription.renewalDate
+                      ? new Date(currentSubscription.renewalDate).toLocaleDateString()
+                      : "-"}
+                  </p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Time Remaining</p>
-                  <p className="text-2xl font-bold text-primary font-mono">{currentSubscription.daysUntilRenewal}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-mono">days until renewal</p>
+                <div>
+                  <p className="text-[10px] font-sans uppercase font-bold text-muted-foreground">Days Remaining</p>
+                  <p className="text-xl font-bold text-foreground mt-0.5">
+                    {currentSubscription.daysUntilRenewal}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">days in cycle</p>
                 </div>
               </div>
 
               {canManageSubscription && (
-                <div className="border-t border-border pt-4">
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleCancel} 
-                    disabled={isCancelling} 
-                    className="rounded-lg px-4 text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive hover:text-destructive-foreground h-8"
+                <div className="pt-4 mt-4 border-t border-border/60 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleCancel}
+                    disabled={isCancelling}
+                    className="text-destructive hover:bg-destructive/10"
                   >
-                    {isCancelling && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+                    {isCancelling && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                     Cancel Subscription
                   </Button>
                 </div>
@@ -229,142 +239,111 @@ const Subscription = () => {
           </Card>
         )}
 
-        {!currentSubscription && (
-          <Card className="rounded-xl border border-dashed border-border bg-card p-6 text-center">
-            <CardContent className="flex flex-col items-center justify-center py-6">
-              <AlertCircle className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-semibold text-foreground">No Active Subscription</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">Choose a plan below to activate your team tier.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Available Plans */}
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3">
+        {/* Plan Selection Section */}
+        <div className="space-y-4 pt-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-3">
             <div>
-              <h2 className="text-lg font-bold text-foreground">Workspace Plans</h2>
-              <p className="text-xs text-muted-foreground">Select the tier that matches your team volume.</p>
+              <h2 className="text-sm font-bold text-foreground">Available Organization Tiers</h2>
+              <p className="text-[11px] text-muted-foreground">Choose the volume suitable for your team</p>
             </div>
 
-            {/* Billing Toggle */}
-            <div className="flex items-center gap-3 bg-muted/60 p-1 border border-border rounded-lg w-fit">
+            {/* Monthly / Annual Toggle */}
+            <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5">
               <Button
-                variant="ghost"
-                size="sm"
+                variant={billingCycle === "monthly" ? "default" : "ghost"}
+                size="xs"
                 onClick={() => setBillingCycle("monthly")}
-                className={`rounded-md px-3 py-1 h-7 text-xs font-semibold transition-all ${
-                  billingCycle === "monthly" 
-                    ? "bg-card text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                }`}
+                className="h-6 text-xs font-semibold"
               >
                 Monthly
               </Button>
               <Button
-                variant="ghost"
-                size="sm"
+                variant={billingCycle === "annual" ? "default" : "ghost"}
+                size="xs"
                 onClick={() => setBillingCycle("annual")}
-                className={`rounded-md px-3 py-1 h-7 text-xs font-semibold gap-1.5 transition-all ${
-                  billingCycle === "annual" 
-                    ? "bg-primary text-primary-foreground font-bold shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                }`}
+                className="h-6 text-xs font-semibold"
               >
-                Annual
-                <span className="text-[10px] font-mono opacity-80">(12% off)</span>
+                Annual (Save 12%)
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {
               const isCurrentPlan = currentSubscription?.planId === plan.id;
               const canUpgrade = currentSubscription && plan.id !== currentSubscription.planId;
               const planOrder = { starter: 0, professional: 1, enterprise: 2 };
-              const canOnlyUpgrade = canUpgrade && (planOrder[plan.id as keyof typeof planOrder] || 0) > (planOrder[currentSubscription?.planId as keyof typeof planOrder] || 0);
+              const canOnlyUpgrade =
+                canUpgrade &&
+                (planOrder[plan.id as keyof typeof planOrder] || 0) >
+                  (planOrder[currentSubscription?.planId as keyof typeof planOrder] || 0);
 
               return (
                 <Card
                   key={plan.id}
-                  className={`rounded-xl border flex flex-col relative transition-all ${
-                    isCurrentPlan
-                      ? "border-primary bg-card shadow-sm"
-                      : "border-border bg-card hover:border-border/80"
+                  className={`flex flex-col justify-between ${
+                    isCurrentPlan ? "border-primary ring-1 ring-primary" : ""
                   }`}
                 >
-                  {isCurrentPlan && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground font-semibold text-[10px] px-2.5 py-0.5 rounded">Active</Badge>
+                  <CardHeader className="border-b border-border/60 pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{plan.name}</CardTitle>
+                      {isCurrentPlan && <Badge variant="success">Active</Badge>}
                     </div>
-                  )}
-
-                  <CardHeader className="border-b border-border/50 pb-4">
-                    <CardTitle className="text-base font-bold text-foreground">{plan.name}</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">{plan.description}</CardDescription>
-                    <div className="mt-4">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-foreground font-mono">
-                          ${billingCycle === "monthly" ? plan.monthlyPrice : Math.round(plan.annualPrice / 12)}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono">/mo</span>
-                      </div>
-                      {billingCycle === "annual" && (
-                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                          ${plan.annualPrice.toFixed(0)} billed yearly
-                        </p>
-                      )}
+                    <CardDescription>{plan.description}</CardDescription>
+                    <div className="pt-2 font-mono">
+                      <span className="text-2xl font-bold text-foreground">
+                        ${billingCycle === "monthly" ? plan.monthlyPrice : Math.round(plan.annualPrice / 12)}
+                      </span>
+                      <span className="text-muted-foreground text-xs">/mo</span>
                     </div>
                   </CardHeader>
 
-                  <CardContent className="flex flex-1 flex-col p-6">
-                    <div className="space-y-2.5 mb-6 text-xs text-foreground">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-primary shrink-0" />
-                        <span className="font-medium">{plan.expenseLimit.toLocaleString()} monthly claims</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-primary shrink-0" />
-                        <span className="font-medium">{plan.userSeats} seat {plan.userSeats === 1 ? "license" : "licenses"}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 border-t border-border pt-4 mb-6">
-                      <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider mb-2.5">Included Features:</p>
-                      <ul className="space-y-2 text-xs text-muted-foreground leading-relaxed">
-                        {plan.features.map((feature) => (
-                          <li key={feature} className="flex items-start gap-2">
-                            <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
-                            <span>{feature}</span>
+                  <CardContent className="pt-4 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-2 text-xs">
+                      <p className="font-semibold text-foreground">
+                        {plan.expenseLimit.toLocaleString()} monthly claims
+                      </p>
+                      <p className="text-muted-foreground">
+                        {plan.userSeats} team seat{plan.userSeats > 1 ? "s" : ""}
+                      </p>
+                      <ul className="space-y-1.5 pt-2 border-t border-border/40 text-[11px] text-muted-foreground">
+                        {plan.features.map((feat) => (
+                          <li key={feat} className="flex items-start gap-1.5">
+                            <Check className="h-3.5 w-3.5 text-foreground shrink-0 mt-0.5" />
+                            <span>{feat}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div>
-                      {isCurrentPlan && (
-                        <Button disabled className="w-full rounded-lg text-xs font-semibold border border-border h-9">
+                    <div className="pt-2">
+                      {isCurrentPlan ? (
+                        <Button disabled size="xs" variant="outline" className="w-full font-bold">
                           Current Plan
                         </Button>
-                      )}
-                      {!isCurrentPlan && currentSubscription && canOnlyUpgrade && (
+                      ) : canOnlyUpgrade ? (
                         <Button
                           onClick={() => handleUpgrade(plan.id)}
                           disabled={isUpgrading === plan.id || !canManageSubscription}
-                          className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm h-9 text-xs"
+                          size="xs"
+                          variant="signal"
+                          className="w-full font-bold"
                         >
-                          {isUpgrading === plan.id && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                          {isUpgrading === plan.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                           Upgrade to {plan.name}
                         </Button>
-                      )}
-                      {!isCurrentPlan && (!currentSubscription || !canOnlyUpgrade) && (
+                      ) : (
                         <Button
                           onClick={() => handleSubscribe(plan.id)}
                           disabled={(isSubscribing && selectedPlanId === plan.id) || !canManageSubscription}
-                          className="w-full rounded-lg h-9 text-xs font-semibold"
-                          variant={isCurrentPlan ? "outline" : "default"}
+                          size="xs"
+                          variant="default"
+                          className="w-full font-bold"
                         >
-                          {isSubscribing && selectedPlanId === plan.id && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                          {isSubscribing && selectedPlanId === plan.id && (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          )}
                           {!currentSubscription ? "Select Plan" : "Switch Plan"}
                         </Button>
                       )}
@@ -376,41 +355,34 @@ const Subscription = () => {
           </div>
         </div>
 
-        {/* Billing History Card */}
+        {/* Billing History Table */}
         {billingHistory.length > 0 && (
-          <Card className="rounded-xl border border-border bg-card overflow-hidden">
-            <CardHeader className="border-b border-border px-6 py-4">
-              <CardTitle className="text-sm font-bold text-foreground">Billing Receipts</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground font-mono">{billingHistory.length} invoice records</CardDescription>
+          <Card>
+            <CardHeader className="border-b border-border/60 pb-3">
+              <CardTitle>Invoice Ledger</CardTitle>
+              <CardDescription>Historical billing receipts for accounting</CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/30 uppercase tracking-wider text-[10px] text-muted-foreground">
-                      <th className="py-3 px-4 font-semibold">Date</th>
-                      <th className="py-3 px-4 font-semibold">Description</th>
-                      <th className="py-3 px-4 font-semibold">Plan</th>
-                      <th className="py-3 px-4 font-semibold text-right">Amount</th>
-                      <th className="py-3 px-4 font-semibold text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {billingHistory.map((item) => (
-                      <tr key={item.id} className="border-b border-border hover:bg-muted/10 transition">
-                        <td className="py-3 px-4 font-mono">{new Date(item.date).toLocaleDateString()}</td>
-                        <td className="py-3 px-4 text-foreground font-semibold">{item.description}</td>
-                        <td className="py-3 px-4 text-muted-foreground">{item.planName}</td>
-                        <td className="py-3 px-4 font-bold text-foreground text-right font-mono">${item.amount.toFixed(2)}</td>
-                        <td className="py-3 px-4 text-right">
-                          <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 py-0.5 rounded font-mono text-[9px]">
-                            {item.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <CardContent className="pt-3">
+              <div className="space-y-1.5">
+                {billingHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card p-2.5 text-xs font-mono"
+                  >
+                    <div>
+                      <span className="font-semibold text-foreground font-sans">{item.description}</span>
+                      <span className="text-[10px] text-muted-foreground block">
+                        {new Date(item.date).toLocaleDateString()} • {item.planName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-foreground tabular-nums">
+                        ${item.amount.toFixed(2)}
+                      </span>
+                      <Badge variant="success">{item.status}</Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

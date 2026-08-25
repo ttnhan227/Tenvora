@@ -8,7 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Bot, Clock3, FlaskConical, Loader2, ShieldCheck, AlertCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  Clock3,
+  FlaskConical,
+  Loader2,
+  ShieldCheck,
+  AlertCircle,
+  Play,
+} from "lucide-react";
 
 const PolicyLab = () => {
   const [enabled, setEnabled] = useState(true);
@@ -32,7 +41,7 @@ const PolicyLab = () => {
     if (response.success && response.data) {
       setResult(response.data);
     } else {
-      setError(response.error || "Unable to run simulation");
+      setError(response.error || "Unable to complete simulation calculation");
     }
     setLoading(false);
   }, [enabled, maxAmount, maxRiskScore, excludeWeekends]);
@@ -42,76 +51,73 @@ const PolicyLab = () => {
   }, [simulate]);
 
   const getOutcomeBadge = (outcome: string) => {
-    if (outcome === "Auto-approve") {
-      return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] rounded font-medium">
-          Auto-approve
-        </Badge>
-      );
+    switch (outcome) {
+      case "Auto-approve":
+        return <Badge variant="success">Auto-approve</Badge>;
+      case "Escalate":
+        return <Badge variant="destructive">Escalate</Badge>;
+      default:
+        return <Badge variant="warning">{outcome}</Badge>;
     }
-    if (outcome === "Escalate") {
-      return (
-        <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 text-[10px] rounded font-medium">
-          Escalate
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] rounded font-medium">
-        {outcome}
-      </Badge>
-    );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-6xl font-sans">
+      <div className="space-y-5 max-w-6xl mx-auto font-sans">
         {/* Header */}
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Policy Simulation Lab</h1>
-            <p className="text-xs text-muted-foreground">
-              Replay proposed guardrails against historical organization claims in sandbox mode without affecting live policies.
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Policy Simulation Lab</h1>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase">
+                Sandbox Mode
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Replay proposed threshold changes against historical ledger claims without impacting active policies.
             </p>
           </div>
-          <Badge variant="outline" className="border-border text-muted-foreground text-xs h-7 self-start md:self-auto">
-            Read-only simulation
-          </Badge>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="rounded-xl">
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-          {/* Controls Card */}
-          <Card className="h-fit rounded-xl border border-border bg-card">
-            <CardHeader className="border-b border-border px-5 py-4">
-              <CardTitle className="text-sm font-bold text-foreground">Proposed Rules</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">Adjust variables to test impact</CardDescription>
+        <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-start">
+          {/* Simulation Controls Panel */}
+          <Card>
+            <CardHeader className="border-b border-border/60 pb-3">
+              <CardTitle>Simulation Parameters</CardTitle>
+              <CardDescription>Adjust rules to project ledger automation</CardDescription>
             </CardHeader>
-            <CardContent className="p-5 space-y-4">
+            <CardContent className="pt-4 space-y-4 text-xs">
               <div className="flex items-center justify-between">
-                <Label htmlFor="enable-sim" className="text-xs font-medium cursor-pointer">Enable Automation</Label>
+                <Label htmlFor="enable-sim" className="text-xs font-semibold cursor-pointer">
+                  Enable Automation
+                </Label>
                 <Switch id="enable-sim" checked={enabled} onCheckedChange={setEnabled} />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="amount" className="text-xs font-medium">Auto-approval Max Amount ($)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="amount" className="text-xs font-semibold text-muted-foreground">
+                  Auto-Approval Cap ($)
+                </Label>
                 <Input
                   id="amount"
                   type="number"
                   value={maxAmount}
                   onChange={(e) => setMaxAmount(Number(e.target.value))}
-                  className="bg-background border-border text-xs rounded-lg h-9 font-mono"
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="risk" className="text-xs font-medium">Max Risk Score Threshold (0–100)</Label>
+              <div className="space-y-1">
+                <Label htmlFor="risk" className="text-xs font-semibold text-muted-foreground">
+                  Max Risk Score Limit (0–100)
+                </Label>
                 <Input
                   id="risk"
                   type="number"
@@ -119,88 +125,106 @@ const PolicyLab = () => {
                   max={100}
                   value={maxRiskScore}
                   onChange={(e) => setMaxRiskScore(Number(e.target.value))}
-                  className="bg-background border-border text-xs rounded-lg h-9 font-mono"
+                  className="font-mono text-xs"
                 />
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <Label htmlFor="weekends" className="text-xs font-medium cursor-pointer">Block Weekend Claims</Label>
+                <Label htmlFor="weekends" className="text-xs font-semibold cursor-pointer">
+                  Flag Weekend Claims
+                </Label>
                 <Switch id="weekends" checked={excludeWeekends} onCheckedChange={setExcludeWeekends} />
               </div>
 
-              <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground border border-border">
-                Equipment and Entertainment categories are permanently excluded from auto-approval.
+              <div className="rounded-md bg-muted/20 border border-border p-2.5 text-[11px] text-muted-foreground">
+                Note: Entertainment & Equipment claims are permanently routed to manager review.
               </div>
 
               <Button
-                className="w-full gap-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 text-xs shadow-sm"
+                className="w-full gap-1.5 font-bold"
+                variant="signal"
+                size="xs"
                 onClick={simulate}
                 disabled={loading}
               >
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
+                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                 Run Impact Simulation
               </Button>
             </CardContent>
           </Card>
 
-          {/* Results column */}
-          <div className="space-y-6">
-            {/* KPI metrics */}
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <Bot className="mb-2 h-4 w-4 text-primary" />
-                  <div className="text-2xl font-bold text-foreground font-mono">{result?.automationRate ?? 0}%</div>
-                  <p className="text-xs text-muted-foreground">Automation Rate</p>
-                </CardContent>
-              </Card>
+          {/* Results Column */}
+          <div className="space-y-4">
+            {/* Projected Impact Metrics */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-md border border-border bg-card p-3 space-y-0.5">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Automation</p>
+                <p className="text-xl font-bold font-mono text-foreground">{result?.automationRate ?? 0}%</p>
+                <p className="text-[10px] text-muted-foreground">Auto-processed</p>
+              </div>
 
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <ShieldCheck className="mb-2 h-4 w-4 text-emerald-500" />
-                  <div className="text-2xl font-bold text-foreground font-mono">{result?.autoApproveCount ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">Auto-approved</p>
-                </CardContent>
-              </Card>
+              <div className="rounded-md border border-border bg-card p-3 space-y-0.5">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Auto-Approved</p>
+                <p className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400">
+                  {result?.autoApproveCount ?? 0}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Claims cleared</p>
+              </div>
 
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <AlertTriangle className="mb-2 h-4 w-4 text-amber-500" />
-                  <div className="text-2xl font-bold text-foreground font-mono">{result?.escalateCount ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">Escalated</p>
-                </CardContent>
-              </Card>
+              <div className="rounded-md border border-border bg-card p-3 space-y-0.5">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Escalated</p>
+                <p className="text-xl font-bold font-mono text-amber-700 dark:text-amber-400">
+                  {result?.escalateCount ?? 0}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Manager review</p>
+              </div>
 
-              <Card className="rounded-xl border border-border bg-card">
-                <CardContent className="p-4">
-                  <Clock3 className="mb-2 h-4 w-4 text-primary" />
-                  <div className="text-2xl font-bold text-foreground font-mono">{result?.reviewHoursSaved ?? 0}h</div>
-                  <p className="text-xs text-muted-foreground">Review Hours Saved</p>
-                </CardContent>
-              </Card>
+              <div className="rounded-md border border-border bg-card p-3 space-y-0.5">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Hours Saved</p>
+                <p className="text-xl font-bold font-mono text-foreground">
+                  {result?.reviewHoursSaved ?? 0}h
+                </p>
+                <p className="text-[10px] text-muted-foreground">Reviewer time</p>
+              </div>
             </div>
 
-            {/* Preview table */}
-            <Card className="rounded-xl border border-border bg-card overflow-hidden">
-              <CardHeader className="border-b border-border px-6 py-4">
-                <CardTitle className="text-sm font-bold text-foreground">Simulation Evaluation Sample</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground font-mono">{result?.evaluatedCount ?? 0} historical claims replayed</CardDescription>
+            {/* Replay Ledger Sample Table */}
+            <Card>
+              <CardHeader className="border-b border-border/60 pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Historical Replay Sample</CardTitle>
+                  <span className="font-mono text-xs text-muted-foreground font-semibold">
+                    {result?.evaluatedCount ?? 0} claims evaluated
+                  </span>
+                </div>
               </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                {result?.expenses.slice(0, 12).map((expense) => (
-                  <div
-                    key={expense.expenseId}
-                    className="grid gap-2 rounded-lg border border-border bg-muted/10 p-3 text-xs md:grid-cols-[1.2fr_.6fr_.6fr_1fr] md:items-center"
-                  >
-                    <div>
-                      <p className="font-semibold text-foreground">{expense.merchant}</p>
-                      <p className="text-[11px] text-muted-foreground">{expense.category} · ${expense.amount.toLocaleString()}</p>
+              <CardContent className="pt-3">
+                <div className="space-y-1.5">
+                  {result?.expenses.slice(0, 10).map((exp) => (
+                    <div
+                      key={exp.expenseId}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card p-2.5 text-xs hover:bg-muted/10 transition-colors"
+                    >
+                      <div className="min-w-[180px]">
+                        <span className="font-bold text-foreground">{exp.merchant}</span>
+                        <span className="text-[11px] text-muted-foreground block font-mono">
+                          {exp.category} • ${exp.amount.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[11px] text-muted-foreground">
+                          Score: <strong>{exp.riskScore}%</strong>
+                        </span>
+                        {getOutcomeBadge(exp.outcome)}
+                      </div>
+
+                      <span className="text-[11px] text-muted-foreground truncate max-w-xs block">
+                        {exp.reason}
+                      </span>
                     </div>
-                    <span className="font-mono text-xs text-muted-foreground">Score {expense.riskScore}%</span>
-                    <div>{getOutcomeBadge(expense.outcome)}</div>
-                    <span className="text-[11px] text-muted-foreground truncate">{expense.reason}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

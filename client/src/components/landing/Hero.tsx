@@ -23,36 +23,36 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative overflow-hidden bg-background pt-16 font-sans">
-      <div className="container relative mx-auto px-4 pb-20 pt-20 md:pt-28">
-        <div className="mx-auto max-w-3xl text-center">
-          {/* Trust badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-xs text-foreground/80 shadow-sm">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            Multi-tenant spend controls for modern finance teams
+    <section className="relative overflow-hidden bg-background pt-24 pb-16 font-sans text-xs">
+      <div className="container mx-auto px-4 max-w-5xl">
+        <div className="text-center space-y-4 max-w-3xl mx-auto">
+          {/* Trust Signal Badge */}
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold text-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--accent-signal))]" />
+            Corporate Expense Management & Compliance Guardrails
           </div>
 
-          <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground md:text-5xl">
-            Turn company spend into a{" "}
-            <span className="text-primary">controlled workflow.</span>
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground leading-[1.15]">
+            Turn company spend into an explainable, controlled workflow.
           </h1>
-          <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-muted-foreground">
-            VeriSpend connects receipt intelligence, policy enforcement, risk-based approvals, audit evidence, and finance analytics in one explainable operating system.
+
+          <p className="text-sm leading-relaxed text-muted-foreground max-w-2xl mx-auto">
+            VeriSpend unifies OCR receipt intelligence, policy enforcement, multi-factor risk scoring, forensic audit evidence, and 1-click accounting sync in one high-trust operating system.
           </p>
 
-          {/* Dual CTAs */}
-          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button 
-              size="lg" 
-              className="gap-2 rounded-lg bg-primary px-7 text-primary-foreground hover:bg-primary/90 shadow-sm font-semibold h-11 text-sm" 
+          {/* Action CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+            <Button
+              size="sm"
+              variant="signal"
               onClick={handleStartTrial}
+              className="font-bold gap-1.5 h-9 px-5"
             >
-              Start Free Trial <ArrowRight className="h-4 w-4" />
+              Start Free Trial <ArrowRight className="h-3.5 w-3.5" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="gap-2 rounded-lg border-border bg-card px-7 text-foreground hover:bg-muted font-medium h-11 text-sm"
+            <Button
+              size="sm"
+              variant="outline"
               onClick={() => {
                 const el = document.getElementById("platform");
                 if (el) {
@@ -61,40 +61,36 @@ const Hero = () => {
                   navigate("/login");
                 }
               }}
+              className="font-semibold h-9 px-5"
             >
-              <ScanSearch className="h-4 w-4 text-muted-foreground" /> Explore the Platform
+              Explore Platform
             </Button>
           </div>
         </div>
 
-        {/* Stats showcase */}
-        <div className="mx-auto mt-16 max-w-4xl">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-xl border border-border bg-card p-5 text-center shadow-sm"
-              >
-                <div className="text-2xl font-bold text-primary font-mono md:text-3xl">{stat.value}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+        {/* Financial Stat Tiles */}
+        <div className="mt-14 grid grid-cols-2 gap-3 sm:grid-cols-4 max-w-4xl mx-auto">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-md border border-border bg-card p-3.5 text-center space-y-0.5">
+              <p className="text-2xl font-bold font-mono text-foreground">{s.value}</p>
+              <p className="text-[11px] text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Product architecture summary */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-primary" />
-            <span>Tenant isolation</span>
+        {/* Feature Pillars */}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-foreground" />
+            <span>Multi-tenant isolation</span>
           </div>
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-primary" />
-            <span>Policy-driven decisions</span>
+          <div className="flex items-center gap-1.5">
+            <GitBranch className="h-3.5 w-3.5 text-foreground" />
+            <span>Policy-driven auto approvals</span>
           </div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <span>Evidence-ready audit trail</span>
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-foreground" />
+            <span>SOX 404 SHA-256 hash chains</span>
           </div>
         </div>
       </div>

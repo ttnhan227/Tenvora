@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 const AcceptInvite = () => {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ const AcceptInvite = () => {
     setError("");
 
     if (!token) {
-      setError("Invite token is missing.");
+      setError("Invitation token is missing from the URL.");
       return;
     }
 
@@ -49,42 +49,40 @@ const AcceptInvite = () => {
       return;
     }
 
-    setError(result.error || "Failed to accept invite.");
+    setError(result.error || "Failed to activate invitation.");
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md space-y-6">
-        
-        {/* Logo ribbon */}
-        <div className="flex justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-xs">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-foreground">VeriSpend</span>
+            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+            <span className="text-base font-bold tracking-tight text-foreground">VeriSpend</span>
           </Link>
+          <p className="text-xs text-muted-foreground">Team Member Onboarding</p>
         </div>
 
-        <Card className="rounded-3xl border border-border bg-card/65 shadow-2xl backdrop-blur-md overflow-hidden">
-          <CardHeader className="space-y-1.5 border-b border-border bg-muted/20 px-6 py-5 text-center">
-            <CardTitle className="text-xl font-extrabold text-foreground">Accept Invitation</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Configure your master security password to activate access.
-            </CardDescription>
+        <Card>
+          <CardHeader className="border-b border-border/60 pb-3 text-center">
+            <CardTitle>Accept Organization Invitation</CardTitle>
+            <CardDescription>Set your account password to join the workspace</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {error && (
-                <Alert variant="destructive" className="rounded-xl">
+                <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Access Password</Label>
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground">
+                  New Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -92,12 +90,14 @@ const AcceptInvite = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Re-enter Password</Label>
+              <div className="space-y-1">
+                <Label htmlFor="confirmPassword" className="text-xs font-semibold text-muted-foreground">
+                  Confirm Password
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -105,17 +105,19 @@ const AcceptInvite = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter to confirm"
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10 text-xs gap-2 mt-2"
+                size="sm"
+                variant="default"
+                className="w-full font-bold h-9 mt-1"
               >
-                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isLoading ? "Provisioning Directory Profile..." : "Activate Account"}
+                {isLoading && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                {isLoading ? "Activating Access…" : "Activate Account"}
               </Button>
             </form>
           </CardContent>

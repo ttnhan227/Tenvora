@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { AlertCircle, Loader2, ArrowRight } from "lucide-react";
 
 const DEMO_ENABLED = (import.meta.env.VITE_DEMO_ENABLED ?? "true").toLowerCase() !== "false";
 
@@ -26,9 +26,9 @@ const Login = () => {
     try {
       const success = await createDemo();
       if (success) navigate("/dashboard");
-      else setError("The demo workspace is unavailable. Please try again shortly.");
+      else setError("The demo workspace is currently unavailable. Please retry in a moment.");
     } catch {
-      setError("The demo workspace is still starting. Please try again in a moment.");
+      setError("The demo workspace is initializing. Please try again shortly.");
     } finally {
       setIsLoading(false);
       setLoadingAction(null);
@@ -42,7 +42,7 @@ const Login = () => {
     setLoadingAction("login");
 
     if (!email || !password) {
-      setError("Please fill in all fields");
+      setError("Please fill in all credentials");
       setIsLoading(false);
       setLoadingAction(null);
       return;
@@ -53,10 +53,10 @@ const Login = () => {
       if (success) {
         navigate("/dashboard");
       } else {
-        setError("Invalid email or password");
+        setError("Invalid email address or password");
       }
-    } catch (err) {
-      setError("An error occurred during login");
+    } catch {
+      setError("An error occurred during authentication");
     } finally {
       setIsLoading(false);
       setLoadingAction(null);
@@ -64,35 +64,35 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md space-y-6">
-        
-        {/* Logo ribbon */}
-        <div className="flex justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-xs">
+      <div className="w-full max-w-sm space-y-6">
+        {/* Brand Header */}
+        <div className="flex flex-col items-center text-center space-y-2">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="" className="h-11 w-11 object-contain" />
-            <span className="text-xl font-extrabold tracking-tight text-foreground">VeriSpend</span>
+            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
+            <span className="text-base font-bold tracking-tight text-foreground">VeriSpend</span>
           </Link>
+          <p className="text-xs text-muted-foreground">Corporate expense management & automated audit</p>
         </div>
 
-        <Card className="rounded-lg border border-border bg-card overflow-hidden">
-          <CardHeader className="space-y-1.5 border-b border-border bg-muted/20 px-6 py-5 text-center">
-            <CardTitle className="text-xl font-extrabold text-foreground">Welcome Back</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Sign in to your secure VeriSpend workspace
-            </CardDescription>
+        <Card>
+          <CardHeader className="border-b border-border/60 pb-3 text-center">
+            <CardTitle>Sign in to your organization</CardTitle>
+            <CardDescription>Enter your corporate credentials</CardDescription>
           </CardHeader>
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {error && (
-                <Alert variant="destructive" className="rounded-xl">
+                <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email Address</Label>
+              <div className="space-y-1">
+                <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -100,12 +100,14 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Password</Label>
+              <div className="space-y-1">
+                <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -113,42 +115,52 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="bg-card border-border text-foreground text-xs rounded-xl focus:ring-primary/20 h-10"
+                  className="font-mono text-xs"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-md h-10 text-xs gap-2 mt-2"
+                size="sm"
+                variant="default"
+                className="w-full font-bold h-9 mt-1"
               >
-                {loadingAction === "login" && <Loader2 className="h-4 w-4 animate-spin" />}
-                {loadingAction === "login" ? "Logging you in…" : "Sign In to Portal"}
+                {loadingAction === "login" && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                {loadingAction === "login" ? "Authenticating…" : "Sign In"}
               </Button>
             </form>
 
             {isLoading && (
-              <div role="status" aria-live="polite" className="mt-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-left">
-                <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
-                <div>
-                  <p className="text-xs font-bold text-foreground">{loadingAction === "demo" ? "Preparing the demo workspace" : "Connecting to your workspace"}</p>
-                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">The free demo server may take up to 30 seconds to wake. Please keep this page open.</p>
-                </div>
+              <div className="mt-3 flex items-center gap-2 rounded-md border border-border bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground shrink-0" />
+                <span>
+                  {loadingAction === "demo"
+                    ? "Provisioning sandbox workspace…"
+                    : "Connecting to company ledger…"}
+                </span>
               </div>
             )}
 
-            <div className="mt-5 text-center text-xs text-muted-foreground border-t border-border/40 pt-4">
-              New workspaces include realistic starter data.{" "}
-              <Link to="/register" className="text-primary hover:underline font-bold">
-                Register Tenant Organization
-              </Link>
+            <div className="mt-4 pt-3 border-t border-border/60 text-center space-y-2">
+              <p className="text-[11px] text-muted-foreground">
+                Need a new organization account?{" "}
+                <Link to="/register" className="font-semibold text-foreground hover:underline">
+                  Create Workspace
+                </Link>
+              </p>
+
+              {DEMO_ENABLED && (
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={handleDemoLogin}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground underline block w-full text-center"
+                >
+                  {loadingAction === "demo" ? "Launching demo…" : "Explore Sandbox Demo"}
+                </button>
+              )}
             </div>
-            {DEMO_ENABLED && (
-              <button type="button" disabled={isLoading} onClick={handleDemoLogin} className="mt-3 flex w-full items-center justify-center gap-1.5 border-0 bg-transparent py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary hover:underline disabled:cursor-wait disabled:opacity-60">
-                {loadingAction === "demo" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {loadingAction === "demo" ? "Opening demo workspace…" : "Just exploring? Open the demo workspace"}
-              </button>
-            )}
           </CardContent>
         </Card>
       </div>

@@ -8,14 +8,14 @@ const tiers = [
     id: "starter",
     name: "Starter",
     price: "$29",
-    period: "/month",
-    description: "For small teams looking to automate expense controls.",
+    period: "/mo",
+    description: "For small teams automating expense collection and review.",
     features: [
-      "Up to 500 expenses/month",
-      "AI categorization & OCR",
+      "Up to 500 expenses / month",
+      "OCR receipt field extraction",
       "Basic policy guardrails",
-      "Email support",
-      "3 user seats",
+      "Email alerts & digests",
+      "3 team seats",
     ],
     cta: "Start Free Trial",
     popular: false,
@@ -24,16 +24,16 @@ const tiers = [
     id: "professional",
     name: "Professional",
     price: "$79",
-    period: "/month",
-    description: "For growing companies needing automated audit workflows.",
+    period: "/mo",
+    description: "For growing organizations requiring risk scoring and accounting sync.",
     features: [
-      "Up to 5,000 expenses/month",
+      "Up to 5,000 expenses / month",
       "Multi-signal risk engine",
-      "Spreadsheet grid editor",
+      "Fast-entry spreadsheet ledger",
       "Priority review queue",
-      "15 user seats",
+      "15 team seats",
       "QuickBooks & Xero export",
-      "Custom policy limits",
+      "Custom category limits",
     ],
     cta: "Start Free Trial",
     popular: true,
@@ -43,14 +43,14 @@ const tiers = [
     name: "Enterprise",
     price: "Custom",
     period: "",
-    description: "Tailored governance solutions for regulated organizations.",
+    description: "Tailored governance solutions for regulated enterprises.",
     features: [
       "Unlimited expense volume",
-      "Continuous policy training",
-      "SOX audit log & SOC 2 reports",
-      "Dedicated account manager",
+      "Reviewer model calibration",
+      "SOX 404 & SOC 2 compliance hub",
+      "Dedicated account engineer",
       "Unlimited team seats",
-      "Custom ERP integrations",
+      "Custom ERP data connectors",
       "SLA guarantee",
     ],
     cta: "Contact Sales",
@@ -71,61 +71,57 @@ const Pricing = () => {
   };
 
   return (
-    <section id="pricing" className="relative py-24 font-sans">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Simple, predictable <span className="text-primary">pricing</span>
-          </h2>
-          <p className="text-base text-muted-foreground">
-            Clear tiers built for teams of all sizes. No hidden surcharges.
+    <section id="pricing" className="py-16 font-sans text-xs">
+      <div className="container mx-auto px-4 max-w-5xl space-y-10">
+        <div className="text-center space-y-2 max-w-lg mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Predictable Pricing
           </p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Clear tiers built for every team scale
+          </h2>
         </div>
 
-        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {tiers.map((tier) => (
             <div
               key={tier.name}
-              className={`relative flex flex-col rounded-xl border p-6 transition-all ${
-                tier.popular
-                  ? "border-primary bg-card shadow-md"
-                  : "border-border bg-card shadow-sm hover:border-border/80"
+              className={`rounded-md border p-5 flex flex-col justify-between space-y-4 bg-card ${
+                tier.popular ? "border-foreground ring-1 ring-foreground" : "border-border"
               }`}
             >
-              {tier.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                  Recommended
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-foreground">{tier.name}</h3>
+                  {tier.popular && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[hsl(var(--accent-signal))] text-black">
+                      Recommended
+                    </span>
+                  )}
                 </div>
-              )}
+                <p className="text-xs text-muted-foreground">{tier.description}</p>
+                <div className="font-mono pt-1">
+                  <span className="text-3xl font-bold text-foreground">{tier.price}</span>
+                  {tier.period && <span className="text-xs text-muted-foreground">{tier.period}</span>}
+                </div>
 
-              <div className="mb-6">
-                <h3 className="mb-1 text-lg font-bold text-foreground">{tier.name}</h3>
-                <p className="mb-4 text-xs text-muted-foreground">{tier.description}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-foreground font-mono">{tier.price}</span>
-                  {tier.period && <span className="text-xs text-muted-foreground font-mono">{tier.period}</span>}
-                </div>
+                <ul className="space-y-2 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+                  {tier.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2">
+                      <Check className="h-3.5 w-3.5 text-foreground shrink-0 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-
-              <ul className="mb-8 flex-1 space-y-2.5">
-                {tier.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
 
               <Button
                 onClick={() => handleSelectPlan(tier.id)}
-                className={`w-full gap-2 rounded-lg text-xs font-semibold h-10 ${
-                  tier.popular
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                    : "bg-muted text-foreground hover:bg-muted/80"
-                }`}
-                size="default"
+                size="xs"
+                variant={tier.popular ? "signal" : "default"}
+                className="w-full font-bold h-8"
               >
-                {tier.cta} {tier.popular && <ArrowRight className="h-3.5 w-3.5" />}
+                {tier.cta}
               </Button>
             </div>
           ))}
