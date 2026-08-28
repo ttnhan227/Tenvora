@@ -79,18 +79,18 @@ const PlatformTour = () => (
         ))}
       </div>
 
-      {/* Dual Media Feature Showcase */}
+      {/* Dual Real Product Showcase */}
       <div className="grid gap-6 sm:grid-cols-2 pt-4">
-        {/* Feature 1: Card Tap-to-Pay Policy Enforcement */}
+        {/* Feature 1: Policy Lab Simulation & Financial Guardrails */}
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col">
           <div className="relative h-48 sm:h-56 bg-slate-900 overflow-hidden">
             <img
-              src="/corporate-card-pay.jpg"
-              alt="Instant POS Tap to Pay Policy Gate"
-              className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+              src="/verispend-guardrails.png"
+              alt="VeriSpend Policy Lab Simulation and Financial Guardrails"
+              className="w-full h-full object-cover object-left-top opacity-95 hover:scale-105 transition-transform duration-700"
             />
             <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-semibold text-emerald-400">
-              Instant Point-of-Sale Guardrails
+              Policy Lab Simulator
             </div>
           </div>
           <div className="p-4 sm:p-5 space-y-2 flex-1 flex flex-col justify-between">
@@ -101,48 +101,48 @@ const PlatformTour = () => (
                 </span>
               </div>
               <h3 className="text-base font-bold text-foreground">
-                Corporate Card Spend Policies
+                Deterministic Policy Simulation
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                Enforce daily spend limits, merchant category restrictions, and auto-approvals directly at swipe before transactions clear.
+                Simulate organization-wide spending rules, automate low-risk approvals, and project ledger outcomes before activating policies.
               </p>
             </div>
             <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Automated Card Safeguards</span>
+              <span>Automated Financial Safeguards</span>
               <span className="font-semibold text-foreground">Zero Policy Overruns</span>
             </div>
           </div>
         </div>
 
-        {/* Feature 2: In-Transit Business Travel */}
+        {/* Feature 2: Mistral Vision OCR Extraction */}
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col">
           <div className="relative h-48 sm:h-56 bg-slate-900 overflow-hidden">
             <img
-              src="/travel-expense.jpg"
-              alt="Business Traveler In-Transit Receipt Ingestion"
-              className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+              src="/verispend-vision.png"
+              alt="Mistral Vision AI Receipt Ingestion and Structured Field Proposals"
+              className="w-full h-full object-cover object-left-top opacity-95 hover:scale-105 transition-transform duration-700"
             />
             <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-semibold text-sky-400">
-              Global Travel Support
+              Mistral Vision OCR
             </div>
           </div>
           <div className="p-4 sm:p-5 space-y-2 flex-1 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-semibold text-sky-600 dark:text-sky-400">
-                  On-the-Go Expense Claims
+                  Vision AI Receipt Parsing
                 </span>
               </div>
               <h3 className="text-base font-bold text-foreground">
-                Seamless Multi-Currency Travel
+                Structured Field Extraction
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                Capture airport transfers, hotel bills, and flight receipts on the go with automatic foreign exchange conversion and per-diem tracking.
+                Extract merchant, amount, category, date, and tax from complex receipts with human-in-the-loop review and automated multi-currency conversion.
               </p>
             </div>
             <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
               <span>Automatic FX Conversion</span>
-              <span className="font-semibold text-foreground">Real-Time Currency Rates</span>
+              <span className="font-semibold text-foreground">Human-in-the-Loop Review</span>
             </div>
           </div>
         </div>

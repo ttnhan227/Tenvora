@@ -89,23 +89,15 @@ PostgreSQL (tenant-owned users, expenses, receipts, policies, and audit logs)
 
 The boundary is intentional: AI proposes or explains; backend services authorize, persist, evaluate policy, and record decisions.
 
-## Product preview
+## Product Preview
 
-### Finance control dashboard
+| Platform Landing & Multi-Tenant Control | Vision OCR Extraction & Proposal |
+|:---:|:---:|
+| ![VeriSpend Landing & Control](docs/screenshots/verispend-landing.png) | ![Vision OCR Receipt Extraction](docs/screenshots/verispend-vision.png) |
+| **Expense Detail & Deterministic Audit Review** | **Policy Lab & Financial Guardrails** |
+| ![Expense Review & Audit Trail](docs/screenshots/verispend-review.png) | ![Policy Lab & Financial Guardrails](docs/screenshots/verispend-guardrails.png) |
 
-![Finance control dashboard](docs/screenshots/dashboard.png)
-
-### Expense records and risk analysis
-
-![Expense records with status and risk analysis](docs/screenshots/expense-records.png)
-
-### Tenant-scoped AI copilot
-
-![AI copilot summarizing authorized company data](docs/screenshots/ai-copilot.png)
-
-### Policy impact simulation
-
-![Policy Lab previewing rule outcomes](docs/screenshots/policy-lab.png)
+---
 
 ## Major design decisions
 

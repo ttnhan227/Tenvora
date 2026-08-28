@@ -111,22 +111,22 @@ const Hero = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-            {/* Left: Corporate Office Photography */}
+            {/* Left: Real VeriSpend Expense Review Interface */}
             <div className="lg:col-span-7 relative min-h-[340px] bg-slate-900 overflow-hidden">
               <img
-                src="/hero-finance-team.jpg"
-                alt="Finance Operations Team Reviewing Analytics"
-                className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+                src="/verispend-review.png"
+                alt="VeriSpend Real Expense Audit, AI Assistant & Deterministic Policy Checks"
+                className="w-full h-full object-cover object-left-top opacity-95 hover:scale-105 transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
               
               <div className="absolute bottom-4 left-4 right-4 text-white">
                 <div className="inline-flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-medium text-emerald-400 mb-1.5">
                   <ScanSearch className="h-3.5 w-3.5" />
-                  Instant Receipt Extraction
+                  Deterministic Risk &amp; Policy Review
                 </div>
                 <p className="text-sm font-semibold leading-snug text-slate-100">
-                  Automated expense validation across distributed teams
+                  Automated expense validation, OCR verification, and audit trails across distributed teams
                 </p>
               </div>
             </div>
