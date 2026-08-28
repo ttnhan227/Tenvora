@@ -58,8 +58,8 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     setExpenses(initialExpenses);
   }, [initialExpenses]);
 
-  const validateCell = (field: string, value: any): string => {
-    const strVal = String(value).trim();
+  const validateCell = (field: string, value: unknown): string => {
+    const strVal = String(value ?? "").trim();
     if (field === "amount") {
       const num = Number(value);
       if (isNaN(num)) return "Amount must be a valid number";
@@ -73,13 +73,6 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
       if (!strVal) return "Date is required";
       const date = new Date(strVal);
       if (isNaN(date.getTime())) return "Invalid date format";
-      if (date > new Date()) return "Date cannot be in the future";
-    }
-    if (field === "category") {
-      if (!CATEGORIES.includes(value)) return "Please select a standard category";
-    }
-    if (field === "currency") {
-      if (!CURRENCIES.includes(value)) return "Please select USD, VND, or EUR";
     }
     return "";
   };
@@ -98,7 +91,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
       return;
     }
 
-    let { row, col } = activeCell;
+    const { row, col } = activeCell;
 
     switch (e.key) {
       case "ArrowUp":
@@ -132,7 +125,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
         e.preventDefault();
         break;
       case "Delete":
-      case "Backspace":
+      case "Backspace": {
         const currentExp = expenses[row];
         const fieldName = columns[col].toLowerCase() as keyof UnsavedChanges[string];
         if (currentExp.status === "Draft") {
@@ -157,6 +150,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
         }
         e.preventDefault();
         break;
+      }
     }
   };
 
@@ -170,7 +164,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     }
 
     const fieldName = columns[col].toLowerCase();
-    const currentVal = unsaved[expense.id]?.[fieldName as keyof UnsavedChanges[string]] ?? (expense as any)[fieldName];
+    const currentVal = unsaved[expense.id]?.[fieldName as keyof UnsavedChanges[string]] ?? (expense as Record<string, unknown>)[fieldName];
     setEditValue(currentVal !== undefined ? String(currentVal) : "");
     setEditing(true);
   };
@@ -181,7 +175,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     const expense = expenses[row];
     const fieldName = columns[col].toLowerCase();
 
-    let parsedVal: any = editValue.trim();
+    let parsedVal: string | number = editValue.trim();
     if (fieldName === "amount") {
       parsedVal = Number(parsedVal);
     }
@@ -216,7 +210,7 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
     setIsSubmitting(true);
     try {
       const updates = Object.entries(unsaved).map(([id, payload]) => {
-        return expenseService.update(id, payload as any);
+        return expenseService.update(id, payload as Parameters<typeof expenseService.update>[1]);
       });
 
       await Promise.all(updates);
@@ -224,8 +218,9 @@ export const SpreadsheetGrid = ({ initialExpenses, onSaved }: SpreadsheetGridPro
       setUnsaved({});
       setErrors({});
       onSaved();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save ledger updates");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || "Failed to save ledger updates";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

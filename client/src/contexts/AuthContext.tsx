@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("accessToken");
-      if (token && !user) {
+      if (token) {
         const result = await authService.getProfile();
         if (result.success && result.data) {
           setUser(result.data);
