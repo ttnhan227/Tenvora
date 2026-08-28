@@ -78,6 +78,75 @@ const PlatformTour = () => (
           </div>
         ))}
       </div>
+
+      {/* Dual Media Feature Showcase */}
+      <div className="grid gap-6 sm:grid-cols-2 pt-4">
+        {/* Feature 1: Card Tap-to-Pay Policy Enforcement */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col">
+          <div className="relative h-48 sm:h-56 bg-slate-900 overflow-hidden">
+            <img
+              src="/corporate-card-pay.jpg"
+              alt="Instant POS Tap to Pay Policy Gate"
+              className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-semibold text-emerald-400">
+              Instant Point-of-Sale Guardrails
+            </div>
+          </div>
+          <div className="p-4 sm:p-5 space-y-2 flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  Card Controls &amp; Limits
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-foreground">
+                Corporate Card Spend Policies
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                Enforce daily spend limits, merchant category restrictions, and auto-approvals directly at swipe before transactions clear.
+              </p>
+            </div>
+            <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Automated Card Safeguards</span>
+              <span className="font-semibold text-foreground">Zero Policy Overruns</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 2: In-Transit Business Travel */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm flex flex-col">
+          <div className="relative h-48 sm:h-56 bg-slate-900 overflow-hidden">
+            <img
+              src="/travel-expense.jpg"
+              alt="Business Traveler In-Transit Receipt Ingestion"
+              className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-semibold text-sky-400">
+              Global Travel Support
+            </div>
+          </div>
+          <div className="p-4 sm:p-5 space-y-2 flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-semibold text-sky-600 dark:text-sky-400">
+                  On-the-Go Expense Claims
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-foreground">
+                Seamless Multi-Currency Travel
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                Capture airport transfers, hotel bills, and flight receipts on the go with automatic foreign exchange conversion and per-diem tracking.
+              </p>
+            </div>
+            <div className="pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Automatic FX Conversion</span>
+              <span className="font-semibold text-foreground">Real-Time Currency Rates</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 );

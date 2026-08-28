@@ -150,12 +150,40 @@ const Login = () => {
                 </Link>
               </p>
 
+              {/* Quick Demo Access Pills */}
+              <div className="pt-2">
+                <div className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Demo Credentials:</div>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => { setEmail("marcus.river@northwindanalytics.com"); setPassword("123"); }}
+                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Marcus (Tenant 1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail("olivia.chen@northwindanalytics.com"); setPassword("123"); }}
+                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Olivia (Manager)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmail("daniel.kim@blueharborlogistics.com"); setPassword("123"); }}
+                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Daniel (Tenant 2)
+                  </button>
+                </div>
+              </div>
+
               {DEMO_ENABLED && (
                 <button
                   type="button"
                   disabled={isLoading}
                   onClick={handleDemoLogin}
-                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground underline block w-full text-center"
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground underline block w-full text-center pt-1"
                 >
                   {loadingAction === "demo" ? "Launching demo…" : "Explore Sandbox Demo"}
                 </button>

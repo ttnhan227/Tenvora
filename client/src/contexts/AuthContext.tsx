@@ -15,24 +15,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize auth state from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("accessToken");
-      if (token) {
+      if (token && !user) {
         const result = await authService.getProfile();
         if (result.success && result.data) {
           setUser(result.data);
-        } else {
-          // Token is invalid, clear storage
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
         }
       }
-      setIsLoading(false);
     };
 
     initializeAuth();

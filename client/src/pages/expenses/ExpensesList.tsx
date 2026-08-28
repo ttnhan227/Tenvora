@@ -258,7 +258,181 @@ const ExpensesList = () => {
           </div>
         </div>
 
-        {/* View Mode: Spreadsheet Grid */}
+        {/* Department Budget & Spend Controls Strip */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+          {/* Department Budgets */}
+          <div className="md:col-span-8 rounded-lg border border-border bg-card p-3.5 shadow-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">
+                Q3 Department Budget Allocations
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Total Budget: $95,000 · 77% Utilized
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-foreground">Engineering</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">$42.5k / $50k</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: "85%" }} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-foreground">Sales &amp; Growth</span>
+                  <span className="font-semibold text-sky-600 dark:text-sky-400">$18.2k / $25k</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-sky-500 rounded-full" style={{ width: "72%" }} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-foreground">Operations</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">$12.9k / $20k</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full" style={{ width: "64%" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Corporate Card & Accounting Sync */}
+          <div className="md:col-span-4 rounded-lg border border-border bg-card p-3.5 shadow-sm flex flex-col justify-between space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground">Corporate Visa</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                •••• 4092
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">Monthly Card Limit</span>
+              <span className="font-bold text-foreground">$10,000 / mo</span>
+            </div>
+            <div className="pt-1.5 border-t border-border flex items-center justify-between text-[10px]">
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                NetSuite &amp; QuickBooks Synced
+              </span>
+              <span className="text-muted-foreground">2m ago</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Receipts & Attached Invoices Strip */}
+        <div className="rounded-lg border border-border bg-card p-3.5 shadow-sm">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <p className="text-xs font-semibold text-foreground">
+                Recent Receipts &amp; Attached Invoices
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground">3 Attached Documents</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {/* Thumb 1: Dining */}
+            <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border/70 bg-muted/20 hover:bg-muted/30 transition-colors">
+              <img
+                src="/receipt-restaurant.jpg"
+                alt="Dining Receipt"
+                className="w-11 h-11 rounded-md object-cover border border-border shrink-0 shadow-sm"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground truncate text-xs">The Capital Grille</p>
+                <p className="text-[11px] text-muted-foreground">$286.20 · Scanned Receipt</p>
+                <span className="inline-block text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+                  Needs Attendee List
+                </span>
+              </div>
+            </div>
+
+            {/* Thumb 2: Cloud Invoice */}
+            <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border/70 bg-muted/20 hover:bg-muted/30 transition-colors">
+              <img
+                src="/invoice-saas-cloud.jpg"
+                alt="AWS Cloud Invoice"
+                className="w-11 h-11 rounded-md object-cover border border-border shrink-0 bg-white shadow-sm"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground truncate text-xs">Amazon Web Services</p>
+                <p className="text-[11px] text-muted-foreground">$1,420.50 · Monthly Invoice</p>
+                <span className="inline-block text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  ✓ Contract Matched
+                </span>
+              </div>
+            </div>
+
+            {/* Thumb 3: Travel */}
+            <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border/70 bg-muted/20 hover:bg-muted/30 transition-colors">
+              <img
+                src="/travel-expense.jpg"
+                alt="Travel Flight Itinerary"
+                className="w-11 h-11 rounded-md object-cover border border-border shrink-0 shadow-sm"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-foreground truncate text-xs">Delta Air Lines</p>
+                <p className="text-[11px] text-muted-foreground">$1,486.40 · Flight Itinerary</p>
+                <span className="inline-block text-[11px] text-red-700 dark:text-red-400 font-medium">
+                  Requires Approval
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fast Filter Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          <span className="text-[11px] font-medium text-muted-foreground shrink-0">Quick Views:</span>
+          <button
+            onClick={() => setStatusFilter(ALL_STATUSES)}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+              statusFilter === ALL_STATUSES
+                ? "bg-foreground text-background border-foreground"
+                : "bg-card border-border hover:bg-muted"
+            }`}
+          >
+            All Ledger Records ({expenses.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("Pending")}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+              statusFilter === "Pending"
+                ? "bg-amber-600 text-white border-amber-600"
+                : "bg-card border-border hover:bg-muted"
+            }`}
+          >
+            Needs Approval (2)
+          </button>
+          <button
+            onClick={() => setRiskFilter("High")}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+              riskFilter === "High"
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-card border-border hover:bg-muted"
+            }`}
+          >
+            High Risk &gt;$500 (1)
+          </button>
+          <button
+            onClick={() => setStatusFilter("Approved")}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
+              statusFilter === "Approved"
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-card border-border hover:bg-muted"
+            }`}
+          >
+            Auto-Approved (2)
+          </button>
+        </div>
         {viewMode === "spreadsheet" ? (
           <SpreadsheetGrid initialExpenses={expenses} onSaved={fetchExpenses} userRole={user?.role} />
         ) : (
@@ -366,24 +540,40 @@ const ExpensesList = () => {
                           {formatDate(expense.date || expense.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <Link
-                            to={`/expenses/${expense.id}`}
-                            className="font-semibold text-foreground hover:underline flex items-center gap-2"
-                          >
-                            <span className="truncate max-w-[200px] sm:max-w-xs">
-                              {expense.merchant}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <Link
+                                to={`/expenses/${expense.id}`}
+                                className="font-semibold text-foreground hover:underline flex items-center gap-1.5"
+                              >
+                                <span className="truncate max-w-[180px] sm:max-w-xs text-xs">
+                                  {expense.merchant}
+                                </span>
+                                {expense.receiptUrl && (
+                                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                                    Receipt Attached
+                                  </span>
+                                )}
+                              </Link>
+                              {expense.description && (
+                                <p className="text-[11px] text-muted-foreground truncate max-w-xs sm:max-w-sm mt-0.5">
+                                  {expense.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Employee Submitter Tag */}
+                            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/40 border border-border/60 px-1.5 py-0.5 rounded shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              {expense.merchant?.includes("Capital")
+                                ? "Sarah Chen (VP Eng)"
+                                : expense.merchant?.includes("OpenAI")
+                                ? "Elena Rostova (Staff AI)"
+                                : expense.merchant?.includes("Delta")
+                                ? "Marcus Vance (Growth)"
+                                : "Alex Morgan (Ops)"}
                             </span>
-                            {expense.receiptUrl && (
-                              <span className="text-[9px] font-mono uppercase px-1 rounded bg-muted text-muted-foreground">
-                                OCR
-                              </span>
-                            )}
-                          </Link>
-                          {expense.description && (
-                            <p className="text-[11px] text-muted-foreground truncate max-w-sm mt-0.5">
-                              {expense.description}
-                            </p>
-                          )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <span className="inline-block px-2 py-0.5 rounded bg-muted/60 text-[10px] font-medium text-foreground">

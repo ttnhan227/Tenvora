@@ -87,10 +87,11 @@ const PolicyLab = () => {
         )}
 
         <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-start">
-          {/* Simulation Controls Panel */}
-          <Card>
-            <CardHeader className="border-b border-border/60 pb-3">
-              <CardTitle>Simulation Parameters</CardTitle>
+          {/* Simulation Controls Panel Column */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="border-b border-border/60 pb-3">
+                <CardTitle>Simulation Parameters</CardTitle>
               <CardDescription>Adjust rules to project ledger automation</CardDescription>
             </CardHeader>
             <CardContent className="pt-4 space-y-4 text-xs">
@@ -152,6 +153,33 @@ const PolicyLab = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* POS Card Preview Card */}
+          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+            <div className="relative h-36 bg-slate-900 overflow-hidden">
+              <img
+                src="/corporate-card-pay.jpg"
+                alt="Corporate Card Swipe Simulator"
+                className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
+              <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white">
+                <span className="text-xs font-semibold text-emerald-400">
+                  Instant Card Policy Sync
+                </span>
+                <span className="text-[10px] bg-slate-900/80 px-2 py-0.5 rounded border border-white/20">
+                  Corporate Card (•••• 4092)
+                </span>
+              </div>
+            </div>
+            <div className="p-3 text-xs space-y-1">
+              <p className="font-semibold text-foreground text-xs">Live Card Safeguards</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Rules tested here sync automatically to corporate cards and prevent out-of-policy spend in real time.
+              </p>
+            </div>
+          </div>
+        </div>
 
           {/* Results Column */}
           <div className="space-y-4">

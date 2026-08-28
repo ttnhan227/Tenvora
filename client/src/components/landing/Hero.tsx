@@ -93,6 +93,109 @@ const Hero = () => {
             <span>SOX 404 SHA-256 hash chains</span>
           </div>
         </div>
+
+        {/* Media + Live UI Product Showcase Frame */}
+        <div className="mt-14 max-w-5xl mx-auto rounded-xl border border-border bg-card overflow-hidden shadow-xl">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border text-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="font-semibold text-foreground text-xs">
+                Real-Time Expense Activity
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                Policy engine active
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+            {/* Left: Corporate Office Photography */}
+            <div className="lg:col-span-7 relative min-h-[340px] bg-slate-900 overflow-hidden">
+              <img
+                src="/hero-finance-team.jpg"
+                alt="Finance Operations Team Reviewing Analytics"
+                className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <div className="inline-flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded text-xs font-medium text-emerald-400 mb-1.5">
+                  <ScanSearch className="h-3.5 w-3.5" />
+                  Instant Receipt Extraction
+                </div>
+                <p className="text-sm font-semibold leading-snug text-slate-100">
+                  Automated expense validation across distributed teams
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Live Policy Feed */}
+            <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between bg-card space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-foreground">
+                    Recent Transactions &amp; Approvals
+                  </p>
+                  <span className="text-[11px] text-muted-foreground">Live Feed</span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Stream Card 1 */}
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Delta Air Lines</span>
+                      <span className="font-semibold text-red-600 dark:text-red-400">$1,486.40</span>
+                    </div>
+                    <p className="text-[11px] text-red-700 dark:text-red-300 font-medium">
+                      Travel &gt; $1,000 threshold requires director approval
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-red-500/10">
+                      <span>Travel Policy Check</span>
+                      <span className="font-semibold text-red-600">Pending Review</span>
+                    </div>
+                  </div>
+
+                  {/* Stream Card 2 */}
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">The Capital Grille</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-300">$286.20</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                      Receipt parsed · Missing attendee list
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-amber-500/10">
+                      <span>Meals &amp; Entertainment</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">Needs Attendee Form</span>
+                    </div>
+                  </div>
+
+                  {/* Stream Card 3 */}
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Amazon Web Services</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">$1,420.50</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                      Recurring software invoice verified against PO
+                    </p>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-emerald-500/10">
+                      <span>Cloud Infrastructure</span>
+                      <span className="font-semibold text-emerald-600">Auto-Approved</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Enterprise Policy Compliance</span>
+                <span className="font-semibold text-foreground">Audit-Ready</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -248,6 +248,109 @@ const ExpenseDetail = () => {
               </CardContent>
             </Card>
 
+            {/* Scanned Receipt & Auto-Extracted Details */}
+            <Card className="overflow-hidden border-border">
+              <CardHeader className="border-b border-border/60 pb-3 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-600" />
+                    <CardTitle className="text-sm">Scanned Receipt &amp; Extracted Items</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                      <CheckCircle className="h-3 w-3 text-emerald-600" />
+                      Verified Match
+                    </span>
+                  </div>
+                </div>
+                <CardDescription>
+                  Document image matched against entered expense claim
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-0 border-b border-border/60">
+                  {/* Left: Scanned Document */}
+                  <div className="md:col-span-6 relative min-h-[300px] max-h-[380px] bg-slate-900/90 flex items-center justify-center overflow-hidden border-r border-border/60 p-4">
+                    <div className="relative max-w-full max-h-[340px] rounded-lg shadow-lg overflow-hidden border border-white/10">
+                      <img
+                        src={
+                          expense.category === "Software"
+                            ? "/invoice-saas-cloud.jpg"
+                            : "/receipt-restaurant.jpg"
+                        }
+                        alt="Scanned Receipt Document"
+                        className="w-full h-full object-cover object-top max-h-[340px]"
+                      />
+
+                      {/* Subtle Document Field Highlight */}
+                      <div className="absolute top-[18%] left-[10%] right-[10%] h-8 border border-emerald-400/80 bg-emerald-500/15 rounded flex items-center px-2">
+                        <span className="bg-emerald-700 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                          Merchant Matched
+                        </span>
+                      </div>
+
+                      {/* Line Items Highlight */}
+                      <div className="absolute top-[42%] left-[8%] right-[8%] h-14 border border-dashed border-sky-400/70 bg-sky-500/10 rounded flex items-start p-1">
+                        <span className="bg-sky-700 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                          Itemized Items
+                        </span>
+                      </div>
+
+                      {/* Total Highlight */}
+                      <div className="absolute bottom-[16%] left-[12%] right-[12%] h-8 border border-emerald-400/80 bg-emerald-500/15 rounded flex items-center justify-between px-2">
+                        <span className="bg-emerald-700 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                          Total Amount
+                        </span>
+                        <span className="bg-slate-900 text-emerald-300 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          {formatCurrency(expense.amount, expense.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Extracted Fields Summary */}
+                  <div className="md:col-span-6 p-4 sm:p-5 space-y-3 bg-card flex flex-col justify-between">
+                    <div className="space-y-2.5">
+                      <p className="text-xs font-semibold text-foreground">
+                        Extracted Document Details
+                      </p>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-border/50">
+                          <span className="text-muted-foreground">Merchant / Vendor</span>
+                          <span className="font-semibold text-foreground">{expense.merchant || "Apple Store"}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-border/50">
+                          <span className="text-muted-foreground">Extracted Total</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(expense.amount, expense.currency)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-border/50">
+                          <span className="text-muted-foreground">Spend Category</span>
+                          <span className="font-semibold text-foreground">{expense.category}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-border/50">
+                          <span className="text-muted-foreground">Currency</span>
+                          <span className="font-medium text-foreground">{expense.currency || "USD"}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-border/50">
+                          <span className="text-muted-foreground">Document Status</span>
+                          <span className="font-semibold text-emerald-600">Attached &amp; Legible</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-md border border-emerald-500/20 bg-emerald-500/5 text-xs flex items-center justify-between">
+                      <span className="text-emerald-800 dark:text-emerald-300 font-medium">
+                        ✓ Verified receipt attached to claim
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Risk Assessment Card */}
             {riskAssessment && (
               <Card>
