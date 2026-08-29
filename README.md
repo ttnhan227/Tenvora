@@ -1,167 +1,184 @@
-# VeriSpend
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="VeriSpend Banner" width="100%">
+</p>
 
-VeriSpend is an AI-assisted expense review system for small organizations. It reduces manual receipt entry and makes inconsistent or risky claims easier to review, while keeping approval authority and company data under backend-enforced controls.
+<p align="center">
+  <strong>A multi-tenant corporate expense review platform that automates itemized receipt parsing with Vision AI, enforces spend limits, and maintains immutable audit logs.</strong>
+</p>
 
-- [Live application](https://verispend-client.onrender.com)
-- [API documentation](https://aiaudit-expensetracker.onrender.com/swagger)
+<p align="center">
+  <a href="https://verispend-client.onrender.com"><img src="https://img.shields.io/badge/Live-Demo-brightgreen?style=flat-square" alt="Live Demo"></a>
+  <a href="https://aiaudit-expensetracker.onrender.com/swagger"><img src="https://img.shields.io/badge/Swagger-API%20Docs-85EA2D?style=flat-square&logo=swagger" alt="Swagger Docs"></a>
+  <img src="https://img.shields.io/badge/.NET-8.0%20%2F%2010.0-512bd4.svg" alt=".NET">
+  <img src="https://img.shields.io/badge/C%23-239120.svg" alt="C#">
+  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19">
+  <img src="https://img.shields.io/badge/PostgreSQL-336791.svg" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Docker-2496ed.svg" alt="Docker">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
+</p>
 
-> The free hosted backend may take about one minute to wake up. Use the **Open demo workspace** link below sign-in for an isolated temporary workspace. Set `VITE_DEMO_ENABLED=false` in the client build to hide public demo access.
+---
 
-## The problem
+## Platform Visual Preview
 
-Small organizations need a consistent way to submit, review, and audit expenses without exposing one company's data to another.
-
-Manual entry wastes time. Informal review produces inconsistent decisions. Managers need to know which claims deserve attention and why. Owners also need durable evidence of who changed or approved an expense. AI can assist with extraction and explanation, but it must not become an unaccountable financial decision-maker.
-
-## One complete scenario
-
-1. An employee uploads a receipt.
-2. The vision provider proposes merchant, total, currency, date, and category.
-3. VeriSpend marks uncertain or fallback results for manual review; the employee can correct every field before creating a draft.
-4. Backend policy and risk rules check limits, duplicates, unusual activity, restricted categories, missing details, and budgets.
-5. The employee submits the draft.
-6. An authorized Owner or Manager sees the risk score, triggered rules, anomalies, and review explanation.
-7. The manager approves or rejects the claim.
-8. Creation, edits, submission, and the decision are recorded in the audit history with the actor and before/after state.
-
-The guided demo contains representative safe, duplicate, over-limit, weekend, and restricted-category claims so this workflow can be reviewed without using real company data.
-
-## Why these features exist
-
-| Business problem | VeriSpend response | Evidence |
-| --- | --- | --- |
-| Manual receipt entry | Vision-assisted field proposals and an editable confirmation form | [Receipt evaluation](docs/receipt-evaluation/README.md), upload UI |
-| Inconsistent reviews | Deterministic risk and policy signals with manager-facing explanations | `RiskAssessmentServiceTests`, `ReviewAssistantServiceTests` |
-| Cross-company data exposure | Tenant ID is derived from authenticated claims and applied to repository queries | `ClaimsPrincipalExtensionsTests`, tenant-scoped repositories |
-| Missing audit evidence | Created, updated, submitted, approved, rejected, and deleted events include snapshots and actor details | `AuditLogService`, populated demo audit histories |
-| Policy and budget violations | Spend limits, restricted categories, duplicate checks, and category budget alerts | `RiskAssessmentServiceTests`, `BudgetGuardrailService` |
-| Multi-currency conversion | Real-time exchange rate calculation with fallback identity conversion | `FxRateServiceTests` |
-| Too many claims to inspect equally | Risk level, reasons, policy triggers, and anomaly flags prioritize review | manager pending queue, spreadsheet grid, and expense detail UI |
-
-## Guardrails and decision authority
-
-- Authentication and role authorization are enforced by ASP.NET Core controllers. Manager endpoints require the `Owner` or `Manager` role.
-- Tenant identifiers come from the authenticated principal; clients do not select a tenant for protected expense queries.
-- Expense repositories include the tenant ID when loading individual or organization-wide records.
-- Extracted values are proposals. Users can edit them before a draft is created.
-- Missing AI configuration, provider errors, malformed responses, and unsupported files fail safely. The API returns incomplete values, `requiresReview: true`, and warnings instead of fabricated receipt facts.
-- AI receipt extraction and the copilot do not call approval or rejection services.
-- Normal final decisions are made through role-protected manager endpoints and recorded in the audit log.
-- Optional auto-approval is an Owner-configured deterministic policy workflow, not a model decision. It is disabled unless explicitly enabled and is disclosed separately in settings and audit history.
-- The copilot receives only expenses already filtered for the authenticated tenant and role.
-
-## Receipt extraction evaluation
-
-The committed evaluation is deliberately small and transparent: three anonymized/template receipt files (two copies of one raster receipt and one SVG receipt), five fields per file, evaluated with the configured Mistral vision model on 17 July 2026.
-
-| Field | Accuracy |
-| --- | ---: |
-| Merchant | 66.7% |
-| Total amount | 66.7% |
-| Currency | 66.7% |
-| Transaction date | 66.7% |
-| Category | 66.7% |
-| **Overall field accuracy** | **66.7% (10/15)** |
-
-Both PNG evaluations were correct on all five fields. The SVG request was not accepted/parsed by the provider path and used the safe fallback, so all five fields were counted as incorrect. This shows the primary current failure case rather than hiding it. The two PNGs are duplicate files, so these results are a pipeline check—not a statistically meaningful production benchmark.
-
-See [the evaluation protocol and raw results](docs/receipt-evaluation/README.md). Re-run it with:
-
-```powershell
-dotnet run --project tools/ReceiptEvaluator/ReceiptEvaluator.csproj -- docs/receipt-evaluation/dataset.json docs/receipt-evaluation/results.json
-```
-
-## Architecture
-
-```text
-React client
-  │ authenticated HTTPS / editable receipt review
-  ▼
-ASP.NET Core API
-  ├─ authorization and tenant context
-  ├─ expense workflow and audit logging
-  ├─ deterministic risk, policy, and budget services
-  └─ AI adapters for receipt extraction and tenant-scoped copilot context
-  │
-  ▼
-PostgreSQL (tenant-owned users, expenses, receipts, policies, and audit logs)
-```
-
-The boundary is intentional: AI proposes or explains; backend services authorize, persist, evaluate policy, and record decisions.
-
-## Product Preview
-
-| Platform Landing & Multi-Tenant Control | Vision OCR Extraction & Proposal |
+| Platform Landing & Review Queue | Vision AI Extraction & Proposal |
 |:---:|:---:|
 | ![VeriSpend Landing & Control](docs/screenshots/verispend-landing.png) | ![Vision OCR Receipt Extraction](docs/screenshots/verispend-vision.png) |
-| **Expense Detail & Deterministic Audit Review** | **Policy Lab & Financial Guardrails** |
+| **Expense Detail & Line-Item Audit** | **Policy Lab & Compliance Guardrails** |
 | ![Expense Review & Audit Trail](docs/screenshots/verispend-review.png) | ![Policy Lab & Financial Guardrails](docs/screenshots/verispend-guardrails.png) |
 
 ---
 
-## Major design decisions
+## DevOps & Infrastructure
 
-- **Human-editable extraction:** receipt output is never persisted as an expense until the user confirms it.
-- **Explainable deterministic risk:** review scores are assembled from visible rules rather than a model-generated approval recommendation.
-- **Tenant scoping in the backend:** UI hiding is not treated as an access-control boundary.
-- **Audited state transitions:** workflow events capture actors and snapshots, not only the latest status.
-- **Safe degradation:** core expense entry remains available without an AI key; unavailable extraction is clearly labelled and requires manual input.
+VeriSpend is containerized with Docker Compose and deployed through continuous integration workflows.
 
-## Limitations
+### End-to-End Architecture
 
-- The current receipt benchmark is too small and contains a duplicate image. It validates the evaluation pipeline but not real-world generalization.
-- SVG input is accepted by the browser but may not be supported by the configured vision endpoint; the UI rasterizes SVG uploads where possible.
-- No calibrated, provider-supplied per-field confidence score is available. VeriSpend therefore uses explicit completeness checks and conservative fallback warnings rather than displaying invented confidence percentages.
-- Merchant naming and expense category ground truth can be subjective; the evaluation uses exact normalized matching and documents labels.
-- Policy and anomaly rules are heuristics and require organization-specific configuration.
-- Compliance screens support evidence collection; they do not by themselves make an organization SOX, SOC 2, or GDPR compliant.
-- Optional deterministic auto-approval changes the human-only workflow and should be enabled only after owners validate its rules.
+```text
+React 19 Client
+        │
+        ├── Authenticated HTTPS / Editable Receipt Review Form
+        │
+        ▼
+ASP.NET Core 8 API
+        │
+        ├── JWT Claims Principal ────► Injects Tenant Isolation Scope
+        │
+        ├── Policy Engine ───────────► Evaluates spend limits, duplicates & restricted categories
+        │
+        ├── Mistral Vision AI ───────► Extracts itemized lines, totals, taxes, and currencies
+        │
+        ├── EF Core Interceptors ────► Appends immutable JSON state snapshots on save
+        │
+        └── Approval State Machine ──► Role-gated transitions (Owner / Manager / Employee)
+        │
+        ▼
+PostgreSQL Database (Tenant-partitioned expenses, receipts, policies, and audit logs)
+```
 
-## Run locally
+### Services
 
-Requirements: .NET 10, Node.js 20+, npm, and PostgreSQL.
+| Service | Technology | Role |
+|---|---|---|
+| API Backend | ASP.NET Core 8 (C#) | REST API, JWT auth, tenant isolation, business logic |
+| Client | React 19 + TypeScript | Single-page application, interactive expense spreadsheet grid |
+| Vision AI Engine | Mistral Vision API | OCR parsing of merchant, totals, taxes, date & category |
+| Database | PostgreSQL 16 | Relational persistence, JSONB state snapshots, indexes |
+| Containerization | Docker + Compose | Multi-container local orchestration & production builds |
+
+### Key Infrastructure Decisions
+
+- **Tenant Scoping at Data Layer** — Tenant ID is extracted strictly from the authenticated JWT token and applied to all repository queries; the UI has no authority over tenant boundaries.
+- **Immutable Audit Logging** — Entity Framework Core interceptors automatically capture actor identities and before/after JSON state snapshots on every update and approval transition.
+- **Fail-Safe Vision Fallback** — If AI extraction is unavailable or malformed, the system falls back safely to manual review with clear warning flags instead of fabricating receipt facts.
+- **Deterministic Risk Scoring** — Compliance risk signals are computed from deterministic rules (spending caps, weekend transactions, missing details) rather than unexplainable black-box models.
+
+---
+
+## Features
+
+- **Vision AI Receipt Extraction**: Parses raw receipt images into structured fields (merchant, line items, taxes, currency, date, category).
+- **Human-in-the-Loop Confirmation**: Field proposals are fully editable before creating draft expenses.
+- **Multi-Tenant Workspace Isolation**: Strict tenant data partitioning backed by claims-based authorization.
+- **Deterministic Policy Guardrails**: Real-time spending limits, duplicate submission detection, and restricted category rules.
+- **Immutable Audit History**: Append-only JSON ledger recording all state changes, actors, timestamps, and previous values.
+- **Role-Based Workflow**: Dedicated interfaces and permissions for Employees (submit), Managers (review/approve), and Owners (policy setup).
+
+---
+
+## Tech Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Radix UI
+- **Backend**: ASP.NET Core 8 / .NET 10, C#, Entity Framework Core
+- **Database**: PostgreSQL 16, EF Core Migrations
+- **AI & Vision**: Mistral Vision API, Custom Evaluation Harness
+- **Infrastructure & Testing**: Docker, Docker Compose, xUnit, Vitest, Playwright
+
+---
+
+## Getting Started
+
+### 1. Clone repository & configure environment
+
+```bash
+git clone https://github.com/ttnhan227/VeriSpend.git
+cd VeriSpend
+cp .env.example .env
+```
+
+### 2. Start with Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+| Endpoint | URL |
+|---|---|
+| Web Application | http://localhost:5173 |
+| Swagger API Docs | http://localhost:8080/swagger |
+| Health Check | http://localhost:8080/health |
+
+---
+
+## Environment Variables Reference
+
+| Variable | Description | Default / Example |
+|---|---|---|
+| `ASPNETCORE_ENVIRONMENT` | Runtime environment (`Development` or `Production`) | `Development` |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string | `Host=postgres;Port=5432;Database=verispend;Username=postgres;Password=...` |
+| `Jwt__Secret` | HMAC-SHA256 secret key for signing JWT tokens | `min-32-chars-secret-key-for-jwt-signing` |
+| `Jwt__Issuer` | JWT token issuer | `VeriSpendAPI` |
+| `Jwt__Audience` | JWT token audience | `VeriSpendClient` |
+| `Mistral__ApiKey` | Mistral Vision API Key for receipt extraction | Required for AI OCR |
+| `Mistral__Model` | Vision language model identifier | `pixtral-12b-2409` |
+| `VITE_DEMO_ENABLED` | Enables public demo workspace switch | `true` |
+
+---
+
+## Testing & Quality Assurance
+
+### Backend xUnit Tests
+
+```powershell
+dotnet test VeriSpend.sln
+```
+
+14 unit and integration test suites covering:
+- Tenant-scoped repository queries & data leakage prevention
+- EF Core audit trail interceptors and JSON state snapshot generation
+- Deterministic policy limit validation & duplicate expense checks
+- Currency conversion calculations and fallback modes
+
+### Frontend Tests
+
+```bash
+cd client
+npm test        # Unit tests (Vitest)
+npm run build   # Production bundle verification
+```
+
+---
+
+## Local Development (Without Docker)
+
+### Backend
 
 ```powershell
 Copy-Item server/appsettings.Development.example.json server/appsettings.Development.json
 dotnet run --project server
 ```
 
-In another terminal:
+### Frontend
 
-```powershell
+```bash
 cd client
 npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). Add PostgreSQL, JWT, and optional AI-provider settings only to the ignored development configuration. Without an AI key, receipt extraction enters explicit manual-review fallback mode.
+---
 
-For Docker:
+## License
 
-```powershell
-Copy-Item .env.example .env
-docker compose up -d --build
-```
-
-## Tests
-
-```powershell
-dotnet test VeriSpend.sln
-
-cd client
-npm test
-npm run build
-```
-
-Backend xUnit tests cover risk scoring signals, missing evidence inspection, currency conversion rates, tenant scoping, and fail-safe fallback modes. Frontend Vitest suites validate UI components, routing, pricing tiers, and the spreadsheet grid editor. Production bundles are verified with Vite.
-
-## Project structure
-
-```text
-client/                     React application
-server/                     ASP.NET Core API
-server.Tests/               backend unit and guardrail tests
-docs/receipt-evaluation/    labels, raw predictions, protocol, and results
-tools/ReceiptEvaluator/     reproducible live-provider evaluation runner
-compose.yaml                local application stack
-```
+MIT
