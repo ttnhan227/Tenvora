@@ -1,36 +1,43 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace VeriSpend.Api.Services;
+namespace Tenvora.Api.Services;
 
 public static class PasswordHasher
 {
-    private const int SaltSize = 16;
-    private const int KeySize = 32;
-    private const int Iterations = 100_000;
-
     public static string Hash(string password)
     {
-        using var algorithm = new Rfc2898DeriveBytes(password, SaltSize, Iterations, HashAlgorithmName.SHA256);
-        var key = algorithm.GetBytes(KeySize);
-        var salt = algorithm.Salt;
-
-        return Convert.ToBase64String(salt) + ":" + Convert.ToBase64String(key);
-    }
-
-    public static bool Verify(string hashedPassword, string suppliedPassword)
-    {
-        var parts = hashedPassword.Split(':', 2);
-        if (parts.Length != 2)
+        var salt = new byte[16];
+        using (var rng = RandomNumberGenerator.Create())
         {
-            return false;
+            rng.GetBytes(salt);
         }
 
-        var salt = Convert.FromBase64String(parts[0]);
-        var storedKey = Convert.FromBase64String(parts[1]);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations: 100_000,
+            hashAlgorithm: HashAlgorithmName.SHA256,
+            outputLength: 32);
 
-        using var algorithm = new Rfc2898DeriveBytes(suppliedPassword, salt, Iterations, HashAlgorithmName.SHA256);
-        var computedKey = algorithm.GetBytes(KeySize);
-        return CryptographicOperations.FixedTimeEquals(computedKey, storedKey);
+        return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
+    }
+
+    public static bool Verify(string passwordHash, string password)
+    {
+        var parts = passwordHash.Split(':');
+        if (parts.Length != 2) return false;
+
+        var salt = Convert.FromBase64String(parts[0]);
+        var expectedHash = Convert.FromBase64String(parts[1]);
+
+        var actualHash = Rfc2898DeriveBytes.Pbkdf2(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations: 100_000,
+            hashAlgorithm: HashAlgorithmName.SHA256,
+            outputLength: 32);
+
+        return CryptographicOperations.FixedTimeEquals(expectedHash, actualHash);
     }
 }

@@ -1,26 +1,20 @@
-namespace VeriSpend.Api.Common;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
-public static class UtcDateTime
+namespace Tenvora.Api.Common;
+
+public class UtcDateTimeConverter : JsonConverter<DateTime>
 {
-    public static DateTime Normalize(DateTime value)
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return value.Kind switch
-        {
-            DateTimeKind.Utc => value,
-            DateTimeKind.Local => value.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
-        };
+        var dt = reader.GetDateTime();
+        return dt.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            : dt.ToUniversalTime();
     }
 
-    public static DateTime StartOfUtcMonth(DateTime value)
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
     {
-        var utcValue = Normalize(value);
-        return new DateTime(utcValue.Year, utcValue.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-    }
-
-    public static DateTime UtcDate(DateTime value)
-    {
-        var utcValue = Normalize(value);
-        return new DateTime(utcValue.Year, utcValue.Month, utcValue.Day, 0, 0, 0, DateTimeKind.Utc);
+        writer.WriteStringValue(value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
     }
 }

@@ -1,6 +1,6 @@
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 
-namespace VeriSpend.Api.Services;
+namespace Tenvora.Api.Services;
 
 public interface IBackgroundTaskQueue
 {
@@ -29,7 +29,6 @@ public class BackgroundTaskQueue : IBackgroundTaskQueue
 
     public async ValueTask<Func<CancellationToken, ValueTask>> DequeueAsync(CancellationToken cancellationToken)
     {
-        var workItem = await _queue.Reader.ReadAsync(cancellationToken);
-        return workItem;
+        return await _queue.Reader.ReadAsync(cancellationToken);
     }
 }

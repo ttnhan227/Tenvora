@@ -1,14 +1,16 @@
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using VeriSpend.Api.Common;
-using VeriSpend.Api.Dtos.Auth;
-using VeriSpend.Api.Services;
 using Microsoft.AspNetCore.RateLimiting;
+using Tenvora.Api.Common;
+using Tenvora.Api.Dtos;
+using Tenvora.Api.Services;
 
-namespace VeriSpend.Api.Controllers;
+namespace Tenvora.Api.Controllers;
 
 [ApiController]
-[Route("api/auth")]
+[Route("api/[controller]")]
+[EnableRateLimiting("auth-rate-limit")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -18,46 +20,34 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var result = await _authService.RegisterAsync(request);
-        return result.Success ? Ok(result) : BadRequest(result);
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
     }
 
-    [AllowAnonymous]
-    [EnableRateLimiting("demo-provisioning")]
-    [HttpPost("demo")]
-    public async Task<IActionResult> CreateDemo()
-    {
-        var result = await _authService.CreateDemoAsync();
-        return result.Success ? Ok(result) : StatusCode(StatusCodes.Status503ServiceUnavailable, result);
-    }
-
-    [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        return result.Success ? Ok(result) : Unauthorized(result);
+        if (!result.Success)
+            return Unauthorized(result);
+
+        return Ok(result);
     }
 
-    [AllowAnonymous]
-    [HttpPost("accept-invite")]
-    public async Task<IActionResult> AcceptInvite(AcceptInviteRequest request)
-    {
-        var result = await _authService.AcceptInviteAsync(request);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
-    [AllowAnonymous]
-    [HttpPost("refresh")]
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         var result = await _authService.RefreshTokenAsync(request);
-        return result.Success ? Ok(result) : Unauthorized(result);
+        if (!result.Success)
+            return Unauthorized(result);
+
+        return Ok(result);
     }
 
     [Authorize]
@@ -66,24 +56,9 @@ public class AuthController : ControllerBase
     {
         var userId = User.GetUserId();
         var result = await _authService.GetProfileAsync(userId);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+        if (!result.Success)
+            return NotFound(result);
 
-    [Authorize]
-    [HttpPut("profile")]
-    public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
-    {
-        var userId = User.GetUserId();
-        var result = await _authService.UpdateProfileAsync(userId, request);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
-    [Authorize]
-    [HttpPut("change-password")]
-    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
-    {
-        var userId = User.GetUserId();
-        var result = await _authService.ChangePasswordAsync(userId, request);
-        return result.Success ? Ok(result) : BadRequest(result);
+        return Ok(result);
     }
 }

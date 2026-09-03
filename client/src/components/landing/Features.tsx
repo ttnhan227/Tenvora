@@ -1,71 +1,111 @@
-import { Brain, Building2, FileBarChart, GitPullRequestArrow, ShieldCheck, Workflow } from "lucide-react";
+﻿import {
+  Scale,
+  Lock,
+  RefreshCw,
+  Landmark,
+  ShieldCheck,
+  Cpu,
+  KeyRound,
+  FileCode,
+  CheckCircle2,
+} from "lucide-react";
 
-const features = [
+const FEATURES = [
   {
-    icon: Brain,
-    title: "Explainable Risk Engine",
-    description: "Evaluates transactions across duplicate patterns, amount anomalies, policy rule violations, and behavioral history with clear audit justifications.",
+    icon: Scale,
+    title: "Double-Entry Balance Invariant",
+    description:
+      "Every financial movement guarantees Σ(Debit) = Σ(Credit) = Amount. Zero balance row mutations — reversals append compensating journal entries.",
   },
   {
-    icon: Workflow,
-    title: "Approval Orchestration",
-    description: "Route claims through tiered manager approvals with safe auto-clearance for low-risk, compliant micro-expenses.",
+    icon: Lock,
+    title: "PostgreSQL Native RLS",
+    description:
+      "Tenant isolation is enforced in the database kernel via PostgreSQL Row-Level Security policies, eliminating application-level leakage risks.",
   },
   {
-    icon: FileBarChart,
-    title: "Finance Intelligence",
-    description: "Track departmental budget pools, seasonal expenditure trends, reviewer turnaround SLAs, and AI-driven budget overrun predictions.",
+    icon: Cpu,
+    title: "Deadlock-Free Ascending Locks",
+    description:
+      "Pessimistic SELECT FOR UPDATE locks acquire account IDs in strict ascending order, mathematically eliminating AB-BA lock inversion deadlocks.",
   },
   {
-    icon: Building2,
-    title: "Multi-tenant Architecture",
-    description: "Strict logical separation across corporate users, receipts, policy parameters, subscription tiers, and financial ledgers.",
+    icon: KeyRound,
+    title: "Strict Idempotency Protection",
+    description:
+      "Unique composite (TenantId, IdempotencyKey) constraints deduplicate rapid retries and network race conditions with sub-millisecond cached responses.",
+  },
+  {
+    icon: RefreshCw,
+    title: "Continuous Reconciliation",
+    description:
+      "Automated background audit scanners continuously compare cached account balances against historical journal lines to catch variances immediately.",
+  },
+  {
+    icon: Landmark,
+    title: "Automated Multi-Currency Clearing",
+    description:
+      "Batch clearing engines aggregate daily intra-day transactions into single net settlements per currency, with automatic processor fee calculation.",
   },
   {
     icon: ShieldCheck,
-    title: "Compliance Evidence",
-    description: "Cryptographically linked SOX 404 SHA-256 hash chains, SOC 2 Type II controls readiness reports, and GDPR Right-to-Erasure tools.",
+    title: "5-Tier Financial RBAC",
+    description:
+      "Granular role-based permissions: TenantAdmin, OperationsManager, ComplianceOfficer, Auditor, and Viewer with immutable audit event logging.",
   },
   {
-    icon: GitPullRequestArrow,
-    title: "Connected Operations",
-    description: "Seamlessly export cleared spend records to QuickBooks, Xero, and CSV ledgers with complete line-item breakdown.",
+    icon: FileCode,
+    title: "Deterministic Rule-Based Risk",
+    description:
+      "Real-time evaluation engine flags high-value velocity, balance depletion ratios, and account state restrictions before money movement.",
   },
 ];
 
-const Features = () => {
+export default function Features() {
   return (
-    <section id="features" className="py-16 font-sans text-xs">
-      <div className="container mx-auto px-4 max-w-6xl space-y-10">
-        <div className="text-center space-y-2 max-w-xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Platform Capabilities
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Built for the full spend lifecycle
+    <section id="features" className="py-24 border-t border-border/60 bg-background relative">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] font-bold">
+            FINANCIAL ARCHITECTURE
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+            Engineered for Zero-Tolerance Financial Systems
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Unified system of record, risk evaluation engine, policy guardrails, and audit integrity logs.
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Every architectural decision in Tenvora is optimized for mathematical correctness, concurrency safety, and auditable compliance.
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feat) => (
-            <div
-              key={feat.title}
-              className="rounded-md border border-border bg-card p-4 space-y-2 hover:border-foreground/40 transition-colors"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded border border-border bg-muted/20 text-foreground">
-                <feat.icon className="h-4 w-4" />
+        {/* Feature Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {FEATURES.map((feat, idx) => {
+            const Icon = feat.icon;
+            return (
+              <div
+                key={idx}
+                className="bg-card border border-border rounded-2xl p-6 shadow-sm hover:shadow-xl hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between space-y-4 group"
+              >
+                <div className="space-y-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground group-hover:text-emerald-600 transition-colors">
+                    {feat.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {feat.description}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-border/50 flex items-center gap-1 text-[11px] font-mono text-emerald-600 font-semibold">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Enforced Core Rule</span>
+                </div>
               </div>
-              <p className="font-bold text-sm text-foreground">{feat.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{feat.description}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
   );
-};
-
-export default Features;
+}

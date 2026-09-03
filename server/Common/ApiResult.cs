@@ -1,20 +1,31 @@
-namespace VeriSpend.Api.Common;
+namespace Tenvora.Api.Common;
 
-public sealed class ApiResult
+public class ApiResult
 {
-    public bool Success { get; init; }
-    public string? Error { get; init; }
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<string> Errors { get; set; } = [];
 
-    public static ApiResult Ok() => new() { Success = true };
-    public static ApiResult Fail(string error) => new() { Success = false, Error = error };
+    public static ApiResult Ok(string? message = null) =>
+        new() { Success = true, Message = message ?? "Success" };
+
+    public static ApiResult Fail(string error) =>
+        new() { Success = false, Message = error, Errors = [error] };
+
+    public static ApiResult Fail(List<string> errors) =>
+        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors };
 }
 
-public sealed class ApiResult<T>
+public class ApiResult<T> : ApiResult
 {
-    public bool Success { get; init; }
-    public T? Data { get; init; }
-    public string? Error { get; init; }
+    public T? Data { get; set; }
 
-    public static ApiResult<T> Ok(T data) => new() { Success = true, Data = data };
-    public static ApiResult<T> Fail(string error) => new() { Success = false, Error = error };
+    public static ApiResult<T> Ok(T data, string? message = null) =>
+        new() { Success = true, Data = data, Message = message ?? "Success" };
+
+    public new static ApiResult<T> Fail(string error) =>
+        new() { Success = false, Message = error, Errors = [error] };
+
+    public new static ApiResult<T> Fail(List<string> errors) =>
+        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors };
 }

@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace VeriSpend.Api.Common;
+namespace Tenvora.Api.Common;
 
 public sealed class SwaggerTagDescriptionsDocumentFilter : IDocumentFilter
 {
@@ -13,27 +15,37 @@ public sealed class SwaggerTagDescriptionsDocumentFilter : IDocumentFilter
             new OpenApiTag
             {
                 Name = "Auth",
-                Description = "Authentication endpoints for registration, login, token refresh, and current-user profile lookup."
+                Description = "Authentication endpoints for enterprise registration, login, token refresh, and user profile management."
             },
             new OpenApiTag
             {
-                Name = "Expenses",
-                Description = "Create, browse, update, delete, and summarize expense records for the signed-in tenant."
+                Name = "Accounts",
+                Description = "Manage customer and settlement financial accounts and balances."
             },
             new OpenApiTag
             {
-                Name = "Manager",
-                Description = "Manager and admin approval workflow endpoints, including export and audit trail access."
+                Name = "Payments",
+                Description = "Idempotent payment initiation, processing, and transaction lifecycle management."
             },
             new OpenApiTag
             {
-                Name = "Settings",
-                Description = "Tenant-level company and policy settings endpoints."
+                Name = "Ledger",
+                Description = "Immutable double-entry journal records, balance history, and financial audit logs."
             },
             new OpenApiTag
             {
-                Name = "Ai",
-                Description = "Receipt upload, AI-assisted confirmation, and AI usage reporting endpoints."
+                Name = "Reconciliation",
+                Description = "Automated ledger consistency verification and discrepancy reporting."
+            },
+            new OpenApiTag
+            {
+                Name = "Risk",
+                Description = "Deterministic rule-based risk evaluation and compliance screening."
+            },
+            new OpenApiTag
+            {
+                Name = "Operations",
+                Description = "Internal operations monitoring, batch settlement, and incident management."
             }
         ];
     }
@@ -59,9 +71,46 @@ public sealed class SwaggerExamplesOperationFilter : IOperationFilter
         {
             mediaType.Example = new OpenApiObject
             {
-                ["email"] = new OpenApiString("admin@admin.com"),
-                ["password"] = new OpenApiString("123")
+                ["email"] = new OpenApiString("admin@tenvora.internal"),
+                ["password"] = new OpenApiString("AdminPass123!")
             };
+        }
+    }
+}
+
+public sealed class AuthorizeCheckOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        var hasAllowAnonymous = context.MethodInfo.DeclaringType?.GetCustomAttributes(true).OfType<AllowAnonymousAttribute>().Any() == true
+            || context.MethodInfo.GetCustomAttributes(true).OfType<AllowAnonymousAttribute>().Any();
+
+        if (hasAllowAnonymous)
+        {
+            operation.Security?.Clear();
+            return;
+        }
+
+        var hasAuthorize = context.MethodInfo.DeclaringType?.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any() == true
+            || context.MethodInfo.GetCustomAttributes(true).OfType<AuthorizeAttribute>().Any();
+
+        if (hasAuthorize)
+        {
+            operation.Security ??= [];
+            operation.Security.Add(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = JwtBearerDefaults.AuthenticationScheme
+                        }
+                    },
+                    []
+                }
+            });
         }
     }
 }

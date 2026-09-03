@@ -6,15 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [baseCurrency, setBaseCurrency] = useState("USD");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -23,33 +25,21 @@ const Register = () => {
     setError("");
     setIsLoading(true);
 
-    if (!companyName || !email || !password || !confirmPassword) {
+    if (!companyName || !email || !password) {
       setError("Please fill in all required fields");
       setIsLoading(false);
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const success = await register(companyName, email, password);
+      const success = await register(companyName, email, password, baseCurrency);
       if (success) {
-        navigate("/onboarding");
+        navigate("/dashboard");
       } else {
-        setError("Registration failed. Please verify credentials.");
+        setError("Registration failed. Please verify credentials or company name uniqueness.");
       }
     } catch {
-      setError("An error occurred during account creation");
+      setError("An error occurred during organization registration.");
     } finally {
       setIsLoading(false);
     }
@@ -57,20 +47,17 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-xs">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
-            <span className="text-base font-bold tracking-tight text-foreground">VeriSpend</span>
-          </Link>
-          <p className="text-xs text-muted-foreground">Provision a new corporate finance workspace</p>
+          <BrandLogo to="/" size="lg" className="justify-center" />
+          <p className="text-xs text-muted-foreground">Provision an Enterprise Payment Operations Tenant</p>
         </div>
 
-        <Card>
+        <Card className="border border-border/80 bg-card">
           <CardHeader className="border-b border-border/60 pb-3 text-center">
-            <CardTitle>Create Organization</CardTitle>
-            <CardDescription>Setup your company spend controls</CardDescription>
+            <CardTitle className="text-base font-bold">Register Organization</CardTitle>
+            <CardDescription className="text-xs">Create your tenant workspace and primary operating account</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -83,30 +70,31 @@ const Register = () => {
 
               <div className="space-y-1">
                 <Label htmlFor="company" className="text-xs font-semibold text-muted-foreground">
-                  Company Name
+                  Organization / Company Name
                 </Label>
                 <Input
                   id="company"
-                  type="text"
-                  placeholder="Acme Treasury Corp"
+                  placeholder="Apex Global Settlements LLC"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   disabled={isLoading}
+                  required
                   className="text-xs"
                 />
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground">
-                  Admin Email Address
+                  Administrator Email
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@company.com"
+                  placeholder="admin@apexsettlements.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
+                  required
                   className="font-mono text-xs"
                 />
               </div>
@@ -122,41 +110,43 @@ const Register = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
+                  required
                   className="font-mono text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="confirm" className="text-xs font-semibold text-muted-foreground">
-                  Confirm Password
+                <Label htmlFor="currency" className="text-xs font-semibold text-muted-foreground">
+                  Base Operating Currency
                 </Label>
-                <Input
-                  id="confirm"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
-                  className="font-mono text-xs"
-                />
+                <Select value={baseCurrency} onValueChange={setBaseCurrency}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="USD" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                    <SelectItem value="SGD">SGD - Singapore Dollar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
                 size="sm"
-                variant="default"
-                className="w-full font-bold h-9 mt-1"
+                className="w-full font-bold h-9 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {isLoading && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                {isLoading ? "Provisioning Organization…" : "Create Workspace"}
+                {isLoading ? "Provisioning Tenant…" : "Create Enterprise Workspace"}
               </Button>
             </form>
 
-            <div className="mt-4 pt-3 border-t border-border/60 text-center">
+            <div className="mt-4 pt-3 border-t border-border/60 text-center space-y-2">
               <p className="text-[11px] text-muted-foreground">
-                Already registered?{" "}
-                <Link to="/login" className="font-semibold text-foreground hover:underline">
+                Already have an organization?{" "}
+                <Link to="/login" className="font-semibold text-emerald-600 hover:underline">
                   Sign In
                 </Link>
               </p>
@@ -166,6 +156,4 @@ const Register = () => {
       </div>
     </div>
   );
-};
-
-export default Register;
+}

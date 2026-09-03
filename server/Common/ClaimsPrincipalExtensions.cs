@@ -1,6 +1,6 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 
-namespace VeriSpend.Api.Common;
+namespace Tenvora.Api.Common;
 
 public static class ClaimsPrincipalExtensions
 {

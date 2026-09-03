@@ -1,10 +1,10 @@
-namespace VeriSpend.Api.Common;
+﻿namespace Tenvora.Api.Common;
 
-public sealed class JwtSettings
+public class JwtSettings
 {
-    public string Issuer { get; init; } = string.Empty;
-    public string Audience { get; init; } = string.Empty;
-    public string Secret { get; init; } = string.Empty;
-    public int AccessTokenMinutes { get; init; } = 60;
-    public int RefreshTokenDays { get; init; } = 14;
+    public string Issuer { get; set; } = "Tenvora";
+    public string Audience { get; set; } = "Tenvora";
+    public string Secret { get; set; } = string.Empty;
+    public int AccessTokenMinutes { get; set; } = 60;
+    public int RefreshTokenDays { get; set; } = 14;
 }

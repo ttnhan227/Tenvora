@@ -11,9 +11,9 @@ vi.mock("@/services/authService", () => ({
       success: true,
       data: {
         id: "user-1",
-        email: "finance@company.com",
-        role: "Manager",
-        companyName: "Acme Corp",
+        email: "ops@tenvora.internal",
+        role: "OperationsManager",
+        companyName: "Tenvora Global Payments",
       },
     }),
     login: vi.fn(),
@@ -22,21 +22,27 @@ vi.mock("@/services/authService", () => ({
 }));
 
 describe("DashboardLayout Component", () => {
-  it("renders navigation links and child content without runtime errors", () => {
+  it("renders Tenvora enterprise navigation hierarchy and child content", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
         <AuthProvider>
           <DashboardLayout>
-            <div data-testid="test-content">Dashboard Content</div>
+            <div data-testid="test-content">Operations Console</div>
           </DashboardLayout>
         </AuthProvider>
       </MemoryRouter>
     );
 
     expect(screen.getByTestId("test-content")).toBeInTheDocument();
-    expect(screen.getByText("VeriSpend")).toBeInTheDocument();
-    expect(screen.getByText("Expenses")).toBeInTheDocument();
-    expect(screen.getByText("New Expense")).toBeInTheDocument();
-    expect(screen.getByText("Upload Receipt")).toBeInTheDocument();
+    expect(screen.getAllByText("Tenvora").length).toBeGreaterThan(0);
+    expect(screen.getByText("Overview")).toBeInTheDocument();
+    expect(screen.getByText("Transfers")).toBeInTheDocument();
+    expect(screen.getByText("Transactions")).toBeInTheDocument();
+    expect(screen.getByText("Accounts")).toBeInTheDocument();
+    expect(screen.getByText("Ledger")).toBeInTheDocument();
+    expect(screen.getByText("Reconciliation")).toBeInTheDocument();
+    expect(screen.getByText("Settlements")).toBeInTheDocument();
+    expect(screen.getByText("Risk Review")).toBeInTheDocument();
+    expect(screen.getByText("Audit Log")).toBeInTheDocument();
   });
 });

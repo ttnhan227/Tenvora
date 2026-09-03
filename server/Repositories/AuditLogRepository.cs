@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Tenvora.Api.Data;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public sealed class AuditLogRepository : IAuditLogRepository
 {
@@ -13,34 +13,29 @@ public sealed class AuditLogRepository : IAuditLogRepository
         _context = context;
     }
 
-    public Task AddAsync(AuditLog auditLog)
+    public async Task<List<AuditLog>> GetByTenantAsync(Guid tenantId, string? entityType = null, string? entityId = null, int limit = 100)
     {
-        _context.AuditLogs.Add(auditLog);
-        return Task.CompletedTask;
-    }
+        var query = _context.AuditLogs.Where(a => a.TenantId == tenantId);
 
-    public Task<List<AuditLog>> GetByExpenseIdAsync(Guid expenseId)
-    {
-        return _context.AuditLogs
-            .Where(a => a.ExpenseId == expenseId)
+        if (!string.IsNullOrWhiteSpace(entityType))
+        {
+            query = query.Where(a => a.EntityType == entityType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entityId))
+        {
+            query = query.Where(a => a.EntityId == entityId);
+        }
+
+        return await query
             .OrderByDescending(a => a.Timestamp)
-            .AsNoTracking()
+            .Take(limit)
             .ToListAsync();
     }
 
-    public Task<List<AuditLog>> GetTenantAuditLogsAsync(Guid tenantId)
+    public async Task AddAsync(AuditLog log)
     {
-        return _context.AuditLogs
-            .Include(a => a.Expense)
-                .ThenInclude(expense => expense!.User)
-            .Where(a => a.Expense != null && a.Expense.TenantId == tenantId)
-            .OrderByDescending(a => a.Timestamp)
-            .AsNoTracking()
-            .ToListAsync();
-    }
-
-    public Task SaveChangesAsync()
-    {
-        return _context.SaveChangesAsync();
+        await _context.AuditLogs.AddAsync(log);
+        await _context.SaveChangesAsync();
     }
 }

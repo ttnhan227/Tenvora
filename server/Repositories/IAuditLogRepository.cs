@@ -1,11 +1,9 @@
-using VeriSpend.Api.Models;
+﻿using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public interface IAuditLogRepository
 {
-    Task AddAsync(AuditLog auditLog);
-    Task<List<AuditLog>> GetByExpenseIdAsync(Guid expenseId);
-    Task<List<AuditLog>> GetTenantAuditLogsAsync(Guid tenantId);
-    Task SaveChangesAsync();
+    Task<List<AuditLog>> GetByTenantAsync(Guid tenantId, string? entityType = null, string? entityId = null, int limit = 100);
+    Task AddAsync(AuditLog log);
 }

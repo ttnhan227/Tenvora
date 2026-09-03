@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Tenvora.Api.Data;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public sealed class UserRepository : IUserRepository
 {
@@ -14,67 +13,46 @@ public sealed class UserRepository : IUserRepository
         _context = context;
     }
 
+    public Task<User?> GetByIdAsync(Guid userId)
+    {
+        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Id == userId);
+    }
+
     public Task<User?> GetByEmailAsync(string email)
     {
         return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Email == email);
     }
 
-    public Task<User?> GetByIdAsync(Guid id)
-    {
-        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Id == id);
-    }
-
-    public Task<User?> GetByInviteTokenAsync(string inviteToken)
-    {
-        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.InviteToken == inviteToken);
-    }
-
-    public Task<User?> GetByIdAndTenantAsync(Guid id, Guid tenantId)
-    {
-        return _context.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId);
-    }
-
     public Task<User?> GetByEmailAndTenantAsync(string email, Guid tenantId)
     {
-        return _context.Users.FirstOrDefaultAsync(u => u.Email == email && u.TenantId == tenantId);
+        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Email == email && u.TenantId == tenantId);
     }
 
-    public Task<List<User>> GetByTenantIdAsync(Guid tenantId)
+    public Task<User?> GetByInviteTokenAsync(string token)
     {
-        return _context.Users
-            .Where(u => u.TenantId == tenantId)
-            .OrderBy(u => u.Email)
-            .ToListAsync();
+        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.InviteToken == token && u.InviteTokenExpiresAt > DateTime.UtcNow);
     }
 
-    public Task<int> CountByRoleAsync(Guid tenantId, string role)
+    public async Task<IEnumerable<User>> GetAllByTenantAsync(Guid tenantId)
     {
-        return _context.Users.CountAsync(u => u.TenantId == tenantId && u.Role == role);
+        return await _context.Users.Where(u => u.TenantId == tenantId).ToListAsync();
     }
 
-    public Task<bool> EmailExistsAsync(string email)
+    public async Task AddAsync(User user)
     {
-        return _context.Users.AnyAsync(u => u.Email == email);
+        await _context.Users.AddAsync(user);
+        await _context.SaveChangesAsync();
     }
 
-    public Task AddAsync(User user)
+    public async Task UpdateAsync(User user)
     {
-        _context.Users.Add(user);
-        return Task.CompletedTask;
+        user.UpdatedAt = DateTime.UtcNow;
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
     }
 
     public Task SaveChangesAsync()
     {
         return _context.SaveChangesAsync();
-    }
-
-    public Task<IDbContextTransaction> BeginTransactionAsync()
-    {
-        return _context.Database.BeginTransactionAsync();
-    }
-
-    public Task ExecuteSqlRawAsync(string sql, params object[] parameters)
-    {
-        return _context.Database.ExecuteSqlRawAsync(sql, parameters);
     }
 }

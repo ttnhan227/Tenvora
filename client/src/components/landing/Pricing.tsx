@@ -1,134 +1,134 @@
+import { CheckCircle2, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 
-const tiers = [
+const TIERS = [
   {
-    id: "starter",
-    name: "Starter",
-    price: "$29",
-    period: "/mo",
-    description: "For small teams automating expense collection and review.",
+    name: "Developer Sandbox",
+    badge: "FREE FOREVER",
+    price: "$0",
+    period: "sandbox testing",
+    description: "Ideal for engineers testing double-entry ledger invariants and integration webhooks.",
     features: [
-      "Up to 500 expenses / month",
-      "OCR receipt field extraction",
-      "Basic policy guardrails",
-      "Email alerts & digests",
-      "3 team seats",
+      "Up to 10,000 test transactions / month",
+      "Full Double-Entry Ledger Core",
+      "Automated Discrepancy Audits",
+      "PostgreSQL RLS Multi-Tenancy",
+      "Community & Discord Support",
     ],
-    cta: "Start Free Trial",
+    ctaText: "Start in Sandbox",
     popular: false,
   },
   {
-    id: "professional",
-    name: "Professional",
-    price: "$79",
-    period: "/mo",
-    description: "For growing organizations requiring risk scoring and accounting sync.",
+    name: "Growth PayOps",
+    badge: "MOST POPULAR",
+    price: "$499",
+    period: "per month",
+    description: "For scaling B2B platforms and fintech startups requiring production payment operations.",
     features: [
-      "Up to 5,000 expenses / month",
-      "Multi-signal risk engine",
-      "Fast-entry spreadsheet ledger",
-      "Priority review queue",
-      "15 team seats",
-      "QuickBooks & Xero export",
-      "Custom category limits",
+      "Up to 250,000 live transfers / month",
+      "Deterministic Row-Lock Concurrency",
+      "Daily Multi-Currency Batch Settlements",
+      "5-Tier Enterprise Financial RBAC",
+      "Continuous Reconciliation Scanners",
+      "Dedicated Slack & Email Support (99.9% SLA)",
     ],
-    cta: "Start Free Trial",
+    ctaText: "Launch Growth Workspace",
     popular: true,
   },
   {
-    id: "enterprise",
-    name: "Enterprise",
+    name: "Enterprise Custom",
+    badge: "CUSTOM SCALE",
     price: "Custom",
-    period: "",
-    description: "Tailored governance solutions for regulated enterprises.",
+    period: "volume-based pricing",
+    description: "For banks, high-volume market operators, and global treasury infrastructure.",
     features: [
-      "Unlimited expense volume",
-      "Reviewer model calibration",
-      "SOX 404 & SOC 2 compliance hub",
-      "Dedicated account engineer",
-      "Unlimited team seats",
-      "Custom ERP data connectors",
-      "SLA guarantee",
+      "Unlimited transactions & custom ledgers",
+      "Dedicated PostgreSQL isolated instances",
+      "Custom bank rail adapters (Fedwire, SEPA, ACH)",
+      "Automated SOC1/SOC2 Compliance Export",
+      "24/7 Dedicated Treasury Engineering Team",
+      "99.99% Uptime SLA Guarantee",
     ],
-    cta: "Contact Sales",
+    ctaText: "Contact Enterprise Sales",
     popular: false,
   },
 ];
 
-const Pricing = () => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSelectPlan = (planId: string) => {
-    if (!isAuthenticated) {
-      navigate("/register");
-    } else {
-      navigate(`/subscription?plan=${planId}`);
-    }
-  };
-
+export default function Pricing() {
   return (
-    <section id="pricing" className="py-16 font-sans text-xs">
-      <div className="container mx-auto px-4 max-w-5xl space-y-10">
-        <div className="text-center space-y-2 max-w-lg mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Predictable Pricing
-          </p>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Clear tiers built for every team scale
+    <section id="pricing" className="py-24 border-t border-border/60 bg-muted/20 relative">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] font-bold">
+            TRANSPARENT PRICING
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
+            Predictable Volume Tiers for Enterprise PayOps
           </h2>
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Start free in our sandbox. Scale seamlessly with clear transaction-volume based plans and enterprise SLAs.
+          </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {tiers.map((tier) => (
+        {/* Pricing Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch max-w-6xl mx-auto">
+          {TIERS.map((tier, idx) => (
             <div
-              key={tier.name}
-              className={`rounded-md border p-5 flex flex-col justify-between space-y-4 bg-card ${
-                tier.popular ? "border-foreground ring-1 ring-foreground" : "border-border"
+              key={idx}
+              className={`relative bg-card border rounded-2xl p-7 shadow-lg flex flex-col justify-between transition-all duration-300 ${
+                tier.popular
+                  ? "border-emerald-500 shadow-2xl ring-2 ring-emerald-500/20 scale-[1.02]"
+                  : "border-border hover:border-border/80"
               }`}
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-foreground">{tier.name}</h3>
-                  {tier.popular && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[hsl(var(--accent-signal))] text-black">
-                      Recommended
-                    </span>
-                  )}
+              {tier.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-emerald-600 text-white font-mono font-bold text-[10px] shadow-md tracking-wider">
+                  {tier.badge}
                 </div>
-                <p className="text-xs text-muted-foreground">{tier.description}</p>
-                <div className="font-mono pt-1">
-                  <span className="text-3xl font-bold text-foreground">{tier.price}</span>
-                  {tier.period && <span className="text-xs text-muted-foreground">{tier.period}</span>}
+              )}
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">{tier.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 min-h-[36px]">{tier.description}</p>
                 </div>
 
-                <ul className="space-y-2 pt-3 border-t border-border/60 text-xs text-muted-foreground">
-                  {tier.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2">
-                      <Check className="h-3.5 w-3.5 text-foreground shrink-0 mt-0.5" />
+                <div className="pt-2 border-t border-border/60">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-foreground">{tier.price}</span>
+                    <span className="text-xs text-muted-foreground font-medium">/ {tier.period}</span>
+                  </div>
+                </div>
+
+                <ul className="space-y-3 pt-2 text-xs text-foreground/90 font-medium">
+                  {tier.features.map((feat, fIdx) => (
+                    <li key={fIdx} className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <Button
-                onClick={() => handleSelectPlan(tier.id)}
-                size="xs"
-                variant={tier.popular ? "signal" : "default"}
-                className="w-full font-bold h-8"
-              >
-                {tier.cta}
-              </Button>
+              <div className="pt-8">
+                <Link to={tier.name === "Enterprise Custom" ? "/contact" : "/register"}>
+                  <Button
+                    className={`w-full font-bold text-xs h-10 gap-1.5 shadow-md ${
+                      tier.popular
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
+                    }`}
+                  >
+                    <span>{tier.ctaText}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           ))}
         </div>
       </div>
     </section>
   );
-};
-
-export default Pricing;
+}

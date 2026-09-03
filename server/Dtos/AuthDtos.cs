@@ -1,10 +1,39 @@
-namespace VeriSpend.Api.Dtos.Auth;
+﻿using System.ComponentModel.DataAnnotations;
 
-public sealed record RegisterRequest(string CompanyName, string Email, string Password);
-public sealed record LoginRequest(string Email, string Password);
-public sealed record AcceptInviteRequest(string Token, string Password);
-public sealed record RefreshTokenRequest(string RefreshToken);
-public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
-public sealed record UpdateProfileRequest(string PreferredCurrency);
-public sealed record UserProfileResponse(Guid Id, string Email, string Role, Guid TenantId, string CompanyName, string PlanType, string PreferredCurrency);
-public sealed record AuthResponse(string AccessToken, string RefreshToken, DateTime ExpiresAt, UserProfileResponse Profile);
+namespace Tenvora.Api.Dtos;
+
+public record RegisterRequest(
+    [Required] string CompanyName,
+    [Required, EmailAddress] string Email,
+    [Required, MinLength(6)] string Password,
+    string? BaseCurrency = "USD"
+);
+
+public record LoginRequest(
+    [Required, EmailAddress] string Email,
+    [Required] string Password
+);
+
+public record RefreshTokenRequest(
+    [Required] string RefreshToken
+);
+
+public record AuthResponse(
+    string AccessToken,
+    string RefreshToken,
+    Guid UserId,
+    Guid TenantId,
+    string Email,
+    string Role,
+    string CompanyName
+);
+
+public record UserProfileResponse(
+    Guid Id,
+    Guid TenantId,
+    string Email,
+    string Role,
+    bool IsActive,
+    string PreferredCurrency,
+    string CompanyName
+);

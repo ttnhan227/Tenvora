@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,176 +12,184 @@ const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
-const AcceptInvite = lazy(() => import("./pages/auth/AcceptInvite"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const ExpensesList = lazy(() => import("./pages/expenses/ExpensesList"));
-const CreateExpense = lazy(() => import("./pages/expenses/CreateExpense"));
-const ExpenseDetail = lazy(() => import("./pages/expenses/ExpenseDetail"));
-const UploadReceipt = lazy(() => import("./pages/expenses/UploadReceipt"));
-const ManagerPending = lazy(() => import("./pages/manager/ManagerPending"));
-const AuditTrail = lazy(() => import("./pages/manager/AuditTrail"));
-const ManagerInsights = lazy(() => import("./pages/manager/ManagerInsights"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Subscription = lazy(() => import("./pages/Subscription"));
+const AccountsList = lazy(() => import("./pages/accounts/AccountsList"));
+const Transfers = lazy(() => import("./pages/payments/Transfers"));
+const TransactionsList = lazy(() => import("./pages/payments/TransactionsList"));
+const TransactionDetail = lazy(() => import("./pages/payments/TransactionDetail"));
+const LedgerView = lazy(() => import("./pages/ledger/LedgerView"));
+const ReconciliationHub = lazy(() => import("./pages/reconciliation/ReconciliationHub"));
+const SettlementBatches = lazy(() => import("./pages/settlements/SettlementBatches"));
+const RiskHub = lazy(() => import("./pages/risk/RiskHub"));
+const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
-const AdvancedAnalytics = lazy(() => import("./pages/analytics/AdvancedAnalytics"));
-const ComplianceHub = lazy(() => import("./pages/compliance/ComplianceHub"));
-const PolicyLab = lazy(() => import("./pages/PolicyLab"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
+const SystemOperations = lazy(() => import("./pages/system/SystemOperations"));
+const IntelligenceHub = lazy(() => import("./pages/intelligence/IntelligenceHub"));
+
+// Dedicated Public Content & Documentation Pages
+const NewsHub = lazy(() => import("./pages/public/NewsHub"));
+const ArticleDetail = lazy(() => import("./pages/public/ArticleDetail"));
+const Documentation = lazy(() => import("./pages/public/Documentation"));
+const SecurityWhitepaper = lazy(() => import("./pages/public/SecurityWhitepaper"));
+const PricingPage = lazy(() => import("./pages/public/PricingPage"));
+const AboutPage = lazy(() => import("./pages/public/AboutPage"));
+const StatusPage = lazy(() => import("./pages/public/StatusPage"));
+const ContactPage = lazy(() => import("./pages/public/ContactPage"));
 
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center bg-background">
-    <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
   </div>
 );
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <RequestActivityIndicator />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/accept-invite" element={<AcceptInvite />} />
-              
-              {/* Protected routes */}
-              <Route
-                path="/onboarding"
-                element={<ProtectedRoute requiredRole={["Owner"]}><Onboarding /></ProtectedRoute>}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/expenses"
-                element={
-                  <ProtectedRoute>
-                    <ExpensesList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/expenses/create"
-                element={
-                  <ProtectedRoute requiredRole={["Owner", "Manager", "Member"]}>
-                    <CreateExpense />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/expenses/:id"
-                element={
-                  <ProtectedRoute>
-                    <ExpenseDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/upload"
-                element={
-                  <ProtectedRoute requiredRole={["Owner", "Manager", "Member"]}>
-                    <UploadReceipt />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manager/pending"
-                element={
-                  <ProtectedRoute requiredRole={["Manager", "Owner"]}>
-                    <ManagerPending />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manager/audit/:id"
-                element={
-                  <ProtectedRoute requiredRole={["Manager", "Owner"]}>
-                    <AuditTrail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manager/insights"
-                element={
-                  <ProtectedRoute requiredRole={["Manager", "Owner"]}>
-                    <ManagerInsights />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings/policy"
-                element={
-                  <ProtectedRoute requiredRole={["Owner"]}>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/users"
-                element={
-                  <ProtectedRoute requiredRole={["Owner"]}>
-                    <UserManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/analytics"
-                element={
-                  <ProtectedRoute requiredRole={["Owner", "Manager"]}>
-                    <AdvancedAnalytics />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/compliance"
-                element={
-                  <ProtectedRoute requiredRole={["Owner"]}>
-                    <ComplianceHub />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/policy-lab"
-                element={<ProtectedRoute requiredRole={["Owner"]}><PolicyLab /></ProtectedRoute>}
-              />
-              <Route
-                path="/subscription"
-                element={
-                  <ProtectedRoute requiredRole={["Owner", "Member"]}>
-                    <Subscription />
-                  </ProtectedRoute>
-                }
-              />
-              
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <RequestActivityIndicator />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public Marketing & Educational Pages */}
+                <Route path="/" element={<Index />} />
+                <Route path="/news" element={<NewsHub />} />
+                <Route path="/news/:slug" element={<ArticleDetail />} />
+                <Route path="/docs" element={<Documentation />} />
+                <Route path="/documentation" element={<Documentation />} />
+                <Route path="/security" element={<SecurityWhitepaper />} />
+                <Route path="/compliance" element={<SecurityWhitepaper />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/company" element={<AboutPage />} />
+                <Route path="/status" element={<StatusPage />} />
+                <Route path="/contact" element={<ContactPage />} />
 
-export default App;
+                {/* Authentication Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+
+                {/* Protected Operations Routes */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/transfers"
+                  element={
+                    <ProtectedRoute>
+                      <Transfers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/transactions"
+                  element={
+                    <ProtectedRoute>
+                      <TransactionsList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/transactions/:id"
+                  element={
+                    <ProtectedRoute>
+                      <TransactionDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/accounts"
+                  element={
+                    <ProtectedRoute>
+                      <AccountsList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ledger"
+                  element={
+                    <ProtectedRoute>
+                      <LedgerView />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settlements"
+                  element={
+                    <ProtectedRoute>
+                      <SettlementBatches />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reconciliation"
+                  element={
+                    <ProtectedRoute>
+                      <ReconciliationHub />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/risk"
+                  element={
+                    <ProtectedRoute>
+                      <RiskHub />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit"
+                  element={
+                    <ProtectedRoute>
+                      <AuditLogView />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <ProtectedRoute requiredRole={["TenantAdmin", "OperationsManager"]}>
+                      <UserManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/system"
+                  element={
+                    <ProtectedRoute>
+                      <SystemOperations />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/intelligence"
+                  element={
+                    <ProtectedRoute>
+                      <IntelligenceHub />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Backward-compatibility aliases */}
+                <Route path="/payments" element={<Navigate to="/transactions" replace />} />
+                <Route path="/settings" element={<Navigate to="/system" replace />} />
+
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}

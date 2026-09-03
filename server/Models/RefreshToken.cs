@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-namespace VeriSpend.Api.Models;
+namespace Tenvora.Api.Models;
 
 public class RefreshToken
 {

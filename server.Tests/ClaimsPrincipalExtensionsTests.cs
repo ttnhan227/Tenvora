@@ -1,30 +1,30 @@
-using System.Security.Claims;
-using VeriSpend.Api.Common;
+﻿using System.Security.Claims;
+using Tenvora.Api.Common;
 using Xunit;
 
-namespace VeriSpend.Api.Tests;
+namespace Tenvora.Tests;
 
-public sealed class ClaimsPrincipalExtensionsTests
+public class ClaimsPrincipalExtensionsTests
 {
     [Fact]
-    public void GetTenantId_WhenClaimIsValid_ReturnsTenantId()
+    public void GetTenantId_ValidGuid_ReturnsGuid()
     {
         var tenantId = Guid.NewGuid();
-        var principal = Principal(new Claim("tenantId", tenantId.ToString()));
+        var claims = new List<Claim> { new("tenantId", tenantId.ToString()) };
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims));
 
-        Assert.Equal(tenantId, principal.GetTenantId());
+        var result = principal.GetTenantId();
+
+        Assert.Equal(tenantId, result);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("not-a-guid")]
-    public void GetTenantId_WhenClaimIsInvalid_FailsClosed(string value)
+    [Fact]
+    public void GetTenantId_MissingOrInvalid_ReturnsEmptyGuid()
     {
-        var principal = Principal(new Claim("tenantId", value));
-
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
         Assert.Equal(Guid.Empty, principal.GetTenantId());
-    }
 
-    private static ClaimsPrincipal Principal(params Claim[] claims) =>
-        new(new ClaimsIdentity(claims, "test"));
+        var invalidPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("tenantId", "invalid-guid") }));
+        Assert.Equal(Guid.Empty, invalidPrincipal.GetTenantId());
+    }
 }

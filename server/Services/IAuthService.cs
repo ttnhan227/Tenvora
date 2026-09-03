@@ -1,16 +1,12 @@
-using VeriSpend.Api.Common;
-using VeriSpend.Api.Dtos.Auth;
+﻿using Tenvora.Api.Common;
+using Tenvora.Api.Dtos;
 
-namespace VeriSpend.Api.Services;
+namespace Tenvora.Api.Services;
 
 public interface IAuthService
 {
     Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request);
-    Task<ApiResult<AuthResponse>> CreateDemoAsync();
     Task<ApiResult<AuthResponse>> LoginAsync(LoginRequest request);
-    Task<ApiResult<AuthResponse>> AcceptInviteAsync(AcceptInviteRequest request);
     Task<ApiResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request);
     Task<ApiResult<UserProfileResponse>> GetProfileAsync(Guid userId);
-    Task<ApiResult> UpdateProfileAsync(Guid userId, UpdateProfileRequest request);
-    Task<ApiResult> ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
 }

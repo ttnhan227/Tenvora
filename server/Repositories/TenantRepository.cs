@@ -1,9 +1,9 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Models;
+using Tenvora.Api.Data;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public sealed class TenantRepository : ITenantRepository
 {
@@ -14,51 +14,46 @@ public sealed class TenantRepository : ITenantRepository
         _context = context;
     }
 
-    public Task<Tenant?> GetByIdAsync(Guid tenantId)
+    public async Task<Tenant?> GetByIdAsync(Guid tenantId)
     {
-        return _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
+        return await _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
     }
 
-    public Task<IEnumerable<Tenant>> GetAllAsync()
+    public async Task<Tenant?> GetByApiKeyAsync(string apiKey)
     {
-        // SECURITY: RLS will filter results to the current tenant context.
-        // For Slack cross-tenant lookups, use GetBySlackTeamIdAsync instead.
-        return _context.Tenants.ToListAsync().ContinueWith(t => (IEnumerable<Tenant>)t.Result);
+        return await _context.Tenants.FirstOrDefaultAsync(t => t.ApiKey == apiKey);
     }
 
-    // SECURITY: Uses raw SQL with RLS bypass for Slack integration cross-tenant lookup.
-    // This is acceptable because the lookup is by SlackTeamId (not sensitive data)
-    // and Slack verification tokens are validated before this is called.
-    public Task<Tenant?> GetBySlackTeamIdAsync(string slackTeamId)
+    public async Task<IEnumerable<Tenant>> GetAllAsync()
     {
-        return _context.Tenants
-            .FromSqlRaw("SELECT * FROM public.\"Tenants\" WHERE \"SlackTeamId\" = {0}", slackTeamId)
-            .FirstOrDefaultAsync();
+        return await _context.Tenants.ToListAsync();
     }
 
-    public Task<bool> CompanyExistsAsync(string companyName)
+    public async Task<bool> CompanyExistsAsync(string companyName)
     {
-        return _context.Tenants.AnyAsync(t => t.CompanyName == companyName);
+        return await _context.Tenants.AnyAsync(t => t.CompanyName == companyName);
     }
 
-    public Task AddAsync(Tenant tenant)
+    public async Task AddAsync(Tenant tenant)
     {
-        _context.Tenants.Add(tenant);
-        return Task.CompletedTask;
+        await _context.Tenants.AddAsync(tenant);
+        await _context.SaveChangesAsync();
     }
 
-    public Task SaveChangesAsync()
+    public async Task UpdateAsync(Tenant tenant)
     {
-        return _context.SaveChangesAsync();
+        tenant.UpdatedAt = DateTime.UtcNow;
+        _context.Tenants.Update(tenant);
+        await _context.SaveChangesAsync();
     }
 
-    public Task<IDbContextTransaction> BeginTransactionAsync()
+    public async Task SaveChangesAsync()
     {
-        return _context.Database.BeginTransactionAsync();
+        await _context.SaveChangesAsync();
     }
 
-    public Task ExecuteSqlRawAsync(string sql, params object[] parameters)
+    public async Task<IDbContextTransaction> BeginTransactionAsync()
     {
-        return _context.Database.ExecuteSqlRawAsync(sql, parameters);
+        return await _context.Database.BeginTransactionAsync();
     }
 }

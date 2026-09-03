@@ -1,74 +1,94 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Menu, X } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
+import { Menu, X, ArrowRight, ShieldCheck, BookOpen, Layers, Newspaper, Code2 } from "lucide-react";
 
-const navLinks = [
-  { href: "#features", label: "Features" },
-  { href: "#platform", label: "Platform" },
-  { href: "#pricing", label: "Pricing" },
-];
-
-const Navbar = () => {
+export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isAuthenticated, isLoading, logout } = useAuth();
+  const location = useLocation();
+  const isHome = location.pathname === "/";
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm font-sans text-xs">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4 max-w-7xl">
-        <Link to="/" className="flex items-center gap-2">
-          <img src="/logo.png" alt="" className="h-6 w-6 object-contain" />
-          <span className="text-sm font-bold tracking-tight text-foreground">VeriSpend</span>
-        </Link>
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/80 bg-background/90 backdrop-blur-md font-sans text-xs">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 max-w-7xl">
+        {/* Brand Logo */}
+        <BrandLogo to="/" size="md" />
 
-        {/* Desktop nav links */}
-        <div className="hidden items-center gap-6 md:flex">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+        {/* Desktop Nav Links */}
+        <div className="hidden lg:flex items-center gap-6 font-medium text-muted-foreground text-xs">
+          {isHome ? (
+            <>
+              <a href="#platform" className="hover:text-foreground transition-colors">
+                Platform Tour
+              </a>
+              <a href="#simulator" className="hover:text-foreground transition-colors">
+                Ledger Simulator
+              </a>
+            </>
+          ) : (
+            <Link to="/" className="hover:text-foreground transition-colors">
+              Home
+            </Link>
+          )}
+
+          <Link to="/docs" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <Code2 className="h-3.5 w-3.5 text-emerald-500" />
+            Documentation
+          </Link>
+          <Link to="/security" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+            Security &amp; RLS
+          </Link>
+          <Link to="/news" className="hover:text-foreground transition-colors flex items-center gap-1">
+            <Newspaper className="h-3.5 w-3.5 text-emerald-500" />
+            Newsroom
+          </Link>
+          <Link to="/pricing" className="hover:text-foreground transition-colors">
+            Pricing
+          </Link>
+          <Link to="/about" className="hover:text-foreground transition-colors">
+            Company
+          </Link>
         </div>
 
-        {/* Action buttons */}
-        <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle className="h-8 w-8" iconClassName="h-3.5 w-3.5" />
+        {/* Actions */}
+        <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle className="h-8 w-8" />
           {!isLoading && isAuthenticated ? (
             <>
               <Link to="/dashboard">
-                <Button size="xs" variant="outline" className="font-semibold">
-                  Dashboard
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-4 shadow-sm shadow-emerald-600/30 gap-1.5">
+                  Operations Console
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
-              <Button size="xs" variant="ghost" onClick={logout} className="text-muted-foreground hover:text-foreground">
+              <Button size="sm" variant="ghost" onClick={logout} className="text-muted-foreground hover:text-foreground text-xs h-9">
                 Sign Out
               </Button>
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button size="xs" variant="ghost" className="font-semibold">
+                <Button size="sm" variant="ghost" className="font-semibold text-xs h-9">
                   Sign In
                 </Button>
               </Link>
               <Link to="/register">
-                <Button size="xs" variant="signal" className="font-bold">
-                  Get Started
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-4 shadow-md shadow-emerald-600/20">
+                  Create Workspace
                 </Button>
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile toggle */}
+        {/* Mobile Toggle */}
         <button
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-foreground md:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-foreground lg:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle menu"
         >
@@ -76,48 +96,45 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile dropdown */}
+      {/* Mobile Menu Dropdown */}
       {mobileOpen && (
-        <div className="border-t border-border bg-background px-4 py-4 md:hidden space-y-3">
-          <div className="flex flex-col space-y-2">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-xs font-semibold text-muted-foreground hover:text-foreground py-1"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </a>
-            ))}
+        <div className="border-t border-border bg-background/98 px-6 py-5 lg:hidden space-y-4 shadow-xl">
+          <div className="flex flex-col space-y-3 text-sm font-medium text-muted-foreground">
+            <Link to="/" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Home
+            </Link>
+            <Link to="/docs" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Developer Documentation
+            </Link>
+            <Link to="/security" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Security &amp; Compliance Whitepaper
+            </Link>
+            <Link to="/news" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Newsroom &amp; Technical Papers
+            </Link>
+            <Link to="/pricing" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Pricing Plans
+            </Link>
+            <Link to="/about" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              About Tenvora
+            </Link>
+            <Link to="/contact" onClick={() => setMobileOpen(false)} className="hover:text-foreground py-1">
+              Schedule Architecture Demo
+            </Link>
           </div>
-          <div className="pt-2 border-t border-border flex items-center justify-between">
+          <div className="pt-4 border-t border-border flex items-center justify-between">
             <ThemeToggle className="h-8 w-8" />
-            {!isLoading && isAuthenticated ? (
-              <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
-                <Button size="xs" variant="default">
-                  Dashboard
-                </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/login" onClick={() => setMobileOpen(false)}>
+                <Button size="sm" variant="ghost">Sign In</Button>
               </Link>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link to="/login" onClick={() => setMobileOpen(false)}>
-                  <Button size="xs" variant="ghost">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={() => setMobileOpen(false)}>
-                  <Button size="xs" variant="signal">
-                    Get Started
-                  </Button>
-                </Link>
-              </div>
-            )}
+              <Link to="/register" onClick={() => setMobileOpen(false)}>
+                <Button size="sm" className="bg-emerald-600 text-white font-bold">Get Started</Button>
+              </Link>
+            </div>
           </div>
         </div>
       )}
     </nav>
   );
-};
-
-export default Navbar;
+}

@@ -1,28 +1,42 @@
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Models;
+﻿using Tenvora.Api.Data;
+using Tenvora.Api.Models;
 using Xunit;
 
-namespace VeriSpend.Api.Tests;
+namespace Tenvora.Tests;
 
-public sealed class StarterWorkspaceFactoryTests
+public class StarterWorkspaceFactoryTests
 {
     [Fact]
-    public void Populate_CreatesDecisionReadyEnterpriseScenario()
+    public void Populate_SeedsEnterpriseTenantWithBalancedLedger()
     {
-        var tenant = new Tenant { Id = Guid.NewGuid(), CompanyName = "Test", ApiKey = "test", PlanType = "Standard" };
-        var owner = new User { Id = Guid.NewGuid(), Email = "owner@test.local", PasswordHash = "hash", Role = "Owner", Tenant = tenant };
+        var tenant = new Tenant
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "Test FinOps Corp",
+            ApiKey = "test-key"
+        };
+        var owner = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "admin@tenvora.internal",
+            TenantId = tenant.Id
+        };
 
-        StarterWorkspaceFactory.Populate(tenant, owner, new DateTime(2026, 7, 14, 8, 0, 0, DateTimeKind.Utc));
+        StarterWorkspaceFactory.Populate(tenant, owner, DateTime.UtcNow);
 
-        Assert.Equal("Professional", tenant.PlanType);
-        Assert.True(tenant.AutoApprovalEnabled);
-        Assert.NotNull(tenant.CategoryBudgets);
-        Assert.Single(tenant.Subscriptions);
-        Assert.Contains(tenant.Users, user => user.Role == "Manager");
-        Assert.Contains(tenant.Users, user => user.Role == "Member");
-        Assert.True(tenant.Expenses.Count >= 10);
-        Assert.Contains(tenant.Expenses, expense => expense.Status == "Pending" && expense.Flagged);
-        Assert.Contains(tenant.Expenses, expense => expense.Status == "Rejected");
-        Assert.All(tenant.Expenses, expense => Assert.NotEmpty(expense.AuditLogs));
+        Assert.Equal("Enterprise", tenant.PlanType);
+        Assert.NotEmpty(tenant.Users);
+        Assert.NotEmpty(tenant.Customers);
+        Assert.NotEmpty(tenant.Accounts);
+        Assert.NotEmpty(tenant.Transactions);
+
+        var initialTx = tenant.Transactions.First();
+        Assert.Equal(2, initialTx.LedgerEntries.Count);
+        
+        var totalDebits = initialTx.LedgerEntries.Sum(l => l.DebitAmount);
+        var totalCredits = initialTx.LedgerEntries.Sum(l => l.CreditAmount);
+
+        Assert.Equal(totalDebits, totalCredits);
+        Assert.Equal(initialTx.Amount, totalDebits);
     }
 }

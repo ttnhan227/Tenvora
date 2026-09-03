@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using VeriSpend.Api.Models;
+using Tenvora.Api.Domain.Entities;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Data.Interceptors;
+namespace Tenvora.Api.Data.Interceptors;
 
 public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 {
@@ -44,24 +45,35 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
         context.ChangeTracker.DetectChanges();
         var auditLogs = new List<AuditLog>();
 
-        // Safely extract the current user credentials from HttpContext
         var httpContext = _httpContextAccessor.HttpContext;
         var performedBy = httpContext?.User?.Identity?.Name 
             ?? httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value 
             ?? httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             ?? "System / Auto-Auditor";
+            
+        var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
 
-        foreach (var entry in context.ChangeTracker.Entries<Expense>())
+        // Process audited entities (Transaction, Account, Customer, PaymentRequest, SettlementBatch, ReconciliationRun)
+        foreach (var entry in context.ChangeTracker.Entries())
         {
             if (entry.State is EntityState.Detached or EntityState.Unchanged)
                 continue;
 
-            var expense = entry.Entity;
+            if (entry.Entity is AuditLog or RefreshToken or IdempotencyRecord)
+                continue; // Skip infrastructure / log tables
+
+            var entityType = entry.Entity.GetType().Name;
+            var primaryKey = entry.Property("Id").CurrentValue?.ToString() ?? Guid.NewGuid().ToString();
+            
+            // Extract TenantId if available
+            var tenantIdProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "TenantId");
+            var tenantId = tenantIdProp?.CurrentValue is Guid tId ? tId : Guid.Empty;
+
             var action = entry.State switch
             {
                 EntityState.Added => "Created",
                 EntityState.Deleted => "Deleted",
-                EntityState.Modified => expense.IsDeleted ? "Deleted" : "Updated",
+                EntityState.Modified => "Updated",
                 _ => "Updated"
             };
 
@@ -76,7 +88,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is nameof(Expense.Id) or nameof(Expense.CreatedAt) or nameof(Expense.UpdatedAt) or nameof(Expense.TenantId) or nameof(Expense.UserId))
+                    if (prop.Metadata.Name is "Id" or "CreatedAt" or "UpdatedAt" or "RowVersion")
                         continue;
 
                     if (prop.IsModified)
@@ -94,38 +106,38 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 }
 
                 if (changesList.Count == 0)
-                    continue; // Skip logs if no audited values actually modified
+                    continue;
 
                 oldValue = JsonSerializer.Serialize(originalSnapshot);
                 newValue = JsonSerializer.Serialize(currentSnapshot);
             }
             else if (entry.State == EntityState.Added)
             {
-                newValue = JsonSerializer.Serialize(new
+                var currentSnapshot = new Dictionary<string, object?>();
+                foreach (var prop in entry.Properties)
                 {
-                    expense.Id,
-                    expense.Amount,
-                    expense.Currency,
-                    expense.Merchant,
-                    expense.Category,
-                    expense.Description,
-                    expense.Status,
-                    expense.Flagged,
-                    expense.FlagReason
-                });
-                changesList.Add($"Expense created with Amount {expense.Amount} {expense.Currency} at Merchant {expense.Merchant}");
+                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey")
+                    {
+                        currentSnapshot[prop.Metadata.Name] = prop.CurrentValue;
+                    }
+                }
+                newValue = JsonSerializer.Serialize(currentSnapshot);
+                changesList.Add($"{entityType} created with Id {primaryKey}");
             }
 
             var auditLog = new AuditLog
             {
                 Id = Guid.NewGuid(),
-                ExpenseId = expense.Id,
+                TenantId = tenantId,
+                EntityType = entityType,
+                EntityId = primaryKey,
                 Action = action,
                 PerformedBy = performedBy,
                 Timestamp = DateTime.UtcNow,
                 OldValue = oldValue,
                 NewValue = newValue,
-                Notes = string.Join(" | ", changesList)
+                Notes = string.Join(" | ", changesList),
+                IpAddress = ipAddress
             };
 
             auditLogs.Add(auditLog);

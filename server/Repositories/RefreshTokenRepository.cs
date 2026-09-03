@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using Tenvora.Api.Data;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public sealed class RefreshTokenRepository : IRefreshTokenRepository
 {
@@ -15,17 +15,28 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
 
     public Task<RefreshToken?> GetByTokenAsync(string token)
     {
-        return _context.RefreshTokens.Include(rt => rt.User).ThenInclude(u => u.Tenant).FirstOrDefaultAsync(rt => rt.Token == token);
+        return _context.RefreshTokens
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Token == token);
     }
 
-    public Task AddAsync(RefreshToken refreshToken)
+    public async Task AddAsync(RefreshToken token)
     {
-        _context.RefreshTokens.Add(refreshToken);
-        return Task.CompletedTask;
+        _context.RefreshTokens.Add(token);
+        await _context.SaveChangesAsync();
     }
 
-    public Task SaveChangesAsync()
+    public async Task RevokeUserTokensAsync(Guid userId)
     {
-        return _context.SaveChangesAsync();
+        var tokens = await _context.RefreshTokens
+            .Where(r => r.UserId == userId && !r.Revoked)
+            .ToListAsync();
+
+        foreach (var token in tokens)
+        {
+            token.Revoked = true;
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

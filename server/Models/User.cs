@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-namespace VeriSpend.Api.Models;
+namespace Tenvora.Api.Models;
 
 public class User
 {
@@ -11,11 +11,8 @@ public class User
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 
-    public string Role { get; set; } = default!;
+    public string Role { get; set; } = "OperationsManager"; // TenantAdmin, OperationsManager, ComplianceOfficer, ApiClient
     public bool IsActive { get; set; } = true;
-    public bool ExpenseCardSuspended { get; set; }
-    public DateTime? ExpenseCardSuspendedAt { get; set; }
-    public string? ExpenseCardSuspensionReason { get; set; }
     public string PreferredCurrency { get; set; } = "USD";
 
     /// <summary>Security: Never serialized in API responses</summary>
@@ -27,5 +24,6 @@ public class User
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
-    public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

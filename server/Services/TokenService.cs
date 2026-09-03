@@ -1,15 +1,15 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using VeriSpend.Api.Common;
-using VeriSpend.Api.Models;
+using Tenvora.Api.Common;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Services;
+namespace Tenvora.Api.Services;
 
-public sealed class TokenService
+public class TokenService
 {
     private readonly JwtSettings _jwtSettings;
 
@@ -20,8 +20,8 @@ public sealed class TokenService
 
     public string CreateAccessToken(User user)
     {
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
-        var signingCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
 
         var claims = new List<Claim>
         {
@@ -31,23 +31,32 @@ public sealed class TokenService
             new("tenantId", user.TenantId.ToString())
         };
 
-        var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenMinutes),
-            signingCredentials: signingCredentials);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenMinutes),
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
     }
 
     public RefreshToken CreateRefreshToken(Guid userId)
     {
+        var randomBytes = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+
         return new RefreshToken
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            Token = Convert.ToBase64String(randomBytes),
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenDays),
             Revoked = false,
             CreatedAt = DateTime.UtcNow

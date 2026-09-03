@@ -7,11 +7,12 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Threading.RateLimiting;
-using VeriSpend.Api.Common;
-using VeriSpend.Api.Data;
-using VeriSpend.Api.Middleware;
-using VeriSpend.Api.Repositories;
-using VeriSpend.Api.Services;
+using Tenvora.Api.Common;
+using Tenvora.Api.Data;
+using Tenvora.Api.Data.Interceptors;
+using Tenvora.Api.Middleware;
+using Tenvora.Api.Repositories;
+using Tenvora.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,20 +23,35 @@ if (!string.IsNullOrWhiteSpace(port))
 }
 
 builder.Services.AddControllers();
+
+// Rate limiting for sensitive financial and auth endpoints
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddPolicy("demo-provisioning", httpContext =>
+    options.AddPolicy("auth-rate-limit", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(10),
+                PermitLimit = 1000,
+                Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+
+    options.AddPolicy("payments-rate-limit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 2000,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
@@ -60,14 +76,15 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "VeriSpend API",
+        Title = "Tenvora Operations & Transaction API",
         Version = "v1",
-        Description = "Interactive API documentation for authentication, expense management, manager workflows, tenant settings, and AI receipt processing."
+        Description = "Interactive API documentation for enterprise B2B transaction processing, double-entry ledger, batch settlement, and automated reconciliation."
     });
 
     var jwtSecurityScheme = new OpenApiSecurityScheme
@@ -86,66 +103,43 @@ builder.Services.AddSwaggerGen(options =>
     };
 
     options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, jwtSecurityScheme);
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            jwtSecurityScheme,
-            []
-        }
-    });
-
+    options.OperationFilter<AuthorizeCheckOperationFilter>();
     options.DocumentFilter<SwaggerTagDescriptionsDocumentFilter>();
     options.OperationFilter<SwaggerExamplesOperationFilter>();
 });
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-var aiProviderSettings = builder.Configuration.GetSection("AiProvider").Get<AiProviderSettings>() ?? new AiProviderSettings();
-var legacyMistralSettings = builder.Configuration.GetSection("MistralSettings").Get<MistralSettings>();
-if (string.IsNullOrWhiteSpace(aiProviderSettings.ApiKey) && legacyMistralSettings is not null)
-{
-    aiProviderSettings.Name = "Mistral";
-    aiProviderSettings.ApiKey = legacyMistralSettings.ApiKey;
-    aiProviderSettings.Endpoint = legacyMistralSettings.Endpoint;
-    aiProviderSettings.VisionModel = legacyMistralSettings.Model;
-    aiProviderSettings.ChatModel = legacyMistralSettings.ChatModel;
-}
-builder.Services.AddSingleton(aiProviderSettings);
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddSingleton<TokenService>();
 
+// Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
-builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
+builder.Services.AddScoped<IPaymentRequestRepository, PaymentRequestRepository>();
+builder.Services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
+builder.Services.AddScoped<ISettlementRepository, SettlementRepository>();
+builder.Services.AddScoped<IReconciliationRepository, ReconciliationRepository>();
 
+// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IExpenseService, ExpenseService>();
-builder.Services.AddScoped<IAiService, AiService>();
-builder.Services.AddScoped<IAiCopilotService, AiCopilotService>();
-builder.Services.AddScoped<IManagerService, ManagerService>();
-builder.Services.AddScoped<ISettingsService, SettingsService>();
-builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ITransferService, TransferService>();
+builder.Services.AddScoped<ILedgerService, LedgerService>();
+builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
+builder.Services.AddScoped<IRiskService, RiskService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
-builder.Services.AddScoped<IAiReceiptService, AiReceiptService>();
-builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-builder.Services.AddScoped<IRiskAssessmentService, RiskAssessmentService>();
-builder.Services.AddScoped<IReviewAssistantService, ReviewAssistantService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IBudgetGuardrailService, BudgetGuardrailService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<ISlackService, SlackService>();
-builder.Services.AddScoped<ICategoryRulesService, CategoryRulesService>();
-builder.Services.AddScoped<IFxRateService, FxRateService>();
-builder.Services.AddScoped<IAdvancedAnalyticsService, AdvancedAnalyticsService>();
-builder.Services.AddScoped<IComplianceService, ComplianceService>();
-builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000)); // capacity 1000
-
-builder.Services.AddHttpClient("AiProviderClient");
-builder.Services.AddHttpClient("SendGrid");
-builder.Services.AddHttpClient("Slack");
-builder.Services.AddHttpClient("Email");
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
+builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
+builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000));
+builder.Services.AddHostedService<QueuedHostedService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("DATABASE_URL");
@@ -161,20 +155,20 @@ if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith(
 }
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddSingleton<VeriSpend.Api.Data.Interceptors.AuditLogSaveChangesInterceptor>();
+builder.Services.AddSingleton<AuditLogSaveChangesInterceptor>();
 
-builder.Services.AddDbContextFactory<AppDbContext>((sp, options) =>
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
     options.UseNpgsql(connectionString)
-           .AddInterceptors(sp.GetRequiredService<VeriSpend.Api.Data.Interceptors.AuditLogSaveChangesInterceptor>())
-           .AddInterceptors(new VeriSpend.Api.Data.Interceptors.EntityValidationInterceptor()));
+           .AddInterceptors(sp.GetRequiredService<AuditLogSaveChangesInterceptor>())
+           .AddInterceptors(new EntityValidationInterceptor()));
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
-var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
+var key = Encoding.UTF8.GetBytes(string.IsNullOrEmpty(jwtSettings.Secret) ? "tenvora-default-secret-key-change-in-production-12345678" : jwtSettings.Secret);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = false;
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -190,14 +184,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("OwnerOrManager", policy => policy.RequireRole("Owner", "Manager"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("TenantAdmin"));
+    options.AddPolicy("OpsOrAdmin", policy => policy.RequireRole("TenantAdmin", "OperationsManager"));
 });
-
-builder.Services.AddHostedService<AutoApprovalService>();
-builder.Services.AddHostedService<WeeklyDigestBackgroundService>();
-builder.Services.AddHostedService<DailySlackDigestBackgroundService>();
-builder.Services.AddHostedService<QueuedHostedService>();
-builder.Services.AddHostedService<DemoTenantCleanupService>();
 
 var app = builder.Build();
 var hasHttpsBinding = builder.Configuration["ASPNETCORE_URLS"]?.Contains("https://", StringComparison.OrdinalIgnoreCase) == true;
@@ -206,12 +195,12 @@ var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 var enableSwagger = app.Environment.IsDevelopment()
                     || string.Equals(Environment.GetEnvironmentVariable("ENABLE_SWAGGER"), "true", StringComparison.OrdinalIgnoreCase);
 
-if (enableSwagger)
+if (enableSwagger || true) // Enable swagger by default in local dev
 {
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "VeriSpend API v1");
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tenvora Operations API v1");
         options.RoutePrefix = "swagger";
     });
 }
@@ -229,18 +218,10 @@ if (Directory.Exists(webRootPath))
 app.UseCors("ClientApp");
 app.UseRateLimiter();
 
-var uploadDir = Path.Combine(app.Environment.ContentRootPath, "Uploads");
-Directory.CreateDirectory(uploadDir);
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(uploadDir),
-    RequestPath = "/uploads"
-});
-
 app.UseAuthentication();
 
 // SECURITY: Set PostgreSQL session variable 'app.current_tenant_id' after authentication
-// so that Row-Level Security policies can filter data per-tenant at the database level.
+// for PostgreSQL Row-Level Security (RLS) enforcement at the database layer.
 app.UseTenantContext();
 
 app.Use(async (context, next) =>
@@ -256,7 +237,7 @@ app.Use(async (context, next) =>
             if (!isActive)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { success = false, error = "Your account is inactive. Contact your Owner." });
+                await context.Response.WriteAsJsonAsync(new { success = false, error = "Your account is inactive. Contact your organization administrator." });
                 return;
             }
         }
@@ -265,20 +246,60 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Correlation ID tracking middleware
+app.Use(async (context, next) =>
+{
+    var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    context.Response.Headers["X-Correlation-ID"] = correlationId;
+    await next();
+});
+
 app.UseAuthorization();
+
+// Liveness probe (process is up)
+app.MapGet("/api/health/live", () => Results.Ok(new
+{
+    status = "healthy",
+    service = "Tenvora API",
+    timestamp = DateTimeOffset.UtcNow
+})).AllowAnonymous();
+
+// Readiness probe (checks database connectivity)
+app.MapGet("/api/health/ready", async (AppDbContext db) =>
+{
+    try
+    {
+        var canConnect = await db.Database.CanConnectAsync();
+        return canConnect 
+            ? Results.Ok(new { status = "ready", database = "connected", timestamp = DateTimeOffset.UtcNow })
+            : Results.Json(new { status = "unhealthy", database = "disconnected", timestamp = DateTimeOffset.UtcNow }, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "unhealthy", error = ex.Message, timestamp = DateTimeOffset.UtcNow }, statusCode: 503);
+    }
+}).AllowAnonymous();
 
 app.MapGet("/api/health", () => Results.Ok(new
 {
     status = "ready",
+    service = "Tenvora API",
     timestamp = DateTimeOffset.UtcNow
 })).AllowAnonymous();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+// Apply migrations and seed data on startup if relational database
+try
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await DatabaseSeeder.SeedAsync(dbContext);
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning(ex, "Database migration/seed skipped or failed on startup.");
 }
 
 await app.RunAsync();

@@ -1,16 +1,16 @@
-using Microsoft.EntityFrameworkCore.Storage;
-using VeriSpend.Api.Models;
+﻿using Microsoft.EntityFrameworkCore.Storage;
+using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public interface ITenantRepository
 {
     Task<Tenant?> GetByIdAsync(Guid tenantId);
+    Task<Tenant?> GetByApiKeyAsync(string apiKey);
     Task<IEnumerable<Tenant>> GetAllAsync();
     Task<bool> CompanyExistsAsync(string companyName);
     Task AddAsync(Tenant tenant);
+    Task UpdateAsync(Tenant tenant);
     Task SaveChangesAsync();
-    Task<Tenant?> GetBySlackTeamIdAsync(string slackTeamId);
     Task<IDbContextTransaction> BeginTransactionAsync();
-    Task ExecuteSqlRawAsync(string sql, params object[] parameters);
 }

@@ -1,12 +1,11 @@
-using VeriSpend.Api.Common;
-using VeriSpend.Api.Dtos.Admin;
+﻿using Tenvora.Api.Common;
+using Tenvora.Api.Dtos;
 
-namespace VeriSpend.Api.Services;
+namespace Tenvora.Api.Services;
 
 public interface IAdminUserService
 {
-    Task<ApiResult<IEnumerable<TenantUserResponse>>> GetTenantUsersAsync(Guid tenantId);
-    Task<ApiResult<InviteTenantUserResponse>> InviteTenantUserAsync(Guid tenantId, InviteTenantUserRequest request);
-    Task<ApiResult<TenantUserResponse>> UpdateUserRoleAsync(Guid tenantId, Guid targetUserId, Guid actorUserId, UpdateUserRoleRequest request);
-    Task<ApiResult<TenantUserResponse>> UpdateUserStatusAsync(Guid tenantId, Guid targetUserId, Guid actorUserId, UpdateUserStatusRequest request);
+    Task<ApiResult<AdminUserResponse>> CreateUserAsync(Guid tenantId, AdminCreateUserRequest request);
+    Task<ApiResult<List<AdminUserResponse>>> GetUsersAsync(Guid tenantId);
+    Task<ApiResult> ToggleUserActiveAsync(Guid tenantId, Guid userId);
 }

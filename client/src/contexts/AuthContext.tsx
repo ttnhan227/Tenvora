@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+﻿import React, { createContext, useContext, useEffect, useState } from "react";
 import { UserProfile, authService, AuthResponse } from "@/services/authService";
 
 interface AuthContextType {
@@ -6,8 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  createDemo: () => Promise<boolean>;
-  register: (companyName: string, email: string, password: string) => Promise<boolean>;
+  register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<boolean>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -25,15 +24,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize auth state from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem("accessToken");
       if (token) {
+        setIsLoading(true);
         const result = await authService.getProfile();
         if (result.success && result.data) {
           setUser(result.data);
+          localStorage.setItem("user", JSON.stringify(result.data));
+        } else {
+          authService.logout();
+          setUser(null);
         }
+        setIsLoading(false);
       }
     };
 
@@ -46,7 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.data) {
         localStorage.setItem("accessToken", result.data.accessToken);
         localStorage.setItem("refreshToken", result.data.refreshToken);
-        setUser(result.data.profile);
+        const profile: UserProfile = {
+          id: result.data.userId,
+          tenantId: result.data.tenantId,
+          email: result.data.email,
+          role: result.data.role,
+          isActive: true,
+          preferredCurrency: "USD",
+          companyName: result.data.companyName,
+        };
+        setUser(profile);
+        localStorage.setItem("user", JSON.stringify(profile));
         return true;
       }
       return false;
@@ -56,23 +70,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createDemo = async (): Promise<boolean> => {
-    const result = await authService.createDemo();
-    if (!result.success || !result.data) return false;
-    localStorage.setItem("accessToken", result.data.accessToken);
-    localStorage.setItem("refreshToken", result.data.refreshToken);
-    localStorage.removeItem("verispend-demo-mission-complete");
-    setUser(result.data.profile);
-    return true;
-  };
-
-  const register = async (companyName: string, email: string, password: string): Promise<boolean> => {
+  const register = async (companyName: string, email: string, password: string, baseCurrency: string = "USD"): Promise<boolean> => {
     try {
-      const result = await authService.register({ companyName, email, password });
+      const result = await authService.register({ companyName, email, password, baseCurrency });
       if (result.success && result.data) {
         localStorage.setItem("accessToken", result.data.accessToken);
         localStorage.setItem("refreshToken", result.data.refreshToken);
-        setUser(result.data.profile);
+        const profile: UserProfile = {
+          id: result.data.userId,
+          tenantId: result.data.tenantId,
+          email: result.data.email,
+          role: result.data.role,
+          isActive: true,
+          preferredCurrency: baseCurrency,
+          companyName: result.data.companyName,
+        };
+        setUser(profile);
+        localStorage.setItem("user", JSON.stringify(profile));
         return true;
       }
       return false;
@@ -91,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await authService.getProfile();
     if (result.success && result.data) {
       setUser(result.data);
+      localStorage.setItem("user", JSON.stringify(result.data));
     }
   };
 
@@ -99,7 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     login,
-    createDemo,
     register,
     logout,
     refreshProfile,

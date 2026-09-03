@@ -1,15 +1,15 @@
-import { render, screen } from "@testing-library/react";
+﻿import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import Features from "@/components/landing/Features";
 
 describe("Features Component", () => {
-  it("renders core spend lifecycle capabilities", () => {
+  it("renders core Tenvora PayOps capabilities", () => {
     render(<Features />);
 
-    expect(screen.getByText(/Explainable Risk Engine/i)).toBeInTheDocument();
-    expect(screen.getByText(/Approval Orchestration/i)).toBeInTheDocument();
-    expect(screen.getByText(/Finance Intelligence/i)).toBeInTheDocument();
-    expect(screen.getByText(/Multi-tenant Architecture/i)).toBeInTheDocument();
-    expect(screen.getByText(/Compliance Evidence/i)).toBeInTheDocument();
+    expect(screen.getByText(/Double-Entry Balance Invariant/i)).toBeInTheDocument();
+    expect(screen.getByText(/PostgreSQL Native RLS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Deadlock-Free Ascending Locks/i)).toBeInTheDocument();
+    expect(screen.getByText(/Continuous Reconciliation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Automated Multi-Currency Clearing/i)).toBeInTheDocument();
   });
 });

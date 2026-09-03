@@ -1,184 +1,186 @@
+# Tenvora — Enterprise Payment Operations & Immutable Ledger Platform
+
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="VeriSpend Banner" width="100%">
+  <strong>A resilient, multi-tenant B2B payment operations and transaction processing system with strict double-entry ledger balancing, deterministic row-locking concurrency, automated batch settlements, and continuous discrepancy reconciliation.</strong>
 </p>
 
 <p align="center">
-  <strong>A multi-tenant corporate expense review platform that automates itemized receipt parsing with Vision AI, enforces spend limits, and maintains immutable audit logs.</strong>
-</p>
-
-<p align="center">
-  <a href="https://verispend-client.onrender.com"><img src="https://img.shields.io/badge/Live-Demo-brightgreen?style=flat-square" alt="Live Demo"></a>
-  <a href="https://aiaudit-expensetracker.onrender.com/swagger"><img src="https://img.shields.io/badge/Swagger-API%20Docs-85EA2D?style=flat-square&logo=swagger" alt="Swagger Docs"></a>
-  <img src="https://img.shields.io/badge/.NET-8.0%20%2F%2010.0-512bd4.svg" alt=".NET">
-  <img src="https://img.shields.io/badge/C%23-239120.svg" alt="C#">
+  <img src="https://img.shields.io/badge/.NET-10.0-512bd4.svg" alt=".NET 10">
+  <img src="https://img.shields.io/badge/C%23-13-239120.svg" alt="C#">
   <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19">
-  <img src="https://img.shields.io/badge/PostgreSQL-336791.svg" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Docker-2496ed.svg" alt="Docker">
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178c6.svg" alt="TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-16%20RLS-336791.svg" alt="PostgreSQL RLS">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ed.svg" alt="Docker">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 </p>
 
 ---
 
-## Platform Visual Preview
+## Executive Summary
 
-| Platform Landing & Review Queue | Vision AI Extraction & Proposal |
-|:---:|:---:|
-| ![VeriSpend Landing & Control](docs/screenshots/verispend-landing.png) | ![Vision OCR Receipt Extraction](docs/screenshots/verispend-vision.png) |
-| **Expense Detail & Line-Item Audit** | **Policy Lab & Compliance Guardrails** |
-| ![Expense Review & Audit Trail](docs/screenshots/verispend-review.png) | ![Policy Lab & Financial Guardrails](docs/screenshots/verispend-guardrails.png) |
+Tenvora is an enterprise payment operations (PayOps) and transaction processing platform engineered for high-throughput, audit-grade B2B fund movements. Modern financial systems cannot tolerate race conditions, negative balances from out-of-order execution, or ledger drifts. Tenvora solves these challenges by enforcing relational database constraints, deterministic locking orders, and strict double-entry accounting at the database and service layers.
+
+> [!NOTE]
+> **Portfolio / Simulation Scope**: Tenvora is an architectural reference platform demonstrating production-grade distributed financial patterns, double-entry ledger design, and tenant isolation. It is not a licensed banking entity or regulated money transmitter.
 
 ---
 
-## DevOps & Infrastructure
+## Architectural Pillars
 
-VeriSpend is containerized with Docker Compose and deployed through continuous integration workflows.
+```mermaid
+graph TD
+    Client[React 19 + TypeScript Operations Console] -->|JWT Auth + Rate Limited HTTPS| API[ASP.NET Core 10 Web API]
+    API -->|Session Var: app.current_tenant_id| DB[(PostgreSQL 16 Engine)]
+    
+    subgraph Financial Core
+        API --> LockMgr[Deterministic Concurrency Engine]
+        LockMgr -->|SELECT ... FOR UPDATE (Account IDs ASC)| DB
+        LockMgr --> Idemp[Idempotency Constraint Check]
+        Idemp --> Ledger[Double-Entry Invariant Engine]
+        Ledger -->|Atomic Post: Debits == Credits| DB
+    end
 
-### End-to-End Architecture
-
-```text
-React 19 Client
-        │
-        ├── Authenticated HTTPS / Editable Receipt Review Form
-        │
-        ▼
-ASP.NET Core 8 API
-        │
-        ├── JWT Claims Principal ────► Injects Tenant Isolation Scope
-        │
-        ├── Policy Engine ───────────► Evaluates spend limits, duplicates & restricted categories
-        │
-        ├── Mistral Vision AI ───────► Extracts itemized lines, totals, taxes, and currencies
-        │
-        ├── EF Core Interceptors ────► Appends immutable JSON state snapshots on save
-        │
-        └── Approval State Machine ──► Role-gated transitions (Owner / Manager / Employee)
-        │
-        ▼
-PostgreSQL Database (Tenant-partitioned expenses, receipts, policies, and audit logs)
+    subgraph Operations & Audit
+        API --> Recon[Reconciliation Scanner]
+        Recon -->|Derives SUM(Debit)-SUM(Credit) vs Cached| DB
+        API --> Settle[Batch Settlement Engine]
+        Settle -->|Aggregates Daily Volumes & Net Clearing| DB
+        API --> Copilot[Operations Copilot (Read-Only AI)]
+    end
 ```
 
-### Services
+---
 
-| Service | Technology | Role |
-|---|---|---|
-| API Backend | ASP.NET Core 8 (C#) | REST API, JWT auth, tenant isolation, business logic |
-| Client | React 19 + TypeScript | Single-page application, interactive expense spreadsheet grid |
-| Vision AI Engine | Mistral Vision API | OCR parsing of merchant, totals, taxes, date & category |
-| Database | PostgreSQL 16 | Relational persistence, JSONB state snapshots, indexes |
-| Containerization | Docker + Compose | Multi-container local orchestration & production builds |
+## Core Financial Engine & Ledger Invariants
 
-### Key Infrastructure Decisions
+### 1. Strict Double-Entry Balancing
+Every transaction creates at least two immutable ledger entry lines (Source Account Debit/Credit and Destination Account Debit/Credit):
+$$\sum \text{DebitAmount} = \sum \text{CreditAmount} = \text{TransactionAmount}$$
+- All debit and credit fields are strictly non-negative `numeric(18,4)`.
+- Reversals never mutate or delete historical lines; they append compensating inverted journal entries.
 
-- **Tenant Scoping at Data Layer** — Tenant ID is extracted strictly from the authenticated JWT token and applied to all repository queries; the UI has no authority over tenant boundaries.
-- **Immutable Audit Logging** — Entity Framework Core interceptors automatically capture actor identities and before/after JSON state snapshots on every update and approval transition.
-- **Fail-Safe Vision Fallback** — If AI extraction is unavailable or malformed, the system falls back safely to manual review with clear warning flags instead of fabricating receipt facts.
-- **Deterministic Risk Scoring** — Compliance risk signals are computed from deterministic rules (spending caps, weekend transactions, missing details) rather than unexplainable black-box models.
+### 2. Deterministic Row-Level Concurrency
+To prevent deadlocks when concurrent transfers touch overlapping account pairs in reverse order (e.g., Transfer A: Acc 1 $\to$ Acc 2, Transfer B: Acc 2 $\to$ Acc 1):
+- Tenvora sorts the account IDs deterministically in ascending order before acquiring pessimistic exclusive database locks (`SELECT ... FOR UPDATE`).
+- Transfers execute within an atomic serializable/read-committed transaction.
+
+### 3. Strict Idempotency Guarantees
+- Every client payment request requires an `Idempotency-Key` header.
+- Enforced at the database layer via unique index `(TenantId, Key)` in `IdempotencyRecords`.
+- Replaying the same key returns the exact cached outcome without re-executing ledger mutations.
 
 ---
 
-## Features
+## System Capabilities
 
-- **Vision AI Receipt Extraction**: Parses raw receipt images into structured fields (merchant, line items, taxes, currency, date, category).
-- **Human-in-the-Loop Confirmation**: Field proposals are fully editable before creating draft expenses.
-- **Multi-Tenant Workspace Isolation**: Strict tenant data partitioning backed by claims-based authorization.
-- **Deterministic Policy Guardrails**: Real-time spending limits, duplicate submission detection, and restricted category rules.
-- **Immutable Audit History**: Append-only JSON ledger recording all state changes, actors, timestamps, and previous values.
-- **Role-Based Workflow**: Dedicated interfaces and permissions for Employees (submit), Managers (review/approve), and Owners (policy setup).
+| Capability | Technical Mechanism |
+| :--- | :--- |
+| **Multi-Tenant Isolation** | PostgreSQL Row-Level Security (RLS) policies scoped via `app.current_tenant_id` session setting. |
+| **Automated Reconciliation** | Scheduled audit scanner comparing `SUM(LedgerEntries)` against `Accounts.CachedBalance`, persisting variances into `ReconciliationDiscrepancies`. |
+| **Batch Settlement** | End-of-day transaction aggregation calculating gross clearing, processor fee deductions, and net payouts. |
+| **Deterministic Risk Engine** | Non-AI rules engine evaluating transfer volume thresholds, account operational states, and balance depletion ratios. |
+| **Role-Based Access Control** | 5-role enterprise hierarchy: `TenantAdmin`, `OperationsManager`, `ComplianceOfficer`, `Auditor`, `Viewer`. |
+| **Observability** | Correlation ID tracking middleware (`X-Correlation-ID`) and distinct `/api/health/live` & `/api/health/ready` probes. |
 
 ---
 
-## Tech Stack
+## Directory Structure
 
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Radix UI
-- **Backend**: ASP.NET Core 8 / .NET 10, C#, Entity Framework Core
-- **Database**: PostgreSQL 16, EF Core Migrations
-- **AI & Vision**: Mistral Vision API, Custom Evaluation Harness
-- **Infrastructure & Testing**: Docker, Docker Compose, xUnit, Vitest, Playwright
+```text
+Tenvora/
+├── server/                      # ASP.NET Core 10 Web API
+│   ├── Controllers/             # REST endpoints (Payments, Accounts, Ledger, Recon, Auth)
+│   ├── Data/                    # AppDbContext, RLS interceptors, DatabaseSeeder
+│   ├── Domain/Entities/         # Financial entities (Transaction, LedgerEntry, Account, Customer)
+│   ├── Repositories/            # Data access with FOR UPDATE locking queries
+│   ├── Services/                # TransferService, ReconciliationService, SettlementService, RiskService
+│   └── Migrations/              # EF Core initial migration with PostgreSQL RLS scripts
+├── server.Tests/                # xUnit test suite (16 comprehensive tests)
+│   ├── FinancialCoreTests.cs    # Invariant checks, concurrency, idempotency, reversals
+│   ├── AuthorizationAndSecurityTests.cs # Cross-tenant isolation, RBAC, rate limiting
+│   ├── ReconciliationServiceTests.cs    # Automated discrepancy detection
+│   └── RiskServiceTests.cs      # Deterministic risk rules
+├── client/                      # React 19 + TypeScript frontend
+│   ├── src/pages/dashboard/     # Operations Overview KPI Dashboard
+│   ├── src/pages/accounts/      # Accounts & Customer Entities Directory
+│   ├── src/pages/payments/      # Transfer initiation modal & Double-entry journal viewer
+│   ├── src/pages/ledger/        # General Ledger & Account Audit history
+│   ├── src/pages/reconciliation/# Automated Reconciliation Hub & Discrepancy details
+│   ├── src/pages/settlements/   # Settlement Batches & Net Clearing
+│   ├── src/pages/admin/         # User Management & Enterprise RBAC
+│   └── src/services/            # Type-safe Axios API clients
+├── .github/workflows/           # GitHub Actions CI (Server test + Client build/test + Docker)
+└── compose.yaml                 # Docker Compose full-stack specification
+```
 
 ---
 
 ## Getting Started
 
-### 1. Clone repository & configure environment
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/)
+- [Node.js 20+](https://nodejs.org/)
+- [PostgreSQL 16+](https://www.postgresql.org/) or [Docker Desktop](https://www.docker.com/)
 
+### Quick Start with Docker Compose
 ```bash
-git clone https://github.com/ttnhan227/VeriSpend.git
-cd VeriSpend
-cp .env.example .env
+# Clone the repository
+git clone https://github.com/tnha/Tenvora.git
+cd Tenvora
+
+# Run the complete stack (PostgreSQL + API + Client)
+docker compose up --build
 ```
+- Frontend UI: `http://localhost:5173`
+- Backend API & Swagger: `http://localhost:8080/swagger`
 
-### 2. Start with Docker Compose
+### Local Development Setup
 
+#### 1. Backend (.NET 10)
 ```bash
-docker compose up -d --build
+cd server
+dotnet restore
+dotnet run
 ```
 
-| Endpoint | URL |
-|---|---|
-| Web Application | http://localhost:5173 |
-| Swagger API Docs | http://localhost:8080/swagger |
-| Health Check | http://localhost:8080/health |
-
----
-
-## Environment Variables Reference
-
-| Variable | Description | Default / Example |
-|---|---|---|
-| `ASPNETCORE_ENVIRONMENT` | Runtime environment (`Development` or `Production`) | `Development` |
-| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string | `Host=postgres;Port=5432;Database=verispend;Username=postgres;Password=...` |
-| `Jwt__Secret` | HMAC-SHA256 secret key for signing JWT tokens | `min-32-chars-secret-key-for-jwt-signing` |
-| `Jwt__Issuer` | JWT token issuer | `VeriSpendAPI` |
-| `Jwt__Audience` | JWT token audience | `VeriSpendClient` |
-| `Mistral__ApiKey` | Mistral Vision API Key for receipt extraction | Required for AI OCR |
-| `Mistral__Model` | Vision language model identifier | `pixtral-12b-2409` |
-| `VITE_DEMO_ENABLED` | Enables public demo workspace switch | `true` |
-
----
-
-## Testing & Quality Assurance
-
-### Backend xUnit Tests
-
-```powershell
-dotnet test VeriSpend.sln
-```
-
-14 unit and integration test suites covering:
-- Tenant-scoped repository queries & data leakage prevention
-- EF Core audit trail interceptors and JSON state snapshot generation
-- Deterministic policy limit validation & duplicate expense checks
-- Currency conversion calculations and fallback modes
-
-### Frontend Tests
-
-```bash
-cd client
-npm test        # Unit tests (Vitest)
-npm run build   # Production bundle verification
-```
-
----
-
-## Local Development (Without Docker)
-
-### Backend
-
-```powershell
-Copy-Item server/appsettings.Development.example.json server/appsettings.Development.json
-dotnet run --project server
-```
-
-### Frontend
-
+#### 2. Frontend (Vite + React)
 ```bash
 cd client
 npm install
 npm run dev
 ```
 
+#### 3. Run Tests
+```bash
+# Backend Test Suite
+dotnet test
+
+# Frontend Unit Tests
+cd client
+npm test
+```
+
+---
+
+## Seed Credentials (Local Development)
+
+| Email | Password | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `admin@tenvora.internal` | `AdminPass123!` | `TenantAdmin` | Full administrative access |
+| `ops.manager@tenvora.internal` | `AdminPass123!` | `OperationsManager` | Transfer initiation & settlement clearing |
+| `compliance@tenvora.internal` | `AdminPass123!` | `ComplianceOfficer` | Risk & audit verification |
+
+---
+
+## Architectural Decision Records (ADRs)
+
+- **ADR-001: Decimal Money Representation**: All currency amounts use `numeric(18,4)` / `decimal` in C# to prevent IEEE-754 floating-point inaccuracies.
+- **ADR-002: Deterministic Locking Order**: All multi-account transfer locks acquire row locks in strict ascending `AccountId` order, mathematically eliminating AB-BA deadlocks.
+- **ADR-003: Row-Level Security**: Multi-tenancy is enforced natively at the PostgreSQL level via `CREATE POLICY` and `app.current_tenant_id` session settings.
+- **ADR-004: Decoupled AI Operations**: Operations Copilot is strictly read-only and has zero authorization to execute money movement or modify accounts.
+
 ---
 
 ## License
 
-MIT
+This project is open-source under the [MIT License](LICENSE).

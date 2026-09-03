@@ -1,4 +1,4 @@
-import apiClient from "./apiClient";
+﻿import apiClient from "./apiClient";
 
 export interface LoginRequest {
   email: string;
@@ -9,39 +9,37 @@ export interface RegisterRequest {
   companyName: string;
   email: string;
   password: string;
+  baseCurrency?: string;
 }
 
 export interface UserProfile {
   id: string;
+  tenantId: string;
   email: string;
   role: string;
-  tenantId: string;
+  isActive: boolean;
+  preferredCurrency: string;
   companyName: string;
-  planType: string;
 }
 
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
-  expiresAt: string;
-  profile: UserProfile;
+  userId: string;
+  tenantId: string;
+  email: string;
+  role: string;
+  companyName: string;
 }
 
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
-  error?: string;
+  message?: string;
+  errors?: string[];
 }
 
 export const authService = {
-  createDemo: async (): Promise<ApiResponse<AuthResponse>> => {
-    try {
-      const response = await apiClient.post("/auth/demo");
-      return response.data;
-    } catch (error: any) {
-      return { success: false, error: error.response?.data?.error || "Demo provisioning failed" };
-    }
-  },
   login: async (request: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
     try {
       const response = await apiClient.post("/auth/login", request);
@@ -49,22 +47,7 @@ export const authService = {
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Login failed",
-      };
-    }
-  },
-
-  acceptInvite: async (token: string, password: string): Promise<ApiResponse<AuthResponse>> => {
-    try {
-      const response = await apiClient.post("/auth/accept-invite", {
-        token,
-        password,
-      });
-      return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.error || "Failed to accept invite",
+        errors: error.response?.data?.errors || [error.response?.data?.message || "Login failed"],
       };
     }
   },
@@ -76,7 +59,7 @@ export const authService = {
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Registration failed",
+        errors: error.response?.data?.errors || [error.response?.data?.message || "Registration failed"],
       };
     }
   },
@@ -88,22 +71,7 @@ export const authService = {
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Failed to fetch profile",
-      };
-    }
-  },
-
-  changePassword: async (currentPassword: string, newPassword: string): Promise<ApiResponse<null>> => {
-    try {
-      const response = await apiClient.put("/auth/change-password", {
-        currentPassword,
-        newPassword,
-      });
-      return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.error || "Failed to change password",
+        errors: error.response?.data?.errors || ["Failed to fetch profile"],
       };
     }
   },

@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using VeriSpend.Api.Data;
+using Tenvora.Api.Data;
 
 #nullable disable
 
-namespace VeriSpend.Api.Migrations
+namespace Tenvora.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
@@ -22,57 +22,437 @@ namespace VeriSpend.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("VeriSpend.Api.Models.AuditLog", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Account", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Action")
+                    b.Property<string>("AccountNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<Guid?>("ExpenseId")
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("CachedBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid?>("CustomerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("NewValue")
-                        .HasColumnType("jsonb");
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("text");
-
-                    b.Property<string>("OldValue")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("PerformedBy")
+                    b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Active");
 
-                    b.Property<DateTime>("Timestamp")
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PerformedBy");
+                    b.HasIndex("CustomerId");
 
-                    b.HasIndex("ExpenseId", "Timestamp");
+                    b.HasIndex("TenantId", "AccountNumber")
+                        .IsUnique();
 
-                    b.ToTable("AuditLogs");
+                    b.HasIndex("TenantId", "CustomerId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Accounts");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Expense", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("KycStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Verified");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Active");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Email");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TenantId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("IdempotencyRecords");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.LedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CreditAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("DebitAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("EntryType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TenantId", "TransactionId");
+
+                    b.HasIndex("TenantId", "AccountId", "PostedAt");
+
+                    b.ToTable("LedgerEntries");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.PaymentRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric");
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
-                    b.Property<decimal>("BaseAmount")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Category")
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("DestinationAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Purpose")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("SourceAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Initiated");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DestinationAccountId");
+
+                    b.HasIndex("SourceAccountId");
+
+                    b.HasIndex("TenantId", "IdempotencyKey");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt");
+
+                    b.ToTable("PaymentRequests");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationDiscrepancy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CalculatedBalance")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DiscrepancyAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("ExpectedBalance")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ReconciliationRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Resolved")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("ReconciliationRunId");
+
+                    b.HasIndex("TenantId", "AccountId");
+
+                    b.HasIndex("TenantId", "ReconciliationRunId");
+
+                    b.ToTable("ReconciliationDiscrepancies");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DiscrepancyCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RunNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TotalAccountsChecked")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalLedgerEntriesChecked")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "RunNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "StartedAt");
+
+                    b.ToTable("ReconciliationRuns");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.RiskEvaluation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("PaymentRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RiskLevel")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("RuleHitsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentRequestId");
+
+                    b.HasIndex("TenantId", "PaymentRequestId");
+
+                    b.ToTable("RiskEvaluations");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.SettlementBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BatchNumber")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -82,34 +462,116 @@ namespace VeriSpend.Api.Migrations
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime?>("SettledAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Open");
 
-                    b.Property<string>("FlagReason")
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalCreditAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("TotalDebitAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<int>("TotalTransactions")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BatchNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("SettlementBatches");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.SettlementEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SettlementBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SettlementBatchId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TenantId", "SettlementBatchId");
+
+                    b.HasIndex("TenantId", "TransactionId");
+
+                    b.ToTable("SettlementEntries");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<bool>("Flagged")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                    b.Property<Guid?>("OriginalTransactionId")
+                        .HasColumnType("uuid");
 
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                    b.Property<Guid?>("PaymentRequestId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("Merchant")
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReferenceNumber")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -119,99 +581,88 @@ namespace VeriSpend.Api.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("OriginalTransactionId");
 
-                    b.HasIndex("TenantId", "IsDeleted", "CreatedAt");
+                    b.HasIndex("PaymentRequestId");
 
-                    b.ToTable("Expenses");
+                    b.HasIndex("TenantId", "OriginalTransactionId");
+
+                    b.HasIndex("TenantId", "ReferenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt");
+
+                    b.ToTable("Transactions");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.ExpenseReviewFeedback", b =>
+            modelBuilder.Entity("Tenvora.Api.Models.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CorrectedRiskLevel")
+                    b.Property<string>("Action")
                         .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("character varying(25)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
-                    b.Property<Guid>("ExpenseId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("OriginalRiskLevel")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("character varying(25)");
+                    b.Property<string>("OldValue")
+                        .HasColumnType("jsonb");
 
-                    b.Property<int>("OriginalRiskScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SubmittedBy")
+                    b.Property<string>("PerformedBy")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("WasAutoApproved")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("WasFalsePositive")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpenseId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("ExpenseReviewFeedback");
-                });
-
-            modelBuilder.Entity("VeriSpend.Api.Models.Receipt", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ExpenseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("OcrRawData")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UploadedAt")
+                    b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ExpenseId");
+                    b.HasIndex("PerformedBy");
 
-                    b.ToTable("Receipts");
+                    b.HasIndex("TenantId", "Timestamp");
+
+                    b.HasIndex("TenantId", "EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.RefreshToken", b =>
+            modelBuilder.Entity("Tenvora.Api.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -237,65 +688,15 @@ namespace VeriSpend.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Token")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Subscription", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AnnualPrice")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("BillingCycle")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("Cancelled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("CancelledAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("MonthlyPrice")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("PlanId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PlanName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("RenewalDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("Subscriptions");
-                });
-
-            modelBuilder.Entity("VeriSpend.Api.Models.Tenant", b =>
+            modelBuilder.Entity("Tenvora.Api.Models.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -303,112 +704,66 @@ namespace VeriSpend.Api.Migrations
 
                     b.Property<string>("ApiKey")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("AutoApprovalEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("AutoApprovalExcludeWeekends")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("AutoApprovalExcludedCategories")
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("AutoApprovalMaxAmount")
-                        .HasColumnType("numeric");
-
-                    b.Property<int>("AutoApprovalMaxRiskScore")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AutoApprovalMinAgeHours")
-                        .HasColumnType("integer");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("BaseCurrency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
                         .HasDefaultValue("USD");
-
-                    b.Property<string>("CategoryBudgets")
-                        .HasColumnType("text");
-
-                    b.Property<string>("CategoryRules")
-                        .HasColumnType("text");
 
                     b.Property<string>("CompanyName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DemoExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("EmailNotificationsEnabled")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsDemo")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("ManagerEmail")
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("MaxSpendLimit")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("NoReplyEmail")
-                        .HasColumnType("text");
-
                     b.Property<string>("PlanType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
-                    b.Property<string>("PolicyNotes")
-                        .HasColumnType("text");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Active");
 
-                    b.Property<string>("SlackChannel")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("SlackNotificationsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SlackTeamId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SlackUserEmailMappings")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SlackVerificationToken")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SlackWebhookUrl")
-                        .HasColumnType("text");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApiKey")
+                        .IsUnique();
 
                     b.ToTable("Tenants");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.User", b =>
+            modelBuilder.Entity("Tenvora.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("ExpenseCardSuspended")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<DateTime?>("ExpenseCardSuspendedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ExpenseCardSuspensionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("InviteToken")
                         .HasColumnType("text");
@@ -428,81 +783,194 @@ namespace VeriSpend.Api.Migrations
                     b.Property<string>("PreferredCurrency")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
                         .HasDefaultValue("USD");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("InviteToken")
                         .IsUnique();
 
-                    b.HasIndex("TenantId");
+                    b.HasIndex("TenantId", "Email")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.AuditLog", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Account", b =>
                 {
-                    b.HasOne("VeriSpend.Api.Models.Expense", "Expense")
-                        .WithMany("AuditLogs")
-                        .HasForeignKey("ExpenseId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                    b.HasOne("Tenvora.Api.Domain.Entities.Customer", "Customer")
+                        .WithMany("Accounts")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Expense");
-                });
-
-            modelBuilder.Entity("VeriSpend.Api.Models.Expense", b =>
-                {
-                    b.HasOne("VeriSpend.Api.Models.Tenant", "Tenant")
-                        .WithMany("Expenses")
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("Accounts")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VeriSpend.Api.Models.User", "User")
-                        .WithMany("Expenses")
-                        .HasForeignKey("UserId")
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("Customers")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.LedgerEntry", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Account", "Account")
+                        .WithMany("LedgerEntries")
+                        .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Tenant");
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("LedgerEntries")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
-                    b.Navigation("User");
+                    b.HasOne("Tenvora.Api.Domain.Entities.Transaction", "Transaction")
+                        .WithMany("LedgerEntries")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Transaction");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.ExpenseReviewFeedback", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.PaymentRequest", b =>
                 {
-                    b.HasOne("VeriSpend.Api.Models.Expense", "Expense")
+                    b.HasOne("Tenvora.Api.Domain.Entities.Account", "DestinationAccount")
                         .WithMany()
-                        .HasForeignKey("ExpenseId")
+                        .HasForeignKey("DestinationAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Account", "SourceAccount")
+                        .WithMany()
+                        .HasForeignKey("SourceAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DestinationAccount");
+
+                    b.Navigation("SourceAccount");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationDiscrepancy", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.ReconciliationRun", "ReconciliationRun")
+                        .WithMany("Discrepancies")
+                        .HasForeignKey("ReconciliationRunId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Expense");
+                    b.Navigation("Account");
+
+                    b.Navigation("ReconciliationRun");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Receipt", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationRun", b =>
                 {
-                    b.HasOne("VeriSpend.Api.Models.Expense", "Expense")
-                        .WithMany("Receipts")
-                        .HasForeignKey("ExpenseId")
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("ReconciliationRuns")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.RiskEvaluation", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.PaymentRequest", "PaymentRequest")
+                        .WithMany()
+                        .HasForeignKey("PaymentRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Expense");
+                    b.Navigation("PaymentRequest");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.RefreshToken", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.SettlementBatch", b =>
                 {
-                    b.HasOne("VeriSpend.Api.Models.User", "User")
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("SettlementBatches")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.SettlementEntry", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.SettlementBatch", "SettlementBatch")
+                        .WithMany("Entries")
+                        .HasForeignKey("SettlementBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SettlementBatch");
+
+                    b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Transaction", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Transaction", "OriginalTransaction")
+                        .WithMany("ReversalTransactions")
+                        .HasForeignKey("OriginalTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.PaymentRequest", "PaymentRequest")
+                        .WithMany("Transactions")
+                        .HasForeignKey("PaymentRequestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("Transactions")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OriginalTransaction");
+
+                    b.Navigation("PaymentRequest");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Models.RefreshToken", b =>
+                {
+                    b.HasOne("Tenvora.Api.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -511,20 +979,9 @@ namespace VeriSpend.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Subscription", b =>
+            modelBuilder.Entity("Tenvora.Api.Models.User", b =>
                 {
-                    b.HasOne("VeriSpend.Api.Models.Tenant", "Tenant")
-                        .WithMany("Subscriptions")
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("VeriSpend.Api.Models.User", b =>
-                {
-                    b.HasOne("VeriSpend.Api.Models.Tenant", "Tenant")
+                    b.HasOne("Tenvora.Api.Models.Tenant", "Tenant")
                         .WithMany("Users")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -533,25 +990,53 @@ namespace VeriSpend.Api.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Expense", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Account", b =>
                 {
-                    b.Navigation("AuditLogs");
-
-                    b.Navigation("Receipts");
+                    b.Navigation("LedgerEntries");
                 });
 
-            modelBuilder.Entity("VeriSpend.Api.Models.Tenant", b =>
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Customer", b =>
                 {
-                    b.Navigation("Expenses");
+                    b.Navigation("Accounts");
+                });
 
-                    b.Navigation("Subscriptions");
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.PaymentRequest", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationRun", b =>
+                {
+                    b.Navigation("Discrepancies");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.SettlementBatch", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Transaction", b =>
+                {
+                    b.Navigation("LedgerEntries");
+
+                    b.Navigation("ReversalTransactions");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Models.Tenant", b =>
+                {
+                    b.Navigation("Accounts");
+
+                    b.Navigation("Customers");
+
+                    b.Navigation("LedgerEntries");
+
+                    b.Navigation("ReconciliationRuns");
+
+                    b.Navigation("SettlementBatches");
+
+                    b.Navigation("Transactions");
 
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("VeriSpend.Api.Models.User", b =>
-                {
-                    b.Navigation("Expenses");
                 });
 #pragma warning restore 612, 618
         }

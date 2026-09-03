@@ -1,10 +1,10 @@
-using VeriSpend.Api.Models;
+﻿using Tenvora.Api.Models;
 
-namespace VeriSpend.Api.Repositories;
+namespace Tenvora.Api.Repositories;
 
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByTokenAsync(string token);
-    Task AddAsync(RefreshToken refreshToken);
-    Task SaveChangesAsync();
+    Task AddAsync(RefreshToken token);
+    Task RevokeUserTokensAsync(Guid userId);
 }

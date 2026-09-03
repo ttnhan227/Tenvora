@@ -1,86 +1,55 @@
-import apiClient from "./apiClient";
+﻿import apiClient from "./apiClient";
+import { ApiResponse } from "./authService";
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export interface TenantUser {
+export interface AdminUser {
   id: string;
   email: string;
-  role: "Owner" | "Manager" | "Member";
+  role: string;
   isActive: boolean;
-  invitationPending: boolean;
+  preferredCurrency: string;
+  createdAt: string;
 }
 
-export interface InviteTenantUserRequest {
+export interface AdminCreateUserRequest {
   email: string;
-  role: "Owner" | "Manager" | "Member";
-}
-
-export interface InviteTenantUserResponse {
-  userId: string;
-  email: string;
-  role: "Owner" | "Manager" | "Member";
-  expiresAt: string;
-  inviteToken: string;
-  inviteUrl: string;
-}
-
-export interface UpdateUserRoleRequest {
-  role: "Owner" | "Manager" | "Member";
-}
-
-export interface UpdateUserStatusRequest {
-  isActive: boolean;
+  password: string;
+  role: string;
+  preferredCurrency?: string;
 }
 
 export const adminUserService = {
-  getUsers: async (): Promise<ApiResponse<TenantUser[]>> => {
+  getUsers: async (): Promise<ApiResponse<AdminUser[]>> => {
     try {
       const response = await apiClient.get("/admin/users");
       return response.data;
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Failed to load users",
+        errors: error.response?.data?.errors || ["Failed to fetch users"],
       };
     }
   },
 
-  inviteUser: async (request: InviteTenantUserRequest): Promise<ApiResponse<InviteTenantUserResponse>> => {
+  createUser: async (request: AdminCreateUserRequest): Promise<ApiResponse<AdminUser>> => {
     try {
       const response = await apiClient.post("/admin/users", request);
       return response.data;
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Failed to invite user",
+        errors: error.response?.data?.errors || [error.response?.data?.message || "Failed to create user"],
       };
     }
   },
 
-  updateUserRole: async (userId: string, request: UpdateUserRoleRequest): Promise<ApiResponse<TenantUser>> => {
+  toggleUserActive: async (userId: string): Promise<ApiResponse<void>> => {
     try {
-      const response = await apiClient.put(`/admin/users/${userId}/role`, request);
+      const response = await apiClient.patch(`/admin/users/${userId}/toggle-active`);
       return response.data;
     } catch (error: any) {
       return {
         success: false,
-        error: error.response?.data?.error || "Failed to update role",
-      };
-    }
-  },
-
-  updateUserStatus: async (userId: string, request: UpdateUserStatusRequest): Promise<ApiResponse<TenantUser>> => {
-    try {
-      const response = await apiClient.put(`/admin/users/${userId}/status`, request);
-      return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.error || "Failed to update status",
+        errors: error.response?.data?.errors || ["Failed to toggle user status"],
       };
     }
   },

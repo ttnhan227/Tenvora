@@ -7,44 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
-const DEMO_ENABLED = (import.meta.env.VITE_DEMO_ENABLED ?? "true").toLowerCase() !== "false";
-
-const Login = () => {
+export default function Login() {
   const navigate = useNavigate();
-  const { login, createDemo } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingAction, setLoadingAction] = useState<"login" | "demo" | null>(null);
-
-  const handleDemoLogin = async () => {
-    setError("");
-    setIsLoading(true);
-    setLoadingAction("demo");
-    try {
-      const success = await createDemo();
-      if (success) navigate("/dashboard");
-      else setError("The demo workspace is currently unavailable. Please retry in a moment.");
-    } catch {
-      setError("The demo workspace is initializing. Please try again shortly.");
-    } finally {
-      setIsLoading(false);
-      setLoadingAction(null);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    setLoadingAction("login");
 
     if (!email || !password) {
       setError("Please fill in all credentials");
       setIsLoading(false);
-      setLoadingAction(null);
       return;
     }
 
@@ -59,7 +39,6 @@ const Login = () => {
       setError("An error occurred during authentication");
     } finally {
       setIsLoading(false);
-      setLoadingAction(null);
     }
   };
 
@@ -68,17 +47,14 @@ const Login = () => {
       <div className="w-full max-w-sm space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
-            <span className="text-base font-bold tracking-tight text-foreground">VeriSpend</span>
-          </Link>
-          <p className="text-xs text-muted-foreground">Corporate expense management & automated audit</p>
+          <BrandLogo to="/" size="lg" className="justify-center" />
+          <p className="text-xs text-muted-foreground">Enterprise Payment Operations & Transaction Platform</p>
         </div>
 
-        <Card>
+        <Card className="border border-border/80 bg-card">
           <CardHeader className="border-b border-border/60 pb-3 text-center">
-            <CardTitle>Sign in to your organization</CardTitle>
-            <CardDescription>Enter your corporate credentials</CardDescription>
+            <CardTitle className="text-base font-bold">Sign in to Operations</CardTitle>
+            <CardDescription className="text-xs">Enter your organization credentials</CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -96,7 +72,7 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="name@company.com"
+                  placeholder="admin@tenvora.internal"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
@@ -123,77 +99,52 @@ const Login = () => {
                 type="submit"
                 disabled={isLoading}
                 size="sm"
-                variant="default"
-                className="w-full font-bold h-9 mt-1"
+                className="w-full font-bold h-9 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {loadingAction === "login" && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                {loadingAction === "login" ? "Authenticating…" : "Sign In"}
+                {isLoading && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                {isLoading ? "Authenticating…" : "Sign In to Workspace"}
               </Button>
             </form>
 
-            {isLoading && (
-              <div className="mt-3 flex items-center gap-2 rounded-md border border-border bg-muted/20 p-2.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground shrink-0" />
-                <span>
-                  {loadingAction === "demo"
-                    ? "Provisioning sandbox workspace…"
-                    : "Connecting to company ledger…"}
-                </span>
-              </div>
-            )}
-
             <div className="mt-4 pt-3 border-t border-border/60 text-center space-y-2">
               <p className="text-[11px] text-muted-foreground">
-                Need a new organization account?{" "}
-                <Link to="/register" className="font-semibold text-foreground hover:underline">
-                  Create Workspace
+                Need a new enterprise tenant?{" "}
+                <Link to="/register" className="font-semibold text-emerald-600 hover:underline">
+                  Register Organization
                 </Link>
               </p>
 
-              {/* Quick Demo Access Pills */}
+              {/* Seeded Quick Access */}
               <div className="pt-2">
-                <div className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Demo Credentials:</div>
+                <div className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Access Credentials:</div>
                 <div className="flex flex-wrap gap-1.5 justify-center">
                   <button
                     type="button"
-                    onClick={() => { setEmail("marcus.river@northwindanalytics.com"); setPassword("123"); }}
-                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => { setEmail("admin@tenvora.internal"); setPassword("AdminPass123!"); }}
+                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Marcus (Tenant 1)
+                    Admin
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setEmail("olivia.chen@northwindanalytics.com"); setPassword("123"); }}
-                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => { setEmail("ops.manager@tenvora.internal"); setPassword("AdminPass123!"); }}
+                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Olivia (Manager)
+                    Ops Manager
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setEmail("daniel.kim@blueharborlogistics.com"); setPassword("123"); }}
-                    className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/30 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => { setEmail("compliance@tenvora.internal"); setPassword("AdminPass123!"); }}
+                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Daniel (Tenant 2)
+                    Compliance
                   </button>
                 </div>
               </div>
-
-              {DEMO_ENABLED && (
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  onClick={handleDemoLogin}
-                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground underline block w-full text-center pt-1"
-                >
-                  {loadingAction === "demo" ? "Launching demo…" : "Explore Sandbox Demo"}
-                </button>
-              )}
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

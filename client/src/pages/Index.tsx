@@ -1,35 +1,33 @@
-import { useEffect } from "react";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import PlatformTour from "@/components/landing/PlatformTour";
+import LedgerInteractiveDemo from "@/components/landing/LedgerInteractiveDemo";
 import Features from "@/components/landing/Features";
-import HowItWorks from "@/components/landing/HowItWorks";
+import SecurityCompliance from "@/components/landing/SecurityCompliance";
+import NewsMedia from "@/components/landing/NewsMedia";
+import ApiExplorerPreview from "@/components/landing/ApiExplorerPreview";
 import Pricing from "@/components/landing/Pricing";
+import FAQ from "@/components/landing/FAQ";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5291/api";
-
-const Index = () => {
-  useEffect(() => {
-    // Wake the Render backend as soon as a visitor reaches the landing page.
-    void fetch(`${API_BASE_URL}/health`).catch(() => {
-      // A sleeping backend can take a while to start; don't block the landing page.
-    });
-  }, []);
-
+export default function Index() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-[#635BFF]/20 selection:text-[#635BFF]">
       <Navbar />
-      <Hero />
-      <PlatformTour />
-      <Features />
-      <HowItWorks />
-      <Pricing />
-      <CTA />
+      <main className="flex-1">
+        <Hero />
+        <PlatformTour />
+        <LedgerInteractiveDemo />
+        <Features />
+        <SecurityCompliance />
+        <NewsMedia />
+        <ApiExplorerPreview />
+        <Pricing />
+        <FAQ />
+        <CTA />
+      </main>
       <Footer />
     </div>
   );
-};
-
-export default Index;
+}
