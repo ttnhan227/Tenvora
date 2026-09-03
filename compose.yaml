@@ -2,16 +2,18 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: tenvora-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: tenvora_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: tenvora_secure_password_123
+      POSTGRES_DB: ${POSTGRES_DB:-tenvora_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tenvora_secure_password_123}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tenvora_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tenvora_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,21 +23,28 @@ services:
       context: ./server
       dockerfile: Dockerfile
     container_name: tenvora-api
+    env_file:
+      - .env
     environment:
-      PORT: 5000
-      ENABLE_SWAGGER: "true"
-      ASPNETCORE_URLS: "http://+:5000"
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=tenvora_db;Username=postgres;Password=tenvora_secure_password_123;SSL Mode=Disable;Trust Server Certificate=true
-      JwtSettings__Secret: tenvora-production-docker-secret-key-32-chars-minimum-12345
-      JwtSettings__Issuer: Tenvora
-      JwtSettings__Audience: Tenvora
-      CLIENT_ORIGINS: http://localhost:80,http://localhost:3000,http://localhost:5173,http://client
-      FINLIGHT_API_KEY: "${FINLIGHT_API_KEY:-}"
-      NEWSAPIAI_API_KEY: "${NEWSAPIAI_API_KEY:-}"
-      GNEWS_API_KEY: "${GNEWS_API_KEY:-}"
+      PORT: ${PORT:-5000}
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=postgres;Port=5432;Database=tenvora_db;Username=postgres;Password=tenvora_secure_password_123;SSL Mode=Disable;Trust Server Certificate=true}
+      JwtSettings__Secret: ${JWT_SECRET:-tenvora-production-docker-secret-key-32-chars-minimum-12345}
+      JwtSettings__Issuer: ${JwtSettings__Issuer:-Tenvora}
+      JwtSettings__Audience: ${JwtSettings__Audience:-Tenvora}
+      CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost:3000,http://client}
+      FINLIGHT_API_KEY: ${FINLIGHT_API_KEY:-}
+      NEWSAPIAI_API_KEY: ${NEWSAPIAI_API_KEY:-}
+      GNEWS_API_KEY: ${GNEWS_API_KEY:-}
+      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Mistral}
+      AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
+      AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://api.mistral.ai/v1/chat/completions}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-mistral-small-latest}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-mistral-small-latest}
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:5000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,8 +54,10 @@ services:
       context: ./client
       dockerfile: Dockerfile
     container_name: tenvora-client
+    env_file:
+      - .env
     ports:
-      - "5173:80"
+      - "${VITE_PORT:-5173}:80"
     depends_on:
       - server
 

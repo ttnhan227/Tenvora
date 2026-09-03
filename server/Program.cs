@@ -14,7 +14,31 @@ using Tenvora.Api.Middleware;
 using Tenvora.Api.Repositories;
 using Tenvora.Api.Services;
 
+// 1. Auto-load root or local .env file (Unified single .env for local dev and Docker)
+void LoadEnvFile(string path)
+{
+    if (!File.Exists(path)) return;
+    foreach (var line in File.ReadAllLines(path))
+    {
+        var trimmed = line.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#')) continue;
+        var separatorIdx = trimmed.IndexOf('=');
+        if (separatorIdx <= 0) continue;
+        var key = trimmed[..separatorIdx].Trim();
+        var val = trimmed[(separatorIdx + 1)..].Trim().Trim('"', '\'');
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+        {
+            Environment.SetEnvironmentVariable(key, val);
+        }
+    }
+}
+
+LoadEnvFile(".env");
+LoadEnvFile("../.env");
+LoadEnvFile("../../.env");
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
@@ -61,7 +85,9 @@ builder.Services.AddCors(options =>
             "http://localhost:5173",
             "https://localhost:5173",
             "http://localhost:4173",
-            "https://localhost:4173"
+            "https://localhost:4173",
+            "http://localhost:80",
+            "http://localhost:3000"
         };
 
         var extraOrigins = Environment.GetEnvironmentVariable("CLIENT_ORIGINS");
@@ -141,8 +167,9 @@ builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
 builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000));
 builder.Services.AddHostedService<QueuedHostedService>();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
 if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("No database connection string found.");
@@ -163,6 +190,13 @@ builder.Services.AddDbContext<AppDbContext>((sp, options) =>
            .AddInterceptors(new EntityValidationInterceptor()));
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
+var secretFromEnv = Environment.GetEnvironmentVariable("JWT_SECRET") 
+    ?? Environment.GetEnvironmentVariable("JwtSettings__Secret");
+if (!string.IsNullOrWhiteSpace(secretFromEnv))
+{
+    jwtSettings.Secret = secretFromEnv;
+}
+
 var key = Encoding.UTF8.GetBytes(string.IsNullOrEmpty(jwtSettings.Secret) ? "tenvora-default-secret-key-change-in-production-12345678" : jwtSettings.Secret);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
