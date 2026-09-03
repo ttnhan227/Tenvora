@@ -178,7 +178,9 @@ if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith(
 {
     var uri = new Uri(connectionString);
     var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    var portNum = uri.Port > 0 ? uri.Port : 5432;
+    var password = userInfo.Length > 1 ? userInfo[1] : "";
+    connectionString = $"Host={uri.Host};Port={portNum};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={password};SSL Mode=Require;Trust Server Certificate=true";
 }
 
 builder.Services.AddHttpContextAccessor();
