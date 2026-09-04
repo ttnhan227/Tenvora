@@ -44,7 +44,7 @@ services:
       AI_CHAT_MODEL: ${AI_CHAT_MODEL:-mistral-small-latest}
       AI_VISION_MODEL: ${AI_VISION_MODEL:-mistral-small-latest}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Global FinOps Corp}
-      SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:-tenvora-live-api-key-global-finops-001}
+      SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:-tenvora-dev-key-default}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@tenvora.internal}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-AdminPass123!}
       SEED_OPS_EMAIL: ${SEED_OPS_EMAIL:-ops.manager@tenvora.internal}

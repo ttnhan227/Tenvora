@@ -52,7 +52,7 @@ public static class DatabaseSeeder
             if (string.IsNullOrWhiteSpace(tenantName)) tenantName = "Global FinOps Corp";
 
             var tenantApiKey = Environment.GetEnvironmentVariable("SEED_TENANT_API_KEY")?.Trim();
-            if (string.IsNullOrWhiteSpace(tenantApiKey)) tenantApiKey = "tenvora-live-api-key-global-finops-001";
+            if (string.IsNullOrWhiteSpace(tenantApiKey)) tenantApiKey = "tenvora-dev-key-default";
 
             var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL")?.Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(adminEmail)) adminEmail = "admin@tenvora.internal";
