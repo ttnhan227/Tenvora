@@ -113,34 +113,6 @@ export default function Login() {
                   Register Organization
                 </Link>
               </p>
-
-              {/* Seeded Quick Access */}
-              <div className="pt-2">
-                <div className="text-[10px] text-muted-foreground mb-1.5 font-medium">Quick Access Credentials:</div>
-                <div className="flex flex-wrap gap-1.5 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => { setEmail("admin@tenvora.internal"); setPassword("AdminPass123!"); }}
-                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEmail("ops.manager@tenvora.internal"); setPassword("AdminPass123!"); }}
-                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Ops Manager
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEmail("compliance@tenvora.internal"); setPassword("AdminPass123!"); }}
-                    className="text-[10px] px-2.5 py-1 rounded border border-border bg-muted/40 hover:bg-muted font-mono text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Compliance
-                  </button>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>

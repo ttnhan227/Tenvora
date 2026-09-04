@@ -47,15 +47,38 @@ public static class DatabaseSeeder
             }
 
             var now = DateTime.UtcNow;
-            var sharedPasswordHash = Services.PasswordHasher.Hash("AdminPass123!");
 
-            // Primary Enterprise Tenant: Global FinOps Corp
+            var tenantName = Environment.GetEnvironmentVariable("SEED_TENANT_NAME")?.Trim();
+            if (string.IsNullOrWhiteSpace(tenantName)) tenantName = "Global FinOps Corp";
+
+            var tenantApiKey = Environment.GetEnvironmentVariable("SEED_TENANT_API_KEY")?.Trim();
+            if (string.IsNullOrWhiteSpace(tenantApiKey)) tenantApiKey = "tenvora-live-api-key-global-finops-001";
+
+            var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL")?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(adminEmail)) adminEmail = "admin@tenvora.internal";
+
+            var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD")?.Trim();
+            if (string.IsNullOrWhiteSpace(adminPassword)) adminPassword = "AdminPass123!";
+
+            var opsEmail = Environment.GetEnvironmentVariable("SEED_OPS_EMAIL")?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(opsEmail)) opsEmail = "ops.manager@tenvora.internal";
+
+            var opsPassword = Environment.GetEnvironmentVariable("SEED_OPS_PASSWORD")?.Trim();
+            if (string.IsNullOrWhiteSpace(opsPassword)) opsPassword = adminPassword;
+
+            var complianceEmail = Environment.GetEnvironmentVariable("SEED_COMPLIANCE_EMAIL")?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(complianceEmail)) complianceEmail = "compliance@tenvora.internal";
+
+            var compliancePassword = Environment.GetEnvironmentVariable("SEED_COMPLIANCE_PASSWORD")?.Trim();
+            if (string.IsNullOrWhiteSpace(compliancePassword)) compliancePassword = adminPassword;
+
+            // Primary Enterprise Tenant
             var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             var tenant = new Tenant
             {
                 Id = tenantId,
-                CompanyName = "Global FinOps Corp",
-                ApiKey = "tenvora-live-api-key-global-finops-001",
+                CompanyName = tenantName,
+                ApiKey = tenantApiKey,
                 PlanType = "Enterprise",
                 BaseCurrency = "USD",
                 Status = "Active",
@@ -70,8 +93,8 @@ public static class DatabaseSeeder
             {
                 Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                 TenantId = tenantId,
-                Email = "admin@tenvora.internal",
-                PasswordHash = sharedPasswordHash,
+                Email = adminEmail,
+                PasswordHash = Services.PasswordHasher.Hash(adminPassword),
                 Role = "TenantAdmin",
                 IsActive = true,
                 PreferredCurrency = "USD",
@@ -82,8 +105,8 @@ public static class DatabaseSeeder
             {
                 Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                 TenantId = tenantId,
-                Email = "ops.manager@tenvora.internal",
-                PasswordHash = sharedPasswordHash,
+                Email = opsEmail,
+                PasswordHash = Services.PasswordHasher.Hash(opsPassword),
                 Role = "OperationsManager",
                 IsActive = true,
                 PreferredCurrency = "USD",
@@ -94,8 +117,8 @@ public static class DatabaseSeeder
             {
                 Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
                 TenantId = tenantId,
-                Email = "compliance@tenvora.internal",
-                PasswordHash = sharedPasswordHash,
+                Email = complianceEmail,
+                PasswordHash = Services.PasswordHasher.Hash(compliancePassword),
                 Role = "ComplianceOfficer",
                 IsActive = true,
                 PreferredCurrency = "USD",
