@@ -29,23 +29,23 @@ Tenvora is an enterprise payment operations (PayOps) and transaction processing 
 
 ```mermaid
 graph TD
-    Client[React 19 + TypeScript Operations Console] -->|JWT Auth + Rate Limited HTTPS| API[ASP.NET Core 10 Web API]
-    API -->|Session Var: app.current_tenant_id| DB[(PostgreSQL 16 Engine)]
+    Client["React 19 + TypeScript Operations Console"] -->|"JWT Auth + Rate Limited HTTPS"| API["ASP.NET Core 10 Web API"]
+    API -->|"Session Var: app.current_tenant_id"| DB[("PostgreSQL 16 Engine")]
     
-    subgraph Financial Core
-        API --> LockMgr[Deterministic Concurrency Engine]
-        LockMgr -->|SELECT ... FOR UPDATE (Account IDs ASC)| DB
-        LockMgr --> Idemp[Idempotency Constraint Check]
-        Idemp --> Ledger[Double-Entry Invariant Engine]
-        Ledger -->|Atomic Post: Debits == Credits| DB
+    subgraph FinancialCore ["Financial Core"]
+        API --> LockMgr["Deterministic Concurrency Engine"]
+        LockMgr -->|"SELECT ... FOR UPDATE (Account IDs ASC)"| DB
+        LockMgr --> Idemp["Idempotency Constraint Check"]
+        Idemp --> Ledger["Double-Entry Invariant Engine"]
+        Ledger -->|"Atomic Post: Debits == Credits"| DB
     end
 
-    subgraph Operations & Audit
-        API --> Recon[Reconciliation Scanner]
-        Recon -->|Derives SUM(Debit)-SUM(Credit) vs Cached| DB
-        API --> Settle[Batch Settlement Engine]
-        Settle -->|Aggregates Daily Volumes & Net Clearing| DB
-        API --> Copilot[Operations Copilot (Read-Only AI)]
+    subgraph OperationsAudit ["Operations & Audit"]
+        API --> Recon["Reconciliation Scanner"]
+        Recon -->|"Derives SUM(Debit)-SUM(Credit) vs Cached"| DB
+        API --> Settle["Batch Settlement Engine"]
+        Settle -->|"Aggregates Daily Volumes & Net Clearing"| DB
+        API --> Copilot["Operations Copilot (Read-Only AI)"]
     end
 ```
 

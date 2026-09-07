@@ -64,6 +64,7 @@ secrets.json
 .env.*
 !.env.example
 
+
 # ASP.NET Core local appsettings (may contain secrets)
 server/appsettings.Development.json
 server/appsettings.Local.json
@@ -87,7 +88,6 @@ client/npm-debug.log*
 client/yarn-debug.log*
 client/yarn-error.log*
 client/pnpm-debug.log*
-
 # Client env files (keep examples)
 client/.env
 client/.env.local
@@ -100,3 +100,4 @@ client/.env.production.local
 # =========================
 server/Uploads/
 !server/Uploads/.gitkeep
+recon-reports/
