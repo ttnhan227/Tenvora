@@ -4,9 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 
 export default function Login() {
@@ -15,25 +15,33 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setFieldErrors({});
 
-    if (!email || !password) {
-      setError("Please fill in all credentials");
-      setIsLoading(false);
+    const validationErrors: { email?: string; password?: string } = {};
+    if (!email.trim()) validationErrors.email = "Enter your email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) validationErrors.email = "Enter a valid email address.";
+    if (!password) validationErrors.password = "Enter your password.";
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setError("Please correct the highlighted fields.");
+      window.setTimeout(() => document.getElementById(validationErrors.email ? "email" : "password")?.focus(), 0);
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const success = await login(email, password);
       if (success) {
         navigate("/dashboard");
       } else {
-        setError("Invalid email address or password");
+        setError("The email address or password did not match. Check both fields and try again.");
       }
     } catch {
       setError("An error occurred during authentication");
@@ -43,45 +51,54 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 font-sans text-xs">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 font-sans text-xs">
       <div className="w-full max-w-sm space-y-6">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center space-y-2">
           <BrandLogo to="/" size="lg" className="justify-center" />
-          <p className="text-xs text-muted-foreground">Enterprise Payment Operations & Transaction Platform</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Cash-flow clarity for freelancers and independent studios</p>
         </div>
 
-        <Card className="border border-border/80 bg-card">
-          <CardHeader className="border-b border-border/60 pb-3 text-center">
-            <CardTitle className="text-base font-bold">Sign in to Operations</CardTitle>
-            <CardDescription className="text-xs">Enter your organization credentials</CardDescription>
+        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 text-center">
+            <h1 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">Welcome Back</h1>
+            <CardDescription className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+              Sign in to your workspace to manage invoices, tax set-asides, and internal balances
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-4">
-            <form onSubmit={handleSubmit} className="space-y-3">
+          <CardContent className="pt-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" role="alert">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs font-semibold text-muted-foreground">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
                   Email Address
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@tenvora.internal"
+                  placeholder="alex@riveradesign.co"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((current) => ({ ...current, email: undefined }));
+                    setError("");
+                  }}
                   disabled={isLoading}
-                  className="font-mono text-xs"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
+                  className={`font-mono text-xs ${fieldErrors.email ? "border-destructive" : ""}`}
                 />
+                {fieldErrors.email && <p id="login-email-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.email}</p>}
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="password" className="text-xs font-semibold text-muted-foreground">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
                   Password
                 </Label>
                 <Input
@@ -89,28 +106,35 @@ export default function Login() {
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldErrors((current) => ({ ...current, password: undefined }));
+                    setError("");
+                  }}
                   disabled={isLoading}
-                  className="font-mono text-xs"
+                  aria-invalid={!!fieldErrors.password}
+                  aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
+                  className={`font-mono text-xs ${fieldErrors.password ? "border-destructive" : ""}`}
                 />
+                {fieldErrors.password && <p id="login-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.password}</p>}
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
                 size="sm"
-                className="w-full font-bold h-9 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="w-full font-bold h-10 mt-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-xs text-sm"
               >
-                {isLoading && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                {isLoading ? "Authenticating…" : "Sign In to Workspace"}
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {isLoading ? "Signing in…" : "Sign In to Your Account"}
               </Button>
             </form>
 
-            <div className="mt-4 pt-3 border-t border-border/60 text-center space-y-2">
-              <p className="text-[11px] text-muted-foreground">
-                Need a new enterprise tenant?{" "}
-                <Link to="/register" className="font-semibold text-emerald-600 hover:underline">
-                  Register Organization
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                New to Tenvora?{" "}
+                <Link to="/register" className="inline-flex min-h-8 items-center font-bold text-primary hover:underline">
+                  Create a Freelancer Workspace
                 </Link>
               </p>
             </div>

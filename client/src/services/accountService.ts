@@ -1,4 +1,4 @@
-﻿import apiClient from "./apiClient";
+import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
 
 export interface Account {
@@ -97,6 +97,18 @@ export const accountService = {
       return {
         success: false,
         errors: error.response?.data?.errors || ["Failed to create customer"],
+      };
+    }
+  },
+
+  updateAccountStatus: async (id: string, status: string): Promise<ApiResponse<Account>> => {
+    try {
+      const response = await apiClient.patch(`/accounts/${id}/status`, { status });
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        errors: error.response?.data?.errors || ["Failed to update account status"],
       };
     }
   },

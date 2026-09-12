@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
 
 interface MoneyDisplayProps {
@@ -56,7 +56,7 @@ export function MoneyDisplay({
     ? isNegative
       ? "text-red-600 dark:text-red-400"
       : amount > 0
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-green-600 dark:text-green-400"
       : "text-foreground"
     : "text-foreground";
 

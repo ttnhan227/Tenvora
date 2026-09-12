@@ -1,4 +1,4 @@
-﻿using Tenvora.Api.Common;
+using Tenvora.Api.Common;
 using Tenvora.Api.Domain.Entities;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Repositories;
@@ -32,6 +32,12 @@ public class AccountService : IAccountService
 
     public async Task<AccountResponse> CreateAccountAsync(Guid tenantId, CreateAccountRequest request)
     {
+        if (request.InitialBalance != 0)
+            throw new InvalidOperationException("New accounts start at zero. Transfer funds from an existing account.");
+        if (!new[] { "Asset", "Liability", "Equity", "Clearing", "Settlement" }.Contains(request.AccountType))
+            throw new InvalidOperationException("Unsupported account type.");
+        if (request.CustomerId.HasValue && await _customerRepository.GetByIdAsync(tenantId, request.CustomerId.Value) == null)
+            throw new InvalidOperationException("Customer not found in this workspace.");
         var existing = await _accountRepository.GetByAccountNumberAsync(tenantId, request.AccountNumber);
         if (existing != null)
         {
@@ -55,6 +61,23 @@ public class AccountService : IAccountService
         await _accountRepository.AddAsync(account);
         var created = await _accountRepository.GetByIdAsync(tenantId, account.Id);
         return MapAccount(created ?? account);
+    }
+
+    public async Task<AccountResponse?> UpdateAccountStatusAsync(Guid tenantId, Guid accountId, string status)
+    {
+        var account = await _accountRepository.GetByIdAsync(tenantId, accountId);
+        if (account == null) return null;
+
+        var normalizedStatus = status.Trim();
+        if (normalizedStatus is not ("Active" or "Frozen"))
+            throw new InvalidOperationException("Choose Active or Frozen.");
+        if (account.Status == "Closed")
+            throw new InvalidOperationException("Closed accounts cannot be reopened.");
+        account.Status = normalizedStatus;
+        account.UpdatedAt = DateTime.UtcNow;
+
+        await _accountRepository.UpdateAsync(account);
+        return MapAccount(account);
     }
 
     public async Task<CustomerResponse> CreateCustomerAsync(Guid tenantId, CreateCustomerRequest request)

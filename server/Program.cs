@@ -46,7 +46,14 @@ if (!string.IsNullOrWhiteSpace(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<WorkflowExceptionFilter>());
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+        new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(ApiResult.Fail(
+            context.ModelState.Values.SelectMany(v => v.Errors).Select(e =>
+                string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Check the submitted details." : e.ErrorMessage).ToList()));
+});
 
 // Rate limiting for sensitive financial and auth endpoints
 builder.Services.AddRateLimiter(options =>
@@ -108,9 +115,9 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Tenvora Operations & Transaction API",
+        Title = "Tenvora Cash-Flow Workspace API",
         Version = "v1",
-        Description = "Interactive API documentation for enterprise B2B transaction processing, double-entry ledger, batch settlement, and automated reconciliation."
+        Description = "API documentation for freelancer clients, invoices, confirmed income, internal planning allocations, balanced ledger records, and reconciliation."
     });
 
     var jwtSecurityScheme = new OpenApiSecurityScheme
@@ -160,10 +167,14 @@ builder.Services.AddScoped<ISettlementService, SettlementService>();
 builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
 builder.Services.AddScoped<IRiskService, RiskService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<ITaxService, TaxService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
-builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
+if (!string.Equals(Environment.GetEnvironmentVariable("ENABLE_INTELLIGENCE_SYNC"), "false", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
 builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000));
 builder.Services.AddHostedService<QueuedHostedService>();
 
@@ -201,7 +212,10 @@ if (!string.IsNullOrWhiteSpace(secretFromEnv))
     jwtSettings.Secret = secretFromEnv;
 }
 
-var key = Encoding.UTF8.GetBytes(string.IsNullOrEmpty(jwtSettings.Secret) ? "tenvora-default-secret-key-change-in-production-12345678" : jwtSettings.Secret);
+if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || Encoding.UTF8.GetByteCount(jwtSettings.Secret) < 32)
+    throw new InvalidOperationException("Configure a JWT signing secret of at least 32 bytes.");
+builder.Services.PostConfigure<JwtSettings>(settings => settings.Secret = jwtSettings.Secret);
+var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -233,7 +247,7 @@ var webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 var enableSwagger = app.Environment.IsDevelopment()
                     || string.Equals(Environment.GetEnvironmentVariable("ENABLE_SWAGGER"), "true", StringComparison.OrdinalIgnoreCase);
 
-if (enableSwagger || true) // Enable swagger by default in local dev
+if (enableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI(options =>
@@ -271,7 +285,9 @@ app.Use(async (context, next) =>
         {
             await using var scope = app.Services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var isActive = await db.Users.AnyAsync(u => u.Id == userId && u.IsActive);
+            var tenantClaim = context.User.FindFirst("tenantId")?.Value;
+            var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var isActive = Guid.TryParse(tenantClaim, out var tenantId) && await db.Users.AnyAsync(u => u.Id == userId && u.TenantId == tenantId && u.Role == roleClaim && u.IsActive);
             if (!isActive)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -312,9 +328,9 @@ app.MapGet("/api/health/ready", async (AppDbContext db) =>
             ? Results.Ok(new { status = "ready", database = "connected", timestamp = DateTimeOffset.UtcNow })
             : Results.Json(new { status = "unhealthy", database = "disconnected", timestamp = DateTimeOffset.UtcNow }, statusCode: 503);
     }
-    catch (Exception ex)
+    catch (Exception)
     {
-        return Results.Json(new { status = "unhealthy", error = ex.Message, timestamp = DateTimeOffset.UtcNow }, statusCode: 503);
+        return Results.Json(new { status = "unhealthy", error = "Database readiness check failed.", timestamp = DateTimeOffset.UtcNow }, statusCode: 503);
     }
 }).AllowAnonymous();
 
@@ -337,7 +353,8 @@ try
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogWarning(ex, "Database migration/seed skipped or failed on startup.");
+    logger.LogCritical(ex, "Database initialization failed; refusing to start.");
+    throw;
 }
 
 await app.RunAsync();

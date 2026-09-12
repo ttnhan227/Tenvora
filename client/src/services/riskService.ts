@@ -23,4 +23,16 @@ export const riskService = {
       };
     }
   },
+
+  submitDecision: async (id: string, decision: "Approved" | "Rejected" | "Dismissed", notes?: string): Promise<ApiResponse<RiskEvaluationItem>> => {
+    try {
+      const response = await apiClient.post(`/risk/evaluations/${id}/decision`, { decision, notes });
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        errors: error.response?.data?.errors || ["Failed to update risk evaluation decision"],
+      };
+    }
+  },
 };

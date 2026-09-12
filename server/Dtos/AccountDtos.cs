@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Tenvora.Api.Dtos;
 
@@ -8,6 +8,10 @@ public record CreateAccountRequest(
     [Required, MaxLength(30)] string AccountType, // Asset, Liability, Clearing, Settlement
     [Required, StringLength(3, MinimumLength = 3)] string Currency,
     decimal InitialBalance = 0m
+);
+
+public record UpdateAccountStatusRequest(
+    [Required, MaxLength(30)] string Status // Active, Frozen, Closed
 );
 
 public record AccountResponse(

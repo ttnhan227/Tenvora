@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
@@ -40,6 +40,18 @@ public class SettlementController : ControllerBase
     {
         var tenantId = User.GetTenantId();
         var batch = await _settlementService.GetBatchByIdAsync(tenantId, id);
+        if (batch == null)
+            return NotFound(ApiResult<SettlementBatchResponse>.Fail("Settlement batch not found."));
+
+        return Ok(ApiResult<SettlementBatchResponse>.Ok(batch));
+    }
+
+    [HttpPost("batches/{id:guid}/settle")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> SettleBatch(Guid id)
+    {
+        var tenantId = User.GetTenantId();
+        var batch = await _settlementService.SettleBatchAsync(tenantId, id);
         if (batch == null)
             return NotFound(ApiResult<SettlementBatchResponse>.Fail("Settlement batch not found."));
 

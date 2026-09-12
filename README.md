@@ -1,186 +1,192 @@
-# Tenvora — Enterprise Payment Operations & Immutable Ledger Platform
+# Tenvora — freelancer finance workspace
 
-<p align="center">
-  <strong>A resilient, multi-tenant B2B payment operations and transaction processing system with strict double-entry ledger balancing, deterministic row-locking concurrency, automated batch settlements, and continuous discrepancy reconciliation.</strong>
-</p>
+Tenvora is a freelancer cash-flow workspace. It connects invoices to confirmed
+income, records a configurable tax-reserve estimate, and calculates an
+estimated safe-to-spend balance from workspace records. Tenvora AI adds concise,
+context-aware explanations using the signed-in user's current data. It has a
+React/Vite frontend, an ASP.NET Core API, and PostgreSQL persistence.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/.NET-10.0-512bd4.svg" alt=".NET 10">
-  <img src="https://img.shields.io/badge/C%23-13-239120.svg" alt="C#">
-  <img src="https://img.shields.io/badge/React-19-61dafb.svg" alt="React 19">
-  <img src="https://img.shields.io/badge/TypeScript-5.8-3178c6.svg" alt="TypeScript">
-  <img src="https://img.shields.io/badge/PostgreSQL-16%20RLS-336791.svg" alt="PostgreSQL RLS">
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ed.svg" alt="Docker">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-</p>
+> **Current scope:** Tenvora is not a bank, money transmitter, tax adviser,
+> or production payment processor. Bank cash-outs, real ACH/card settlement,
+> customer-support delivery, and outbound email are not integrated.
 
----
+## Core workflow
 
-## Executive Summary
+1. Add a client and create an invoice.
+2. Export a CSV statement from a bank or payment platform.
+3. Import it in **Income**. The browser parses the file locally and suggests
+   matches from amount, currency, invoice reference, and client name.
+4. Confirm a recognized deposit. Tenvora records the payment and balanced
+   ledger entries; the raw CSV is not uploaded or stored.
+5. When enabled, the saved reserve percentage is recorded as an internal tax
+   planning allocation. The remaining operating record powers the estimated
+   safe-to-spend view.
 
-Tenvora is an enterprise payment operations (PayOps) and transaction processing platform engineered for high-throughput, audit-grade B2B fund movements. Modern financial systems cannot tolerate race conditions, negative balances from out-of-order execution, or ledger drifts. Tenvora solves these challenges by enforcing relational database constraints, deterministic locking orders, and strict double-entry accounting at the database and service layers.
+## Implemented capabilities
 
-> [!NOTE]
-> **Portfolio / Simulation Scope**: Tenvora is an architectural reference platform demonstrating production-grade distributed financial patterns, double-entry ledger design, and tenant isolation. It is not a licensed banking entity or regulated money transmitter.
+- Registration, login, access-token refresh, logout, and protected routes.
+- Tenant-scoped users with `TenantAdmin`, `OperationsManager`,
+  `ComplianceOfficer`, and `ReadOnly` roles.
+- Client records and invoice creation, sending state, partial/full payment
+  recording, and invoice statistics.
+- Internal multi-currency asset accounts, account-to-account transfers,
+  idempotency keys, reversals, and transaction history.
+- Double-entry journal records and cached-balance reconciliation.
+- Private browser-side CSV statement parsing and reviewed invoice matching.
+- Tax-reserve settings, internal planning allocations, and estimated schedules.
+- Tenant-scoped Tenvora AI summaries across the main workspace and a dedicated
+  assistant with a deterministic fallback when an external model is unavailable.
+- Audit records, health/readiness endpoints, Swagger, rate limiting, and
+  correlation IDs.
 
----
+External bank movement, card/ACH processing, real tax filing, real email,
+and automatic bank synchronization are not implemented.
 
-## Architectural Pillars
+## Tenvora AI behavior
 
-```mermaid
-graph TD
-    Client["React 19 + TypeScript Operations Console"] -->|"JWT Auth + Rate Limited HTTPS"| API["ASP.NET Core 10 Web API"]
-    API -->|"Session Var: app.current_tenant_id"| DB[("PostgreSQL 16 Engine")]
-    
-    subgraph FinancialCore ["Financial Core"]
-        API --> LockMgr["Deterministic Concurrency Engine"]
-        LockMgr -->|"SELECT ... FOR UPDATE (Account IDs ASC)"| DB
-        LockMgr --> Idemp["Idempotency Constraint Check"]
-        Idemp --> Ledger["Double-Entry Invariant Engine"]
-        Ledger -->|"Atomic Post: Debits == Credits"| DB
-    end
+Tenvora AI reads tenant-scoped clients, invoices, confirmed income, accounts,
+and tax-reserve records from PostgreSQL. In-page summaries are generated once
+per page and user during a browser session, then reused from `sessionStorage` on
+reload or return navigation. The cache contains the generated summary, not bank
+credentials or an uploaded statement. Closing the browser session clears it.
 
-    subgraph OperationsAudit ["Operations & Audit"]
-        API --> Recon["Reconciliation Scanner"]
-        Recon -->|"Derives SUM(Debit)-SUM(Credit) vs Cached"| DB
-        API --> Settle["Batch Settlement Engine"]
-        Settle -->|"Aggregates Daily Volumes & Net Clearing"| DB
-        API --> Copilot["Operations Copilot (Read-Only AI)"]
-    end
-```
+The server can use an optionally configured AI provider. If that provider is
+missing or unavailable, Tenvora returns a deterministic workspace analysis.
+Provider and model names are intentionally not exposed in the product UI.
+Tenvora AI cannot move funds or modify financial records, and its tax and
+safe-to-spend figures remain planning estimates.
 
----
-
-## Core Financial Engine & Ledger Invariants
-
-### 1. Strict Double-Entry Balancing
-Every transaction creates at least two immutable ledger entry lines (Source Account Debit/Credit and Destination Account Debit/Credit):
-$$\sum \text{DebitAmount} = \sum \text{CreditAmount} = \text{TransactionAmount}$$
-- All debit and credit fields are strictly non-negative `numeric(18,4)`.
-- Reversals never mutate or delete historical lines; they append compensating inverted journal entries.
-
-### 2. Deterministic Row-Level Concurrency
-To prevent deadlocks when concurrent transfers touch overlapping account pairs in reverse order (e.g., Transfer A: Acc 1 $\to$ Acc 2, Transfer B: Acc 2 $\to$ Acc 1):
-- Tenvora sorts the account IDs deterministically in ascending order before acquiring pessimistic exclusive database locks (`SELECT ... FOR UPDATE`).
-- Transfers execute within an atomic serializable/read-committed transaction.
-
-### 3. Strict Idempotency Guarantees
-- Every client payment request requires an `Idempotency-Key` header.
-- Enforced at the database layer via unique index `(TenantId, Key)` in `IdempotencyRecords`.
-- Replaying the same key returns the exact cached outcome without re-executing ledger mutations.
-
----
-
-## System Capabilities
-
-| Capability | Technical Mechanism |
-| :--- | :--- |
-| **Multi-Tenant Isolation** | PostgreSQL Row-Level Security (RLS) policies scoped via `app.current_tenant_id` session setting. |
-| **Automated Reconciliation** | Scheduled audit scanner comparing `SUM(LedgerEntries)` against `Accounts.CachedBalance`, persisting variances into `ReconciliationDiscrepancies`. |
-| **Batch Settlement** | End-of-day transaction aggregation calculating gross clearing, processor fee deductions, and net payouts. |
-| **Deterministic Risk Engine** | Non-AI rules engine evaluating transfer volume thresholds, account operational states, and balance depletion ratios. |
-| **Role-Based Access Control** | 5-role enterprise hierarchy: `TenantAdmin`, `OperationsManager`, `ComplianceOfficer`, `Auditor`, `Viewer`. |
-| **Observability** | Correlation ID tracking middleware (`X-Correlation-ID`) and distinct `/api/health/live` & `/api/health/ready` probes. |
-
----
-
-## Directory Structure
+## Architecture
 
 ```text
-Tenvora/
-├── server/                      # ASP.NET Core 10 Web API
-│   ├── Controllers/             # REST endpoints (Payments, Accounts, Ledger, Recon, Auth)
-│   ├── Data/                    # AppDbContext, RLS interceptors, DatabaseSeeder
-│   ├── Domain/Entities/         # Financial entities (Transaction, LedgerEntry, Account, Customer)
-│   ├── Repositories/            # Data access with FOR UPDATE locking queries
-│   ├── Services/                # TransferService, ReconciliationService, SettlementService, RiskService
-│   └── Migrations/              # EF Core initial migration with PostgreSQL RLS scripts
-├── server.Tests/                # xUnit test suite (16 comprehensive tests)
-│   ├── FinancialCoreTests.cs    # Invariant checks, concurrency, idempotency, reversals
-│   ├── AuthorizationAndSecurityTests.cs # Cross-tenant isolation, RBAC, rate limiting
-│   ├── ReconciliationServiceTests.cs    # Automated discrepancy detection
-│   └── RiskServiceTests.cs      # Deterministic risk rules
-├── client/                      # React 19 + TypeScript frontend
-│   ├── src/pages/dashboard/     # Operations Overview KPI Dashboard
-│   ├── src/pages/accounts/      # Accounts & Customer Entities Directory
-│   ├── src/pages/payments/      # Transfer initiation modal & Double-entry journal viewer
-│   ├── src/pages/ledger/        # General Ledger & Account Audit history
-│   ├── src/pages/reconciliation/# Automated Reconciliation Hub & Discrepancy details
-│   ├── src/pages/settlements/   # Settlement Batches & Net Clearing
-│   ├── src/pages/admin/         # User Management & Enterprise RBAC
-│   └── src/services/            # Type-safe Axios API clients
-├── .github/workflows/           # GitHub Actions CI (Server test + Client build/test + Docker)
-└── compose.yaml                 # Docker Compose full-stack specification
+React 18 + TypeScript + Vite
+              |
+              | JSON/HTTP + JWT
+              v
+ASP.NET Core 10 API
+              |
+              | EF Core / Npgsql
+              v
+PostgreSQL 16+
 ```
 
----
+Financial writes use PostgreSQL transactions, tenant-scoped advisory locks,
+deterministic account row locking, idempotency records, and balanced journal
+entries. Reversals append compensating records rather than editing the original
+journal.
 
-## Getting Started
+Application queries explicitly include tenant predicates. The migrations also
+create PostgreSQL RLS policies, but the supplied Compose stack connects as the
+PostgreSQL superuser, which bypasses RLS. Treat application predicates as the
+effective boundary in this reference deployment. A production deployment must
+use a restricted application role and verify RLS independently before claiming
+database-enforced tenant isolation.
 
-### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/)
-- [Node.js 20+](https://nodejs.org/)
-- [PostgreSQL 16+](https://www.postgresql.org/) or [Docker Desktop](https://www.docker.com/)
+## Prerequisites
 
-### Quick Start with Docker Compose
+- .NET SDK 10
+- Node.js 20 or newer
+- PostgreSQL 16 or newer, or a running Docker engine with Compose
+
+## Configuration
+
+Create the local configuration file before starting either workflow:
+
 ```bash
-# Clone the repository
-git clone https://github.com/tnha/Tenvora.git
-cd Tenvora
+cp .env.example .env
+```
 
-# Run the complete stack (PostgreSQL + API + Client)
+Replace every `your_...` placeholder. In particular, use a unique PostgreSQL
+password, JWT secret of at least 32 bytes, tenant API key, and seed-user
+passwords. `.env` is ignored by Git.
+
+The example uses `localhost` for direct `dotnet run`. Compose constructs a
+container-only connection string using the service hostname `postgres`.
+
+## Docker Compose
+
+With a running Docker engine:
+
+```bash
+docker compose config --quiet
 docker compose up --build
 ```
-- Frontend UI: `http://localhost:5173`
-- Backend API & Swagger: `http://localhost:8080/swagger`
 
-### Local Development Setup
+- Frontend: <http://localhost:5173>
+- API: <http://localhost:5000>
+- Swagger (when `ENABLE_SWAGGER=true`): <http://localhost:5000/swagger>
+- Liveness: <http://localhost:5000/api/health/live>
+- Readiness: <http://localhost:5000/api/health/ready>
 
-#### 1. Backend (.NET 10)
+The Compose file refuses to start when required secrets are missing; it no
+longer substitutes production-looking default passwords.
+
+## Local development
+
+Start PostgreSQL and ensure the `DATABASE_URL` in `.env` points to
+`localhost`. Then run:
+
 ```bash
-cd server
-dotnet restore
-dotnet run
+dotnet restore Tenvora.sln
+dotnet run --project server/Tenvora.Api.csproj
 ```
 
-#### 2. Frontend (Vite + React)
+In another shell:
+
 ```bash
 cd client
-npm install
+npm ci
 npm run dev
 ```
 
-#### 3. Run Tests
-```bash
-# Backend Test Suite
-dotnet test
+The development UI is served at <http://localhost:5173> and proxies relative
+`/api` requests to <http://localhost:5000>. If `VITE_API_BASE_URL` or
+`VITE_API_URL` is set, it overrides that proxy.
 
-# Frontend Unit Tests
+## Tests and build checks
+
+```bash
+dotnet test Tenvora.sln
+
 cd client
+npm ci
 npm test
+npm run lint
+npm run build
+npm run test:e2e
 ```
 
----
+The Playwright suite verifies browser behavior with deterministic API fixtures.
+It is not a substitute for running the UI against the real API and PostgreSQL.
 
-## Seed Credentials (Local Development)
+## Seed users
 
-| Email | Password | Role | Description |
-| :--- | :--- | :--- | :--- |
-| `admin@tenvora.internal` | `AdminPass123!` | `TenantAdmin` | Full administrative access |
-| `ops.manager@tenvora.internal` | `AdminPass123!` | `OperationsManager` | Transfer initiation & settlement clearing |
-| `compliance@tenvora.internal` | `AdminPass123!` | `ComplianceOfficer` | Risk & audit verification |
+Seed identities are controlled by `.env`:
 
----
+| Variable | Default email | Role |
+| --- | --- | --- |
+| `SEED_ADMIN_EMAIL` | `admin@tenvora.internal` | `TenantAdmin` |
+| `SEED_OPS_EMAIL` | `ops.manager@tenvora.internal` | `OperationsManager` |
+| `SEED_COMPLIANCE_EMAIL` | `compliance@tenvora.internal` | `ComplianceOfficer` |
 
-## Architectural Decision Records (ADRs)
+Passwords come only from the matching `SEED_*_PASSWORD` variables. Seeding is
+idempotent; changing a seed password does not rotate an already-created user's
+password.
 
-- **ADR-001: Decimal Money Representation**: All currency amounts use `numeric(18,4)` / `decimal` in C# to prevent IEEE-754 floating-point inaccuracies.
-- **ADR-002: Deterministic Locking Order**: All multi-account transfer locks acquire row locks in strict ascending `AccountId` order, mathematically eliminating AB-BA deadlocks.
-- **ADR-003: Row-Level Security**: Multi-tenancy is enforced natively at the PostgreSQL level via `CREATE POLICY` and `app.current_tenant_id` session settings.
-- **ADR-004: Decoupled AI Operations**: Operations Copilot is strictly read-only and has zero authorization to execute money movement or modify accounts.
+## Deployment limitations
 
----
+Before using Tenvora beyond a controlled demonstration, at minimum:
 
-## License
+- replace the superuser database connection with a restricted application role
+  and prove RLS enforcement with cross-tenant database tests;
+- add database-level journal constraints/immutability controls, or document and
+  accept that invariants are currently enforced in the application layer;
+- integrate support delivery and outbound email before presenting those flows as live;
+- upgrade React Router when a non-breaking remediation path is available, or
+  complete and test the required v7 migration;
+- configure TLS, secret management, backups, monitoring, and deployment-specific
+  CORS origins;
+- run the container build and restart/volume workflow in the target environment.
 
-This project is open-source under the [MIT License](LICENSE).
+See [docs/PRODUCTION_READINESS_AUDIT.md](docs/PRODUCTION_READINESS_AUDIT.md) for
+the latest evidence-based audit results.

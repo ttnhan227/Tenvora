@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
@@ -33,13 +33,16 @@ public sealed class AuthService : IAuthService
 
     public async Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
-        var emailAlreadyRegistered = await _context.Users.AnyAsync(u => u.Email == request.Email);
+        var email = request.Email.Trim().ToLowerInvariant();
+        var company = request.CompanyName.Trim();
+        await using var write = await FinancialWriteScope.BeginAsync(_context, Guid.Empty);
+        var emailAlreadyRegistered = await _context.Users.AnyAsync(u => u.Email == email);
         if (emailAlreadyRegistered)
         {
             return ApiResult<AuthResponse>.Fail("Email already registered.");
         }
 
-        var companyExists = await _context.Tenants.AnyAsync(t => t.CompanyName == request.CompanyName);
+        var companyExists = await _context.Tenants.AnyAsync(t => t.CompanyName == company);
         if (companyExists)
         {
             return ApiResult<AuthResponse>.Fail("Company name already exists.");
@@ -81,7 +84,7 @@ public sealed class AuthService : IAuthService
             AccountNumber = $"OP-{tenant.Id.ToString("N")[..6].ToUpperInvariant()}-{tenant.BaseCurrency}",
             AccountType = AccountTypes.Asset,
             Currency = tenant.BaseCurrency,
-            CachedBalance = 1_000_000m,
+            CachedBalance = 0m,
             Status = AccountStatuses.Active,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -89,7 +92,9 @@ public sealed class AuthService : IAuthService
         await _context.Accounts.AddAsync(opAccount);
         await _context.SaveChangesAsync();
 
-        return await BuildAuthResponseAsync(user, tenant.CompanyName);
+        var response = await BuildAuthResponseAsync(user, tenant.CompanyName);
+        if (write != null) await write.CommitAsync();
+        return response;
     }
 
     public async Task<ApiResult<AuthResponse>> LoginAsync(LoginRequest request)
@@ -110,6 +115,7 @@ public sealed class AuthService : IAuthService
 
     public async Task<ApiResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
     {
+        await using var write = await FinancialWriteScope.BeginAsync(_context, Guid.Empty);
         var token = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken);
         if (token is null || token.Revoked || token.ExpiresAt <= DateTime.UtcNow || token.User is null || !token.User.IsActive)
         {
@@ -128,9 +134,11 @@ public sealed class AuthService : IAuthService
             token.User.TenantId,
             token.User.Email,
             token.User.Role,
-            token.User.Tenant?.CompanyName ?? string.Empty
+            token.User.Tenant?.CompanyName ?? string.Empty,
+            token.User.PreferredCurrency
         );
 
+        if (write != null) await write.CommitAsync();
         return ApiResult<AuthResponse>.Ok(response);
     }
 
@@ -168,7 +176,8 @@ public sealed class AuthService : IAuthService
             user.TenantId,
             user.Email,
             user.Role,
-            companyName
+            companyName,
+            user.PreferredCurrency
         );
 
         return ApiResult<AuthResponse>.Ok(response);

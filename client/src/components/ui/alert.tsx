@@ -11,7 +11,7 @@ const alertVariants = cva(
         default: "border-border bg-card text-foreground [&>svg]:text-foreground",
         destructive: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400 [&>svg]:text-red-600 font-medium",
         warning: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 [&>svg]:text-amber-600 font-medium",
-        success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 [&>svg]:text-emerald-600 font-medium",
+        success: "border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-300 [&>svg]:text-green-600 font-medium",
         signal: "border-[hsl(var(--accent-signal))] bg-[hsl(var(--accent-signal))]/10 text-foreground [&>svg]:text-foreground font-semibold",
       },
     },

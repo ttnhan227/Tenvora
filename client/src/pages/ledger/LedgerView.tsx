@@ -29,6 +29,7 @@ export default function LedgerView() {
   const [history, setHistory] = useState<AccountLedgerHistory | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState("");
 
   const accountParam = searchParams.get("account");
 
@@ -46,6 +47,8 @@ export default function LedgerView() {
         if (!selectedAccountId && !accountParam) {
           setSelectedAccountId(res.data[0].id);
         }
+      } else if (!res.success) {
+        setError(res.errors?.join(" ") || "Accounts could not be loaded.");
       }
     }
     loadAccounts();
@@ -57,9 +60,13 @@ export default function LedgerView() {
 
     async function loadHistory() {
       setLoading(true);
+      setError("");
       const res = await ledgerService.getAccountLedgerHistory(selectedAccountId);
       if (res.success && res.data) {
         setHistory(res.data);
+      } else {
+        setHistory(null);
+        setError(res.errors?.join(" ") || "Account activity could not be loaded.");
       }
       setLoading(false);
     }
@@ -93,7 +100,7 @@ export default function LedgerView() {
         e.transactionId ? (
           <Link
             to={`/transactions/${e.transactionId}`}
-            className="text-xs font-mono font-semibold text-foreground hover:underline inline-flex items-center gap-1"
+            className="inline-flex min-h-8 items-center gap-1 rounded text-xs font-mono font-semibold text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span>{e.transactionId.substring(0, 8)}...</span>
             <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
@@ -170,19 +177,25 @@ export default function LedgerView() {
 
           <div className="w-full sm:w-72">
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-              <SelectTrigger className="h-8 text-xs font-mono font-semibold bg-card border-border">
+              <SelectTrigger aria-label="Select account" className="h-8 text-xs font-mono font-semibold bg-card border-border">
                 <SelectValue placeholder="Select account..." />
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id} className="text-xs font-mono">
-                    {a.accountNumber} ({a.currency}) - ${a.cachedBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    {a.accountNumber} ({a.currency}) - {new Intl.NumberFormat("en-US", { style: "currency", currency: a.currency }).format(a.cachedBalance)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
+
+        {error && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
         {/* Balance Audit & Mathematical Invariant Strip */}
         {history && (
@@ -218,8 +231,8 @@ export default function LedgerView() {
               <div className="mt-1 flex items-center gap-1.5 font-mono text-sm font-bold">
                 {isMatch ? (
                   <>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-emerald-600 dark:text-emerald-400">Balanced (Δ = 0.00)</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-400">Balanced (Δ = 0.00)</span>
                   </>
                 ) : (
                   <>
@@ -257,6 +270,7 @@ export default function LedgerView() {
             <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
             <input
               type="text"
+              aria-label="Search ledger entries"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search entries by ID, transaction reference, memo..."

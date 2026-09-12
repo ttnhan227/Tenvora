@@ -1,113 +1,138 @@
 /**
- * Tenvora Enterprise Design Tokens
- * Styled after Stripe's iconic design system & Stripe Dashboard
+ * Tenvora Master Design Tokens
+ *
+ * Palette Specifications:
+ * - Current Cobalt (#3569FF / #5B7CFF): Primary brand action, focus rings, interactive elements
+ * - Tenvora Ink (#0B1220): Brand foundation and app-icon field
+ * - Current Teal (#0FA58E / #21C4A8): Supporting flow lane and positive financial signal
+ * - Space Black (#060B17): Premium dark workspace canvas
+ * - Crisp White (#FFFFFF): High-contrast typography and light surface cards
+ * - Reserve Emerald (#10B981): tax-reserve allocations and verified states
+ * - Amber Gold (#F59E0B): Pending invoices, tax deadlines, warning states
+ * - Rose Crimson (#EF4444): Overdue invoices, failed transactions, destructive actions
  */
 
 :root {
-  /* Stripe Canvas & Surfaces (Light Mode) */
-  --background: 214 43% 98%;          /* #F6F9FC Stripe Signature Ice-Gray Canvas */
-  --foreground: 225 73% 15%;          /* #0A2540 Stripe Deep Navy Text */
+  --brand-ink: 220 49% 8%;           /* #0B1220 */
+  --brand-cobalt: 225 100% 60%;      /* #3569FF */
+  --brand-teal: 171 83% 35%;         /* #0FA58E */
 
+  /* Canvas & Base Foreground */
+  --background: 210 40% 98%;          /* #F8FAFC Cool Slate Cloud */
+  --foreground: 222 47% 11%;          /* #0F172A Deep Inky Slate */
+
+  /* Surface Cards & Popovers */
   --card: 0 0% 100%;                  /* #FFFFFF Pure White Surface */
-  --card-foreground: 225 73% 15%;     /* #0A2540 */
+  --card-foreground: 222 47% 11%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 225 73% 15%;
+  --popover-foreground: 222 47% 11%;
 
-  /* Stripe Signature Blurple Accent */
-  --primary: 243 100% 68%;            /* #635BFF Stripe Blurple */
+  /* Electric Cobalt - Core Brand Action */
+  --primary: 225 100% 60%;            /* #3569FF */
   --primary-foreground: 0 0% 100%;
 
-  --accent-signal: 243 100% 68%;        /* #635BFF */
+  /* High-Signal Secondary Accent */
+  --accent-signal: 225 100% 60%;
   --accent-signal-fg: 0 0% 100%;
 
   /* Secondary & Muted Surfaces */
-  --secondary: 216 33% 97%;            /* #F8FAFC Stripe Section Surface */
-  --secondary-foreground: 225 73% 15%;
+  --secondary: 210 40% 96%;           /* #F1F5F9 */
+  --secondary-foreground: 222 47% 11%;
 
-  --muted: 214 32% 93%;                /* #E3E8EE Stripe Muted Gray */
-  --muted-foreground: 220 18% 41%;     /* #4F5B76 Stripe Secondary Text */
+  --muted: 210 40% 94%;               /* #E2E8F0 */
+  --muted-foreground: 215 16% 47%;    /* #64748B */
 
-  --accent: 216 33% 97%;               /* #F8FAFC Active surface */
-  --accent-foreground: 225 73% 15%;
+  --accent: 214 95% 93%;              /* #DBEAFE Soft Cobalt Tint */
+  --accent-foreground: 225 65% 48%;   /* #2B54CA */
 
-  /* Stripe Semantic Financial Statuses */
-  --destructive: 349 78% 49%;          /* #DF1B41 Stripe Crimson / Critical */
+  /* Semantic Financial Status Tokens */
+  --destructive: 0 84% 60%;           /* #EF4444 */
   --destructive-foreground: 0 0% 100%;
-  --success: 158 64% 40%;              /* #0E6251 Stripe Emerald / Succeeded */
+  --success: 160 84% 39%;             /* #10B981 Reserve Emerald */
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;               /* #F5A623 Stripe Amber / Processing */
-  --warning-foreground: 225 73% 15%;
-  --info: 243 100% 68%;                /* #635BFF Stripe Indigo / Settled */
+  --warning: 38 92% 50%;              /* #F59E0B Amber */
+  --warning-foreground: 0 0% 100%;
+  --info: 225 100% 60%;               /* #3569FF */
   --info-foreground: 0 0% 100%;
-  --reversed: 258 63% 60%;             /* #7F56D9 Stripe Purple / Reversal */
+  --reversed: 262 83% 58%;            /* #8B5CF6 */
   --reversed-foreground: 0 0% 100%;
 
-  /* Stripe Hairline Borders & Inputs */
-  --border: 215 28% 91%;              /* #E3E8EE Stripe Hairline Border */
-  --input: 215 28% 91%;
-  --ring: 243 100% 68%;
+  /* Form & Interactive Elements */
+  --border: 214 32% 91%;              /* #E2E8F0 */
+  --input: 214 32% 91%;
+  --ring: 225 100% 60%;               /* #3569FF */
 
-  --radius: 0.375rem;                 /* 6px Stripe Standard Radius */
+  --radius: 0.75rem;
 
-  /* Stripe Left Navigation Tokens */
-  --sidebar-background: 216 33% 97%;   /* #F8FAFC Crisp Light Sidebar */
-  --sidebar-foreground: 220 18% 41%;  /* #4F5B76 */
-  --sidebar-primary: 243 100% 68%;     /* #635BFF */
+  /* Workspace Navigation Tokens */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: 225 100% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 214 32% 93%;      /* #E3E8EE */
-  --sidebar-accent-foreground: 225 73% 15%;
-  --sidebar-border: 215 28% 91%;      /* #E3E8EE */
-  --sidebar-ring: 243 100% 68%;
+  --sidebar-accent: 214 95% 93%;
+  --sidebar-accent-foreground: 225 65% 48%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 221 83% 53%;
 }
 
 .dark {
-  /* Stripe Dark Mode: Deep Navy & Obsidian */
-  --background: 220 54% 9%;           /* #081225 Stripe Deep Navy Canvas */
-  --foreground: 210 20% 98%;          /* #F8FAFC */
+  --brand-ink: 220 49% 8%;           /* #0B1220 remains the fixed brand field */
+  --brand-cobalt: 228 100% 68%;      /* #5B7CFF */
+  --brand-teal: 170 70% 45%;         /* #21C4A8 */
 
-  --card: 218 58% 14%;                /* #0F2238 Pure Card */
-  --card-foreground: 210 20% 98%;
+  /* Space Black premium workspace canvas */
+  --background: 222 61% 6%;           /* #060B17 Space Black */
+  --foreground: 210 40% 98%;          /* #F8FAFC Crisp Light */
 
-  --popover: 218 58% 14%;
-  --popover-foreground: 210 20% 98%;
+  /* Midnight Navy Elevated Surfaces */
+  --card: 224 50% 10%;                /* #0B132B Midnight Navy */
+  --card-foreground: 210 40% 98%;
 
-  --primary: 243 100% 68%;            /* #635BFF Stripe Blurple */
-  --primary-foreground: 0 0% 100%;
+  --popover: 224 50% 10%;
+  --popover-foreground: 210 40% 98%;
 
-  --accent-signal: 243 100% 68%;
-  --accent-signal-fg: 0 0% 100%;
+  /* High-Vibrancy Cobalt in Dark UI */
+  --primary: 228 100% 68%;            /* #5B7CFF */
+  --primary-foreground: 222 61% 6%;
 
-  --secondary: 218 45% 18%;           /* #162B45 */
-  --secondary-foreground: 210 20% 90%;
+  --accent-signal: 228 100% 68%;
+  --accent-signal-fg: 222 61% 6%;
 
-  --muted: 218 40% 20%;               /* #1E3A5F */
+  /* Secondary & Muted Dark Surfaces */
+  --secondary: 222 40% 14%;           /* #131E3D */
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 222 35% 15%;
   --muted-foreground: 215 20% 65%;    /* #94A3B8 */
 
-  --accent: 218 45% 20%;
-  --accent-foreground: 210 20% 98%;
+  --accent: 224 45% 16%;
+  --accent-foreground: 217 91% 60%;
 
-  --destructive: 349 78% 49%;
+  /* Semantic Financial Status Tokens */
+  --destructive: 0 84% 60%;           /* #EF4444 */
   --destructive-foreground: 0 0% 100%;
-  --success: 158 64% 45%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 220 54% 9%;
-  --info: 243 100% 68%;
-  --info-foreground: 0 0% 100%;
-  --reversed: 258 63% 60%;
+  --success: 160 84% 39%;             /* #10B981 */
+  --success-foreground: 222 61% 6%;
+  --warning: 38 92% 50%;              /* #F59E0B */
+  --warning-foreground: 222 61% 6%;
+  --info: 228 100% 68%;               /* #5B7CFF */
+  --info-foreground: 222 61% 6%;
+  --reversed: 262 83% 58%;
   --reversed-foreground: 0 0% 100%;
 
-  --border: 218 35% 24%;              /* #223C63 Hairline Border */
-  --input: 218 35% 24%;
-  --ring: 243 100% 68%;
+  /* High-Precision Dark Hairlines */
+  --border: 222 30% 18%;              /* #1C2B4E */
+  --input: 222 30% 20%;
+  --ring: 228 100% 68%;
 
-  --sidebar-background: 220 54% 8%;   /* #070F1E */
+  /* Dark Navigation Tokens */
+  --sidebar-background: 224 50% 8%;   /* Deep Institutional Midnight */
   --sidebar-foreground: 215 20% 75%;
-  --sidebar-primary: 243 100% 68%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 218 45% 16%;
-  --sidebar-accent-foreground: 210 20% 98%;
-  --sidebar-border: 218 35% 20%;
-  --sidebar-ring: 243 100% 68%;
+  --sidebar-primary: 228 100% 68%;
+  --sidebar-primary-foreground: 222 61% 6%;
+  --sidebar-accent: 224 45% 16%;
+  --sidebar-accent-foreground: 217 91% 60%;
+  --sidebar-border: 222 30% 18%;
+  --sidebar-ring: 217 91% 60%;
 }

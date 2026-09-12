@@ -29,3 +29,22 @@ public class ApiResult<T> : ApiResult
     public new static ApiResult<T> Fail(List<string> errors) =>
         new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors };
 }
+
+public static class ApiResultExtensions
+{
+    public static Microsoft.AspNetCore.Mvc.IActionResult ToActionResult(this ApiResult result)
+    {
+        if (result.Success) return new Microsoft.AspNetCore.Mvc.OkObjectResult(result);
+        if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            return new Microsoft.AspNetCore.Mvc.NotFoundObjectResult(result);
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(result);
+    }
+
+    public static Microsoft.AspNetCore.Mvc.IActionResult ToActionResult<T>(this ApiResult<T> result)
+    {
+        if (result.Success) return new Microsoft.AspNetCore.Mvc.OkObjectResult(result);
+        if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            return new Microsoft.AspNetCore.Mvc.NotFoundObjectResult(result);
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(result);
+    }
+}

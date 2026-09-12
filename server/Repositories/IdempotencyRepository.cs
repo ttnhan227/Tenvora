@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Tenvora.Api.Data;
 using Tenvora.Api.Domain.Entities;
 
@@ -16,7 +16,7 @@ public class IdempotencyRepository : IIdempotencyRepository
     public async Task<IdempotencyRecord?> GetAsync(Guid tenantId, string key)
     {
         return await _context.IdempotencyRecords
-            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Key == key && r.ExpiresAt > DateTime.UtcNow);
+            .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Key == key);
     }
 
     public async Task<bool> TryCreateAsync(IdempotencyRecord record)
@@ -27,8 +27,9 @@ public class IdempotencyRepository : IIdempotencyRepository
             await _context.SaveChangesAsync();
             return true;
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
         {
+            _context.Entry(record).State = EntityState.Detached;
             // Unique constraint violation on (TenantId, Key)
             return false;
         }

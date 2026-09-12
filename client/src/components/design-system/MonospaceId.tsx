@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Copy, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ export function MonospaceId({
     <span
       className={cn(
         "inline-flex items-center gap-1 font-mono text-xs font-semibold text-foreground/90 group/id cursor-pointer select-all",
-        to && "text-emerald-600 dark:text-emerald-400 hover:underline",
+        to && "text-primary hover:underline",
         className
       )}
     >
@@ -53,10 +53,11 @@ export function MonospaceId({
         <button
           type="button"
           onClick={handleCopy}
-          aria-label="Copy to clipboard"
-          className="opacity-0 group-hover/id:opacity-100 p-0.5 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-opacity"
+          aria-label={`Copy ${label || "identifier"} to clipboard`}
+          title={`Copy ${label || "identifier"}`}
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:text-foreground focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:opacity-0 sm:group-hover/id:opacity-100"
         >
-          {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+          {copied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
         </button>
       )}
     </span>
@@ -66,7 +67,7 @@ export function MonospaceId({
     <Tooltip>
       <TooltipTrigger asChild>
         {to ? (
-          <Link to={to} className="inline-flex items-center gap-0.5">
+          <Link to={to} className="inline-flex min-h-8 items-center gap-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {idElement}
           </Link>
         ) : (

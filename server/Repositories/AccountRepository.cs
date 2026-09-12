@@ -53,9 +53,11 @@ public class AccountRepository : IAccountRepository
         {
             // Use PostgreSQL row-level exclusive locks: SELECT ... FOR UPDATE
             // In EF Core / Npgsql, we execute raw SQL or lock-hint query
-            var idsParam = string.Join(",", distinctSortedIds.Select(id => $"'{id}'"));
+            var idsParam = distinctSortedIds.ToArray();
             var accounts = await _context.Accounts
-                .FromSqlRaw($"SELECT * FROM \"Accounts\" WHERE \"TenantId\" = '{tenantId}' AND \"Id\" IN ({idsParam}) ORDER BY \"Id\" FOR UPDATE")
+                // PostgreSQL system columns are not part of SELECT *. Account.RowVersion is
+                // mapped to xmin, so include it explicitly or EF cannot materialize the rows.
+                .FromSqlInterpolated($"SELECT a.*, a.xmin FROM \"Accounts\" AS a WHERE a.\"TenantId\" = {tenantId} AND a.\"Id\" = ANY({idsParam}) ORDER BY a.\"Id\" FOR UPDATE")
                 .ToListAsync();
 
             return accounts;

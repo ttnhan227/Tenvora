@@ -4,7 +4,7 @@ import { reportRequestActivity } from "@/lib/requestActivity";
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api"
+  "/api"
 ).replace(/\/+$/, "");
 
 const apiClient: AxiosInstance = axios.create({
@@ -34,6 +34,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let refreshInFlight: Promise<any> | null = null;
+
 // Response interceptor to handle 401 and refresh token
 apiClient.interceptors.response.use(
   (response) => {
@@ -50,7 +52,7 @@ apiClient.interceptors.response.use(
       reportRequestActivity(-1);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !originalRequest.url?.includes("/auth/")) {
       originalRequest._retry = true;
 
       try {
@@ -64,9 +66,11 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
+        if (!refreshInFlight) {
+          refreshInFlight = axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken })
+            .finally(() => { refreshInFlight = null; });
+        }
+        const response = await refreshInFlight;
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data;
         localStorage.setItem("accessToken", accessToken);

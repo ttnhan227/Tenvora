@@ -29,7 +29,7 @@ public class RiskController : ControllerBase
             .AsNoTracking()
             .Where(r => r.TenantId == tenantId)
             .OrderByDescending(r => r.CreatedAt)
-            .Take(limit)
+            .Take(Math.Clamp(limit, 1, 500))
             .Select(r => new RiskEvaluationResponse(
                 r.Id,
                 r.PaymentRequestId,
@@ -42,5 +42,13 @@ public class RiskController : ControllerBase
             .ToListAsync();
 
         return Ok(ApiResult<List<RiskEvaluationResponse>>.Ok(evaluations));
+    }
+
+    [HttpPost("evaluations/{id:guid}/decision")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager,ComplianceOfficer")]
+    public IActionResult SubmitDecision(Guid id, [FromBody] SubmitRiskDecisionRequest request)
+    {
+        return StatusCode(StatusCodes.Status409Conflict, ApiResult<RiskEvaluationResponse>.Fail("Risk checks are informational. Payment approval and rejection are not supported."));
+
     }
 }

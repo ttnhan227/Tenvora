@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
@@ -33,7 +33,7 @@ export function MetricCard({
   currency = "USD",
   subtitle,
   icon: Icon,
-  iconColor = "text-emerald-500",
+  iconColor = "text-emerald-600",
   trend,
   progress,
   className,
@@ -81,7 +81,7 @@ export function MetricCard({
             <span
               className={cn(
                 "font-mono font-bold text-[11px]",
-                trend.direction === "up" && "text-emerald-600 dark:text-emerald-400",
+                trend.direction === "up" && "text-green-600 dark:text-green-400",
                 trend.direction === "down" && "text-red-600 dark:text-red-400",
                 trend.direction === "neutral" && "text-muted-foreground"
               )}
@@ -104,7 +104,7 @@ export function MetricCard({
             </div>
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full bg-emerald-500 rounded-full transition-all"
+                className="h-full bg-emerald-600 rounded-full transition-all"
                 style={{ width: `${Math.min(100, (progress.current / progress.total) * 100)}%` }}
               />
             </div>

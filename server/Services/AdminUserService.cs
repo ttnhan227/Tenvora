@@ -16,6 +16,8 @@ public sealed class AdminUserService : IAdminUserService
 
     public async Task<ApiResult<AdminUserResponse>> CreateUserAsync(Guid tenantId, AdminCreateUserRequest request)
     {
+        if (!new[] { "TenantAdmin", "OperationsManager", "ComplianceOfficer", "ReadOnly" }.Contains(request.Role))
+            return ApiResult<AdminUserResponse>.Fail("Choose a supported workspace role.");
         var existing = await _userRepository.GetByEmailAndTenantAsync(request.Email.Trim().ToLowerInvariant(), tenantId);
         if (existing != null)
         {

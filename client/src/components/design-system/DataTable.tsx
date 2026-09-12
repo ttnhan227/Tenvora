@@ -110,14 +110,15 @@ export function DataTable<T>({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-border bg-[#FAFBFC] dark:bg-[#0E1A2E] text-muted-foreground uppercase text-[10px] tracking-wider font-mono select-none">
+            <tr className="border-b border-border bg-muted/40 text-muted-foreground uppercase text-[10px] tracking-wider font-mono select-none">
               {onToggleSelect && (
                 <th className="py-2 px-3 w-8 text-center">
                   <input
                     type="checkbox"
+                    aria-label="Select all rows on this page"
                     checked={!!isAllSelected}
                     onChange={(e) => onSelectAll && onSelectAll(e.target.checked)}
-                    className="rounded border-border text-[#635BFF] focus:ring-[#635BFF] h-3.5 w-3.5 cursor-pointer"
+                    className="rounded border-border text-primary focus:ring-ring h-3.5 w-3.5 cursor-pointer"
                   />
                 </th>
               )}
@@ -133,36 +134,40 @@ export function DataTable<T>({
                 return (
                   <th
                     key={col.key}
-                    onClick={() => handleSort(col.key, col.sortable)}
+                    aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
                     className={cn(
-                      "py-2.5 px-3.5 font-bold transition-colors whitespace-nowrap text-[#4F5B76] dark:text-[#94A3B8]",
+                      "py-2.5 px-3.5 font-bold transition-colors whitespace-nowrap text-muted-foreground",
                       alignClass,
-                      col.sortable && "cursor-pointer hover:text-foreground hover:bg-[#F0F3F7] dark:hover:bg-[#1E293B]",
+                      col.sortable && "hover:text-foreground hover:bg-muted/70",
                       col.headerClassName
                     )}
                   >
-                    <div
+                    {col.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(col.key, true)}
                       className={cn(
-                        "inline-flex items-center gap-1",
+                        "inline-flex min-h-8 items-center gap-1 rounded px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         col.align === "right" && "justify-end",
                         col.align === "center" && "justify-center"
                       )}
                     >
                       <span>{col.header}</span>
-                      {col.sortable && (
-                        <span className="opacity-70 text-[10px]">
+                      <span className="opacity-70 text-[10px]" aria-hidden="true">
                           {isSorted ? (
                             sortDirection === "asc" ? (
-                              <ChevronUp className="h-3 w-3 text-[#635BFF]" />
+                              <ChevronUp className="h-3 w-3 text-primary" />
                             ) : (
-                              <ChevronDown className="h-3 w-3 text-[#635BFF]" />
+                              <ChevronDown className="h-3 w-3 text-primary" />
                             )
                           ) : (
                             <ChevronsUpDown className="h-3 w-3 text-muted-foreground/40" />
                           )}
-                        </span>
-                      )}
-                    </div>
+                      </span>
+                    </button>
+                    ) : (
+                      <span>{col.header}</span>
+                    )}
                   </th>
                 );
               })}
@@ -191,9 +196,9 @@ export function DataTable<T>({
                     onClick={() => onRowClick && onRowClick(item)}
                     className={cn(
                       "transition-colors duration-100",
-                      hoverable && "hover:bg-[#F8FAFC] dark:hover:bg-[#13233A]",
+                      hoverable && "hover:bg-muted/40",
                       onRowClick && "cursor-pointer",
-                      isSelected && "bg-[#635BFF]/5"
+                      isSelected && "bg-primary/10",
                     )}
                   >
                     {onToggleSelect && (
@@ -203,9 +208,10 @@ export function DataTable<T>({
                       >
                         <input
                           type="checkbox"
+                          aria-label={`Select row ${id}`}
                           checked={!!isSelected}
                           onChange={() => onToggleSelect(id)}
-                          className="rounded border-border text-[#635BFF] focus:ring-[#635BFF] h-3.5 w-3.5 cursor-pointer"
+                          className="rounded border-border text-primary focus:ring-ring h-3.5 w-3.5 cursor-pointer"
                         />
                       </td>
                     )}
@@ -249,7 +255,7 @@ export function DataTable<T>({
 
       {/* Pagination Footer */}
       {!loading && sortedData.length > pageSize && (
-        <div className="px-3.5 py-2 border-t border-border bg-[#FAFBFC] dark:bg-[#0E1A2E] flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+        <div className="px-3.5 py-2 border-t border-border bg-muted/40 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
           <div>
             Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} entries
           </div>

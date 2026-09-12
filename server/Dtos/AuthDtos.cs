@@ -25,7 +25,8 @@ public record AuthResponse(
     Guid TenantId,
     string Email,
     string Role,
-    string CompanyName
+    string CompanyName,
+    string PreferredCurrency
 );
 
 public record UserProfileResponse(

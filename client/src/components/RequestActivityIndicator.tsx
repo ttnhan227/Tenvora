@@ -34,10 +34,7 @@ export function RequestActivityIndicator() {
       {showMessage && (
         <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[100] flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-foreground shadow-2xl">
           <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
-          <div>
-            <p className="text-xs font-bold">Working on your request…</p>
-            <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">The free server can take a little longer. You can keep this page open.</p>
-          </div>
+          <p className="text-xs font-bold">Working on your request…</p>
         </div>
       )}
     </>

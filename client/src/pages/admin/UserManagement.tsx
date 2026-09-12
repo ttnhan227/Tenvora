@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   XCircle,
   Lock,
+  User,
 } from "lucide-react";
 import {
   StatusBadge,
@@ -58,6 +59,7 @@ export default function UserManagement() {
     if (res.success && res.data) {
       setUsers(res.data);
     }
+    if (!res.success) setErrorMessage(res.errors?.join(" ") || "Unable to load team members.");
     setLoading(false);
   }
 
@@ -76,35 +78,38 @@ export default function UserManagement() {
       setPassword("");
       loadUsers();
     } else {
-      setErrorMessage(res.errors?.[0] || "Failed to provision operator.");
+      setErrorMessage(res.errors?.[0] || "Failed to add team member.");
     }
   }
 
   async function handleToggleStatus(user: AdminUser) {
-    const res = await adminUserService.toggleActive(user.id);
+    const res = await adminUserService.toggleUserActive(user.id);
     if (res.success) {
       loadUsers();
-    }
+    } else setErrorMessage(res.errors?.join(" ") || "Unable to change member status.");
   }
 
   const columns: Column<AdminUser>[] = [
     {
       key: "email",
-      header: "Operator Identity",
+      header: "Team Member",
       sortable: true,
       render: (u) => (
         <div className="font-semibold text-foreground flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+            <User className="h-3.5 w-3.5" />
+          </div>
           <span>{u.email}</span>
         </div>
       ),
     },
     {
       key: "role",
-      header: "RBAC Role Tier",
+      header: "Workspace Role",
       align: "center",
       sortable: true,
       render: (u) => (
-        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-muted text-foreground border border-border">
+        <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-muted text-foreground">
           {u.role}
         </span>
       ),
@@ -120,7 +125,7 @@ export default function UserManagement() {
     },
     {
       key: "createdAt",
-      header: "Provisioned (UTC)",
+      header: "Joined Date",
       align: "right",
       sortable: true,
       render: (u) => (
@@ -131,14 +136,14 @@ export default function UserManagement() {
     },
     {
       key: "actions",
-      header: "",
+      header: "Actions",
       align: "right",
       render: (u) => (
         <Button
           variant="outline"
           size="sm"
           onClick={() => handleToggleStatus(u)}
-          className="h-6 px-2 text-[10px] font-mono border-border bg-card"
+          className="h-7 px-2.5 text-xs font-medium border-border bg-card hover:bg-muted"
         >
           {u.isActive ? "Deactivate" : "Activate"}
         </Button>
@@ -148,15 +153,15 @@ export default function UserManagement() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground font-sans">
-              Users &amp; Role-Based Access Control
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              Team Members &amp; Permissions
             </h1>
-            <p className="text-xs text-muted-foreground">
-              Provision operations team members, assign financial permission tiers, and enforce multi-tenant separation.
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Manage team access, assign operational role permissions, and control account privileges.
             </p>
           </div>
 
@@ -166,80 +171,82 @@ export default function UserManagement() {
               size="sm"
               onClick={loadUsers}
               disabled={loading}
-              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground bg-card"
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-card"
             >
-              <RefreshCw className={`h-3 w-3 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
 
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-7 px-3 bg-[#635BFF] hover:bg-[#533AFD] text-white text-xs font-semibold rounded-md shadow-xs">
-                  <UserPlus className="h-3 w-3 mr-1" />
-                  Provision Operator
+                <Button size="sm" className="h-8 px-3.5 text-xs font-semibold rounded-md shadow-sm">
+                  <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                  Add Team Member
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[420px] bg-card border border-border text-xs rounded-lg p-5">
-                <form onSubmit={handleCreateUser} className="space-y-3.5">
-                  <DialogHeader className="space-y-1">
-                    <DialogTitle className="text-sm font-bold flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-foreground" />
-                      Provision Team Member
+              <DialogContent className="sm:max-w-[420px] bg-card border border-border text-xs rounded-xl p-6">
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <DialogHeader className="space-y-1.5">
+                    <DialogTitle className="text-base font-bold flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                      Add Team Member
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                      Creates an authenticated operator profile with isolated tenant permissions.
+                      Create a member and assign a role. Share credentials directly; no invitation email is sent.
                     </DialogDescription>
                   </DialogHeader>
 
                   {errorMessage && (
-                    <div className="p-2 rounded bg-red-500/10 border border-red-500/25 text-red-600 text-xs">
+                    <div role="alert" className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-600 text-xs">
                       {errorMessage}
                     </div>
                   )}
 
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-muted-foreground">Corporate Email</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="team-email" className="text-xs font-medium text-foreground">Work Email</Label>
                     <Input
+                      id="team-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="analyst@tenvora.internal"
+                      placeholder="teammate@company.com"
                       required
-                      className="h-8 text-xs"
+                      className="h-9 text-xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-muted-foreground">Initial Password</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="team-password" className="text-xs font-medium text-foreground">Password</Label>
                     <Input
+                      id="team-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
                       required
-                      className="h-8 text-xs font-mono"
+                      className="h-9 text-xs font-mono"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-[11px] font-semibold text-muted-foreground">Permission Role Tier</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="team-role" className="text-xs font-medium text-foreground">Role &amp; Permissions</Label>
                     <Select value={role} onValueChange={setRole}>
-                      <SelectTrigger className="h-8 text-xs font-mono">
+                      <SelectTrigger id="team-role" className="h-9 text-xs">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="TenantAdmin" className="text-xs font-mono">TenantAdmin (Full Privileges)</SelectItem>
-                        <SelectItem value="OperationsManager" className="text-xs font-mono">OperationsManager (Transfers &amp; Batches)</SelectItem>
-                        <SelectItem value="ComplianceOfficer" className="text-xs font-mono">ComplianceOfficer (Risk &amp; Audits)</SelectItem>
-                        <SelectItem value="Auditor" className="text-xs font-mono">Auditor (Read-Only Ledger)</SelectItem>
-                        <SelectItem value="Viewer" className="text-xs font-mono">Viewer (Reports)</SelectItem>
+                        <SelectItem value="TenantAdmin">Administrator (Full Access)</SelectItem>
+                        <SelectItem value="OperationsManager">Operations Manager (Transfers &amp; Settlements)</SelectItem>
+                        <SelectItem value="ComplianceOfficer">Compliance Officer (Risk &amp; Audits)</SelectItem>
+                        <SelectItem value="ReadOnly">Read only (View records)</SelectItem>
+
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <DialogFooter className="pt-2">
-                    <Button type="submit" disabled={creating} className="h-8 px-4 bg-[#635BFF] hover:bg-[#533AFD] text-white text-xs font-semibold rounded-md shadow-xs">
-                      {creating ? "Provisioning..." : "Commit Operator"}
+                  <DialogFooter className="pt-3">
+                    <Button type="submit" disabled={creating} className="w-full h-9 text-xs font-semibold rounded-md shadow-sm">
+                      {creating ? "Adding..." : "Add Member"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -248,6 +255,7 @@ export default function UserManagement() {
           </div>
         </div>
 
+        {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
         {/* Users DataTable */}
         <DataTable
           data={users}
@@ -255,8 +263,8 @@ export default function UserManagement() {
           keyExtractor={(u) => u.id}
           loading={loading}
           pageSize={15}
-          emptyTitle="No operators provisioned"
-          emptyDescription="You have not provisioned any team member accounts in this workspace."
+          emptyTitle="No team members found"
+          emptyDescription="Add your first team member to collaborate in this workspace."
         />
       </div>
     </DashboardLayout>

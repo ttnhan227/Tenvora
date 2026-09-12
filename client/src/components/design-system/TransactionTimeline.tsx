@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Check, Clock, AlertCircle, RotateCcw, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,10 +30,10 @@ export function TransactionTimeline({ steps, className }: TransactionTimelinePro
               <div
                 className={cn(
                   "absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center border text-[10px] transition-colors",
-                  isCompleted && "bg-emerald-600 border-emerald-600 text-white",
-                  isCurrent && "bg-background border-emerald-500 text-emerald-500 ring-2 ring-emerald-500/20",
+                  isCompleted && "bg-green-600 border-green-600 text-white",
+                  isCurrent && "bg-background border-emerald-600 text-emerald-600 ring-2 ring-emerald-600/20",
                   isFailed && "bg-red-600 border-red-600 text-white",
-                  isReversed && "bg-indigo-600 border-indigo-600 text-white",
+                  isReversed && "bg-amber-600 border-amber-600 text-white",
                   step.status === "pending" && "bg-muted border-border text-muted-foreground"
                 )}
               >

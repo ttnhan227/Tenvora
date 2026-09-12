@@ -1,4 +1,4 @@
-﻿import apiClient from "./apiClient";
+import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
 
 export interface SettlementEntry {
@@ -13,17 +13,16 @@ export interface SettlementEntry {
 
 export interface SettlementBatch {
   id: string;
-  batchReference: string;
-  status: string;
-  cutoffTime: string;
-  currency: string;
+  tenantId?: string;
+  batchNumber: string;
   totalTransactions: number;
-  grossAmount: number;
-  totalFees: number;
-  netSettlementAmount: number;
+  totalDebitAmount: number;
+  totalCreditAmount: number;
+  currency: string;
+  status: string;
   createdAt: string;
-  settledAt?: string;
-  entries: SettlementEntry[];
+  settledAt?: string | null;
+  transactions?: { id: string; referenceNumber: string; amount: number; status: string }[];
 }
 
 export const settlementService = {
@@ -59,6 +58,18 @@ export const settlementService = {
       return {
         success: false,
         errors: error.response?.data?.errors || ["Failed to fetch settlement batch"],
+      };
+    }
+  },
+
+  settleBatch: async (id: string): Promise<ApiResponse<SettlementBatch>> => {
+    try {
+      const response = await apiClient.post(`/settlement/batches/${id}/settle`);
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        errors: error.response?.data?.errors || ["Failed to settle batch"],
       };
     }
   },

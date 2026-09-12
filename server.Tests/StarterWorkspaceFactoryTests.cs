@@ -1,4 +1,4 @@
-﻿using Tenvora.Api.Data;
+using Tenvora.Api.Data;
 using Tenvora.Api.Models;
 using Xunit;
 
@@ -7,36 +7,39 @@ namespace Tenvora.Tests;
 public class StarterWorkspaceFactoryTests
 {
     [Fact]
-    public void Populate_SeedsEnterpriseTenantWithBalancedLedger()
+    public void Populate_SeedsFreelancerWorkspaceWithBalancedLedgerAndInvoices()
     {
         var tenant = new Tenant
         {
             Id = Guid.NewGuid(),
-            CompanyName = "Test FinOps Corp",
+            CompanyName = "Alex Rivera Design",
             ApiKey = "test-key"
         };
         var owner = new User
         {
             Id = Guid.NewGuid(),
-            Email = "admin@tenvora.internal",
+            Email = "alex@riveradesign.co",
             TenantId = tenant.Id
         };
 
         StarterWorkspaceFactory.Populate(tenant, owner, DateTime.UtcNow);
 
-        Assert.Equal("Enterprise", tenant.PlanType);
+        Assert.Equal("FreelancerPro", tenant.PlanType);
+        Assert.Equal(25.0m, tenant.DefaultTaxSetAsideRate);
+        Assert.True(tenant.AutoTaxSetAsideEnabled);
         Assert.NotEmpty(tenant.Users);
-        Assert.NotEmpty(tenant.Customers);
         Assert.NotEmpty(tenant.Accounts);
+        Assert.NotEmpty(tenant.Clients);
+        Assert.NotEmpty(tenant.Invoices);
         Assert.NotEmpty(tenant.Transactions);
 
-        var initialTx = tenant.Transactions.First();
-        Assert.Equal(2, initialTx.LedgerEntries.Count);
+        var taxTx = tenant.Transactions.First(t => t.ReferenceNumber.StartsWith("TAX-SPLIT"));
+        Assert.Equal(2, taxTx.LedgerEntries.Count);
         
-        var totalDebits = initialTx.LedgerEntries.Sum(l => l.DebitAmount);
-        var totalCredits = initialTx.LedgerEntries.Sum(l => l.CreditAmount);
+        var totalDebits = taxTx.LedgerEntries.Sum(l => l.DebitAmount);
+        var totalCredits = taxTx.LedgerEntries.Sum(l => l.CreditAmount);
 
         Assert.Equal(totalDebits, totalCredits);
-        Assert.Equal(initialTx.Amount, totalDebits);
+        Assert.Equal(taxTx.Amount, totalDebits);
     }
 }

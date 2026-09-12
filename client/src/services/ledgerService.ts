@@ -20,7 +20,9 @@ export interface AccountLedgerHistory {
   currency: string;
   cachedBalance: number;
   derivedBalance: number;
-  isBalanced: boolean;
+  isBalanced?: boolean;
+  balanceMatches: boolean;
+  accountType: string;
   entries: LedgerEntry[];
 }
 

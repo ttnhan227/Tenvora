@@ -14,30 +14,8 @@ public static class DatabaseSeeder
         {
             await context.Database.MigrateAsync();
 
-            // Temporarily disable RLS during initial seeding so multi-tenant seed data can be written
-            try
-            {
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Tenants\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Users\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Accounts\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Customers\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Transactions\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"LedgerEntries\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"PaymentRequests\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"IdempotencyRecords\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"SettlementBatches\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"SettlementEntries\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"ReconciliationRuns\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"ReconciliationDiscrepancies\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RiskEvaluations\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"AuditLogs\" DISABLE ROW LEVEL SECURITY");
-                await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RefreshTokens\" DISABLE ROW LEVEL SECURITY");
-            }
-            catch
-            {
-                // Ignore if tables don't exist yet or not supported
-            }
         }
+        if (!string.Equals(Environment.GetEnvironmentVariable("SEED_DEMO_DATA"), "true", StringComparison.OrdinalIgnoreCase)) return;
 
         try
         {
@@ -432,33 +410,6 @@ public static class DatabaseSeeder
 
             await context.SaveChangesAsync();
         }
-        finally
-        {
-            if (context.Database.IsRelational())
-            {
-                try
-                {
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Tenants\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Users\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Accounts\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Customers\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"Transactions\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"LedgerEntries\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"PaymentRequests\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"IdempotencyRecords\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"SettlementBatches\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"SettlementEntries\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"ReconciliationRuns\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"ReconciliationDiscrepancies\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RiskEvaluations\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"AuditLogs\" ENABLE ROW LEVEL SECURITY");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE IF EXISTS \"RefreshTokens\" ENABLE ROW LEVEL SECURITY");
-                }
-                catch
-                {
-                    // Ignore on non-PostgreSQL providers
-                }
-            }
-        }
+        finally { }
     }
 }

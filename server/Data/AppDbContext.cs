@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Tenvora.Api.Domain.Entities;
 using Tenvora.Api.Models;
 
@@ -16,6 +16,9 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<PaymentRequest> PaymentRequests => Set<PaymentRequest>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
@@ -49,6 +52,16 @@ public class AppDbContext : DbContext
             entity.HasMany(e => e.Customers)
                 .WithOne()
                 .HasForeignKey(c => c.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Clients)
+                .WithOne()
+                .HasForeignKey(c => c.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Invoices)
+                .WithOne()
+                .HasForeignKey(i => i.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasMany(e => e.Accounts)
@@ -327,6 +340,79 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.EntityType, e.EntityId });
             entity.HasIndex(e => new { e.TenantId, e.Timestamp });
             entity.HasIndex(e => e.PerformedBy);
+        });
+
+        // Client Configuration (Freelancer Client CRM)
+        modelBuilder.Entity<Client>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ContactEmail).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.Company).HasMaxLength(200);
+            entity.Property(e => e.Address).HasMaxLength(300);
+            entity.Property(e => e.Currency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.Property(e => e.DefaultPaymentTermsDays).HasDefaultValue(14);
+            entity.Property(e => e.HourlyRate).HasPrecision(18, 4);
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("Active").IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+
+            entity.HasIndex(e => new { e.TenantId, e.Name });
+            entity.HasIndex(e => new { e.TenantId, e.ContactEmail });
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+
+            entity.HasMany(e => e.Invoices)
+                .WithOne(i => i.Client)
+                .HasForeignKey(i => i.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Invoice Configuration
+        modelBuilder.Entity<Invoice>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.InvoiceNumber).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Currency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.Property(e => e.Subtotal).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.TaxRate).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.TaxAmount).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.AmountPaid).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Draft").IsRequired();
+            entity.Property(e => e.PaymentTerms).HasMaxLength(100);
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+
+            entity.HasIndex(e => new { e.TenantId, e.InvoiceNumber }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ClientId });
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.DueDate });
+
+            entity.HasOne(e => e.DestinationAccount)
+                .WithMany()
+                .HasForeignKey(e => e.DestinationAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.PaymentTransaction)
+                .WithMany()
+                .HasForeignKey(e => e.PaymentTransactionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(e => e.Items)
+                .WithOne(item => item.Invoice!)
+                .HasForeignKey(item => item.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // InvoiceItem Configuration
+        modelBuilder.Entity<InvoiceItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Description).HasMaxLength(300).IsRequired();
+            entity.Property(e => e.Quantity).HasPrecision(18, 4).HasDefaultValue(1m);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 4).IsRequired();
+            entity.Property(e => e.Amount).HasPrecision(18, 4).IsRequired();
+
+            entity.HasIndex(e => e.InvoiceId);
         });
     }
 }

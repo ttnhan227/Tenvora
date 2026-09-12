@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
@@ -44,5 +44,14 @@ public class ReconciliationController : ControllerBase
             return NotFound(ApiResult<ReconciliationResponse>.Fail("Reconciliation run not found."));
 
         return Ok(ApiResult<ReconciliationResponse>.Ok(run));
+    }
+
+    [HttpPost("match-invoices")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager,ComplianceOfficer")]
+    public async Task<IActionResult> ReconcileClientInvoices()
+    {
+        var tenantId = User.GetTenantId();
+        var result = await _reconciliationService.ReconcileClientInvoicesAsync(tenantId);
+        return Ok(ApiResult<ClientReconciliationResponse>.Ok(result));
     }
 }

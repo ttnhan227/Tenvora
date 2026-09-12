@@ -21,11 +21,12 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("transfers")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager")]
     public async Task<IActionResult> Transfer(
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         [FromBody] CreateTransferRequest request)
     {
-        if (string.IsNullOrWhiteSpace(idempotencyKey))
+        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100)
         {
             return BadRequest(ApiResult<CreatePaymentResponse>.Fail("The 'Idempotency-Key' header is required."));
         }
@@ -68,7 +69,7 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> GetTransactions([FromQuery] string? status = null, [FromQuery] int limit = 100)
     {
         var tenantId = User.GetTenantId();
-        var transactions = await _transferService.GetTransactionsAsync(tenantId, status, limit);
+        var transactions = await _transferService.GetTransactionsAsync(tenantId, status, Math.Clamp(limit, 1, 500));
         return Ok(ApiResult<List<TransactionResponse>>.Ok(transactions));
     }
 

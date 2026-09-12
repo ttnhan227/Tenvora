@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 using Tenvora.Api.Domain.Entities;
@@ -73,6 +73,12 @@ public class SettlementRepository : ISettlementRepository
             tx.SettledAt = DateTime.UtcNow;
         }
 
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateBatchAsync(SettlementBatch batch)
+    {
+        _context.SettlementBatches.Update(batch);
         await _context.SaveChangesAsync();
     }
 }

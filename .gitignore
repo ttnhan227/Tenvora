@@ -101,3 +101,5 @@ client/.env.production.local
 server/Uploads/
 !server/Uploads/.gitkeep
 recon-reports/
+.audit/
+client/playwright-report/

@@ -27,17 +27,17 @@ export function LifecycleStepper({ stages, className }: LifecycleStepperProps) {
           let labelColor = "text-muted-foreground";
 
           if (stage.status === "completed") {
-            nodeIcon = <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />;
-            nodeStyle = "border-emerald-500/40 bg-emerald-500/10 text-emerald-600";
+            nodeIcon = <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />;
+            nodeStyle = "border-green-500/40 bg-green-500/10 text-green-600";
             labelColor = "text-foreground font-semibold";
           } else if (stage.status === "current") {
             nodeIcon = <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />;
             nodeStyle = "border-blue-500 bg-blue-500/10 text-blue-600";
             labelColor = "text-foreground font-bold";
           } else if (stage.status === "reversed") {
-            nodeIcon = <RotateCcw className="h-3 w-3 text-purple-600 dark:text-purple-400" />;
-            nodeStyle = "border-purple-500/40 bg-purple-500/10 text-purple-600";
-            labelColor = "text-purple-600 dark:text-purple-400 font-semibold";
+            nodeIcon = <RotateCcw className="h-3 w-3 text-amber-600 dark:text-amber-400" />;
+            nodeStyle = "border-amber-500/40 bg-amber-500/10 text-amber-600";
+            labelColor = "text-amber-600 dark:text-amber-400 font-semibold";
           } else if (stage.status === "failed") {
             nodeIcon = <XCircle className="h-3 w-3 text-red-600 dark:text-red-400" />;
             nodeStyle = "border-red-500/40 bg-red-500/10 text-red-600";

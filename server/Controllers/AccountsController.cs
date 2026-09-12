@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
@@ -44,6 +44,18 @@ public class AccountsController : ControllerBase
         var tenantId = User.GetTenantId();
         var account = await _accountService.CreateAccountAsync(tenantId, request);
         return CreatedAtAction(nameof(GetAccount), new { id = account.Id }, ApiResult<AccountResponse>.Ok(account));
+    }
+
+    [HttpPatch("{id:guid}/status")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateAccountStatusRequest request)
+    {
+        var tenantId = User.GetTenantId();
+        var account = await _accountService.UpdateAccountStatusAsync(tenantId, id, request.Status);
+        if (account == null)
+            return NotFound(ApiResult<AccountResponse>.Fail("Account not found."));
+
+        return Ok(ApiResult<AccountResponse>.Ok(account));
     }
 
     [HttpGet("customers")]

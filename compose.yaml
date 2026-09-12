@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tenvora_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tenvora_secure_password_123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -26,31 +26,31 @@ services:
     env_file:
       - .env
     environment:
-      PORT: ${PORT:-5000}
+      PORT: 5000
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      ConnectionStrings__DefaultConnection: ${DATABASE_URL:-Host=postgres;Port=5432;Database=tenvora_db;Username=postgres;Password=tenvora_secure_password_123;SSL Mode=Disable;Trust Server Certificate=true}
-      JwtSettings__Secret: ${JWT_SECRET:-tenvora-production-docker-secret-key-32-chars-minimum-12345}
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-tenvora_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};SSL Mode=Disable;Trust Server Certificate=true"
+      JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 bytes)}
       JwtSettings__Issuer: ${JwtSettings__Issuer:-Tenvora}
       JwtSettings__Audience: ${JwtSettings__Audience:-Tenvora}
       CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost:3000,http://client}
       FINLIGHT_API_KEY: ${FINLIGHT_API_KEY:-}
       NEWSAPIAI_API_KEY: ${NEWSAPIAI_API_KEY:-}
       GNEWS_API_KEY: ${GNEWS_API_KEY:-}
-      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Mistral}
+      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Google Gemini}
       AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
-      AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://api.mistral.ai/v1/chat/completions}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-mistral-small-latest}
-      AI_VISION_MODEL: ${AI_VISION_MODEL:-mistral-small-latest}
+      AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/models}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-flash-latest}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-gemini-flash-latest}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Global FinOps Corp}
-      SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:-tenvora-dev-key-default}
+      SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:?Set SEED_TENANT_API_KEY in .env}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@tenvora.internal}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-AdminPass123!}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in .env}
       SEED_OPS_EMAIL: ${SEED_OPS_EMAIL:-ops.manager@tenvora.internal}
-      SEED_OPS_PASSWORD: ${SEED_OPS_PASSWORD:-AdminPass123!}
+      SEED_OPS_PASSWORD: ${SEED_OPS_PASSWORD:?Set SEED_OPS_PASSWORD in .env}
       SEED_COMPLIANCE_EMAIL: ${SEED_COMPLIANCE_EMAIL:-compliance@tenvora.internal}
-      SEED_COMPLIANCE_PASSWORD: ${SEED_COMPLIANCE_PASSWORD:-AdminPass123!}
+      SEED_COMPLIANCE_PASSWORD: ${SEED_COMPLIANCE_PASSWORD:?Set SEED_COMPLIANCE_PASSWORD in .env}
     ports:
       - "${PORT:-5000}:5000"
     depends_on:

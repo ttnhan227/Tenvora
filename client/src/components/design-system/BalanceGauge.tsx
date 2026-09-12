@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { ShieldCheck, AlertTriangle, Scale } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoneyDisplay } from "./MoneyDisplay";
@@ -31,7 +31,7 @@ export function BalanceGauge({
       className={cn(
         "border transition-colors",
         isBalanced
-          ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-950/10"
+          ? "border-green-500/30 bg-green-500/5 dark:bg-green-950/10"
           : "border-red-500/40 bg-red-500/5 dark:bg-red-950/10",
         className
       )}
@@ -43,7 +43,7 @@ export function BalanceGauge({
               className={cn(
                 "h-7 w-7 rounded-lg flex items-center justify-center border",
                 isBalanced
-                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  ? "bg-green-500/15 border-green-500/30 text-green-600 dark:text-green-400"
                   : "bg-red-500/15 border-red-500/30 text-red-600 dark:text-red-400"
               )}
             >
@@ -63,7 +63,7 @@ export function BalanceGauge({
             className={cn(
               "px-2.5 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider border",
               isBalanced
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                ? "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30"
                 : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
             )}
           >

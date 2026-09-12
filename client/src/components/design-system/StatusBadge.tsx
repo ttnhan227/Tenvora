@@ -48,56 +48,56 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const norm = (status || "").toLowerCase().replace(/[\s_-]/g, "");
 
-  let badgeStyle = "bg-[#F4F5F7] text-[#4F5B76] border-[#E3E8EE] dark:bg-[#1E293B] dark:text-[#94A3B8] dark:border-[#334155]";
-  let dotColor = "bg-[#697386]";
+  let badgeStyle = "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700";
+  let dotColor = "bg-slate-400";
   let IconComponent: React.ComponentType<{ className?: string }> = Clock;
 
-  if (["posted", "passed", "active", "approved", "resolved", "low", "completed"].includes(norm)) {
-    badgeStyle = "bg-[#EBFBF3] text-[#0E6251] border-[#A3E6CD] dark:bg-[#064E3B]/30 dark:text-[#6EE7B7] dark:border-[#059669]/40";
-    dotColor = "bg-[#00D924]";
+  if (["posted", "passed", "active", "approved", "resolved", "low", "completed", "settled"].includes(norm)) {
+    badgeStyle = "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50";
+    dotColor = "bg-emerald-500";
     IconComponent = CheckCircle2;
-  } else if (["settled", "open"].includes(norm)) {
-    badgeStyle = "bg-[#EEF2FF] text-[#3730A3] border-[#C7D2FE] dark:bg-[#312E81]/30 dark:text-[#A5B4FC] dark:border-[#6366F1]/40";
-    dotColor = "bg-[#635BFF]";
+  } else if (["sent", "open"].includes(norm)) {
+    badgeStyle = "bg-blue-500/10 text-blue-700 border-blue-500/25 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/50";
+    dotColor = "bg-blue-500";
     IconComponent = ShieldCheck;
   } else if (["pending", "processing", "medium", "flaggedforreview", "investigate"].includes(norm)) {
-    badgeStyle = "bg-[#FFF8EB] text-[#8F5B00] border-[#FFE1A8] dark:bg-[#78350F]/30 dark:text-[#FCD34D] dark:border-[#D97706]/40";
-    dotColor = "bg-[#F5A623]";
+    badgeStyle = "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50";
+    dotColor = "bg-amber-500";
     IconComponent = Clock;
   } else if (["reversed"].includes(norm)) {
-    badgeStyle = "bg-[#F5F3FF] text-[#5B21B6] border-[#DDD6FE] dark:bg-[#4C1D95]/30 dark:text-[#D8B4FE] dark:border-[#8B5CF6]/40";
-    dotColor = "bg-[#7F56D9]";
+    badgeStyle = "bg-purple-500/10 text-purple-700 border-purple-500/25 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/50";
+    dotColor = "bg-purple-500";
     IconComponent = RotateCcw;
-  } else if (["failed", "mismatch", "disabled", "rejected", "critical", "high"].includes(norm)) {
-    badgeStyle = "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA] dark:bg-[#7F1D1D]/30 dark:text-[#FCA5A5] dark:border-[#DC2626]/40";
-    dotColor = "bg-[#DF1B41]";
+  } else if (["failed", "mismatch", "disabled", "rejected", "critical", "high", "overdue"].includes(norm)) {
+    badgeStyle = "bg-rose-500/10 text-rose-700 border-rose-500/25 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/50";
+    dotColor = "bg-rose-500";
     IconComponent = norm === "critical" || norm === "high" ? ShieldAlert : XCircle;
   } else if (["debit"].includes(norm)) {
-    badgeStyle = "bg-[#F0FDF4] text-[#166534] border-[#BBF7D0] dark:bg-[#14532D]/30 dark:text-[#86EFAC] dark:border-[#22C55E]/40";
-    dotColor = "bg-[#22C55E]";
-    IconComponent = CheckCircle2;
+    badgeStyle = "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700";
+    dotColor = "bg-slate-500";
+    IconComponent = Clock;
   } else if (["credit"].includes(norm)) {
-    badgeStyle = "bg-[#EEF2FF] text-[#3730A3] border-[#C7D2FE] dark:bg-[#312E81]/30 dark:text-[#A5B4FC] dark:border-[#6366F1]/40";
-    dotColor = "bg-[#635BFF]";
+    badgeStyle = "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50";
+    dotColor = "bg-emerald-500";
     IconComponent = CheckCircle2;
   }
 
   const sizeClasses = {
-    sm: "px-2 py-0.5 text-[10px] gap-1",
+    sm: "px-2 py-0.5 text-[10px] gap-1.5",
     md: "px-2.5 py-1 text-xs gap-1.5",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded border font-mono font-semibold uppercase tracking-wider select-none whitespace-nowrap",
+        "inline-flex items-center rounded-md border font-mono font-semibold uppercase tracking-wider select-none whitespace-nowrap",
         badgeStyle,
         sizeClasses[size],
         className
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dotColor)} />
-      {showIcon && <IconComponent className="h-3 w-3 shrink-0 opacity-80" />}
+      {showIcon && <IconComponent className="h-3 w-3 shrink-0 opacity-90" />}
       <span>{status}</span>
     </span>
   );

@@ -40,6 +40,8 @@ public class AdminUsersController : ControllerBase
     [HttpPatch("{userId:guid}/toggle-active")]
     public async Task<IActionResult> ToggleActive(Guid userId)
     {
+        if (User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == userId.ToString())
+            return BadRequest(ApiResult.Fail("You cannot deactivate your own account."));
         var tenantId = User.GetTenantId();
         var result = await _adminUserService.ToggleUserActiveAsync(tenantId, userId);
         if (!result.Success)

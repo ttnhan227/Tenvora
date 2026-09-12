@@ -88,7 +88,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is "Id" or "CreatedAt" or "UpdatedAt" or "RowVersion")
+                    if (prop.Metadata.Name is "Id" or "CreatedAt" or "UpdatedAt" or "RowVersion" or "PasswordHash" or "ApiKey" or "InviteToken")
                         continue;
 
                     if (prop.IsModified)
@@ -116,7 +116,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 var currentSnapshot = new Dictionary<string, object?>();
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey")
+                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken")
                     {
                         currentSnapshot[prop.Metadata.Name] = prop.CurrentValue;
                     }

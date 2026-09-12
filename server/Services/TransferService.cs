@@ -19,6 +19,7 @@ public class TransferService : ITransferService
     private readonly ILedgerRepository _ledgerRepository;
     private readonly IPaymentRequestRepository _paymentRequestRepository;
     private readonly IIdempotencyRepository _idempotencyRepository;
+    private readonly IRiskService? _riskService;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, SemaphoreSlim> _inMemoryLocks = new();
 
     public TransferService(
@@ -27,7 +28,8 @@ public class TransferService : ITransferService
         ITransactionRepository transactionRepository,
         ILedgerRepository ledgerRepository,
         IPaymentRequestRepository paymentRequestRepository,
-        IIdempotencyRepository idempotencyRepository)
+        IIdempotencyRepository idempotencyRepository,
+        IRiskService? riskService = null)
     {
         _context = context;
         _accountRepository = accountRepository;
@@ -35,9 +37,18 @@ public class TransferService : ITransferService
         _ledgerRepository = ledgerRepository;
         _paymentRequestRepository = paymentRequestRepository;
         _idempotencyRepository = idempotencyRepository;
+        _riskService = riskService;
     }
 
-    public async Task<CreatePaymentResponse> ExecuteTransferAsync(
+    public async Task<CreatePaymentResponse> ExecuteTransferAsync(Guid tenantId, string idempotencyKey, CreateTransferRequest request, string? actorEmail = null)
+    {
+        await using var transaction = await FinancialWriteScope.BeginAsync(_context, tenantId);
+        var result = await ExecuteTransferCoreAsync(tenantId, idempotencyKey, request, actorEmail);
+        if (transaction != null) await transaction.CommitAsync();
+        return result;
+    }
+
+    private async Task<CreatePaymentResponse> ExecuteTransferCoreAsync(
         Guid tenantId, 
         string idempotencyKey, 
         CreateTransferRequest request, 
@@ -53,7 +64,7 @@ public class TransferService : ITransferService
             throw new InvalidOperationException("Source and destination accounts must be distinct.");
         }
 
-        if (request.Amount <= 0)
+        if (request.Amount <= 0 || request.Amount > 1_000_000_000m || decimal.Round(request.Amount, 4) != request.Amount)
         {
             throw new InvalidOperationException("Transfer amount must be strictly positive.");
         }
@@ -65,6 +76,8 @@ public class TransferService : ITransferService
         var existingRecord = await _idempotencyRepository.GetAsync(tenantId, idempotencyKey);
         if (existingRecord != null)
         {
+            if (existingRecord.RequestHash != payloadHash)
+                throw new InvalidOperationException("This payment request key was already used for different details.");
             if (existingRecord.Status == "Completed" && !string.IsNullOrEmpty(existingRecord.ResponseBody))
             {
                 return JsonSerializer.Deserialize<CreatePaymentResponse>(existingRecord.ResponseBody)!;
@@ -92,6 +105,8 @@ public class TransferService : ITransferService
             {
                 // Concurrency race on idempotency key insertion
                 var raceRecord = await _idempotencyRepository.GetAsync(tenantId, idempotencyKey);
+                if (raceRecord != null && raceRecord.RequestHash != payloadHash)
+                    throw new InvalidOperationException("This payment request key was already used for different details.");
                 if (raceRecord?.Status == "Completed" && !string.IsNullOrEmpty(raceRecord.ResponseBody))
                 {
                     return JsonSerializer.Deserialize<CreatePaymentResponse>(raceRecord.ResponseBody)!;
@@ -105,7 +120,7 @@ public class TransferService : ITransferService
         return await executionStrategy.ExecuteAsync(async () =>
         {
             var isRelational = _context.Database.IsRelational();
-            var dbTransaction = isRelational ? await _context.Database.BeginTransactionAsync() : null;
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? dbTransaction = null;
 
             var sortedIds = new[] { request.SourceAccountId, request.DestinationAccountId }.OrderBy(x => x).ToList();
             List<SemaphoreSlim>? acquiredSemaphores = null;
@@ -160,6 +175,9 @@ public class TransferService : ITransferService
                     throw new InvalidOperationException($"Destination account is {destAccount.Status} and cannot receive transfers.");
                 }
 
+                if (sourceAccount.AccountType != AccountTypes.Asset || destAccount.AccountType != AccountTypes.Asset)
+                    throw new InvalidOperationException("Payments currently support operating accounts only.");
+
                 // Balance check (for Asset accounts)
                 if (sourceAccount.AccountType == AccountTypes.Asset && sourceAccount.CachedBalance < request.Amount)
                 {
@@ -183,6 +201,23 @@ public class TransferService : ITransferService
                     UpdatedAt = DateTime.UtcNow
                 };
                 await _context.PaymentRequests.AddAsync(paymentRequest);
+
+                // If risk service is present, evaluate and log risk assessment
+                if (_riskService != null)
+                {
+                    var riskEval = _riskService.EvaluatePayment(paymentRequest, sourceAccount, destAccount);
+                    await _context.RiskEvaluations.AddAsync(new RiskEvaluation
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenantId,
+                        PaymentRequestId = pReqId,
+                        Score = riskEval.Score,
+                        RiskLevel = riskEval.RiskLevel,
+                        Decision = riskEval.Decision,
+                        RuleHitsJson = JsonSerializer.Serialize(riskEval.RuleHits),
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
 
                 // 5. Create Financial Transaction entity
                 var txId = Guid.NewGuid();
@@ -251,11 +286,6 @@ public class TransferService : ITransferService
 
                 // 8. Commit SaveChanges and DB Transaction
                 await _context.SaveChangesAsync();
-                if (dbTransaction != null)
-                {
-                    await dbTransaction.CommitAsync();
-                }
-
                 // 9. Update Idempotency Record to Completed
                 var response = new CreatePaymentResponse(
                     pReqId,
@@ -277,13 +307,25 @@ public class TransferService : ITransferService
                     await _idempotencyRepository.UpdateAsync(record);
                 }
 
+                if (dbTransaction != null) await dbTransaction.CommitAsync();
+
                 return response;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 if (dbTransaction != null)
                 {
                     await dbTransaction.RollbackAsync();
+                }
+                if (ex is InvalidOperationException)
+                {
+                    _context.ChangeTracker.Clear();
+                    var failed = await _idempotencyRepository.GetAsync(tenantId, idempotencyKey);
+                    if (failed != null && failed.Status == "Processing")
+                    {
+                        failed.Status = "Failed";
+                        await _idempotencyRepository.UpdateAsync(failed);
+                    }
                 }
                 throw;
             }
@@ -296,6 +338,7 @@ public class TransferService : ITransferService
                         sem.Release();
                     }
                 }
+                if (dbTransaction != null) await dbTransaction.DisposeAsync();
             }
         });
     }
@@ -324,11 +367,25 @@ public class TransferService : ITransferService
         return await executionStrategy.ExecuteAsync(async () =>
         {
             var isRelational = _context.Database.IsRelational();
-            var dbTransaction = isRelational ? await _context.Database.BeginTransactionAsync() : null;
+            await using var dbTransaction = isRelational ? await _context.Database.BeginTransactionAsync() : null;
             try
             {
+                if (isRelational)
+                    await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtext({tenantId.ToString()}))");
+                await _context.Entry(originalTx).ReloadAsync();
+                if (originalTx.TransactionType != TransactionTypes.Transfer || originalTx.Status is not (TransactionStatuses.Posted or TransactionStatuses.Settled))
+                    throw new InvalidOperationException("Only completed transfers can be reversed once.");
+                if (await _context.SettlementEntries.AnyAsync(e => e.TenantId == tenantId && e.TransactionId == transactionId && e.SettlementBatch!.Status == "Open"))
+                    throw new InvalidOperationException("Finalize the open settlement batch before reversing this transfer.");
                 var accountIds = originalTx.LedgerEntries.Select(l => l.AccountId).Distinct().ToArray();
                 var accounts = await _accountRepository.GetAccountsForUpdateAsync(tenantId, accountIds);
+
+                foreach (var entry in originalTx.LedgerEntries)
+                {
+                    var account = accounts.First(a => a.Id == entry.AccountId);
+                    if (account.Status != AccountStatuses.Active || (entry.DebitAmount > 0 && account.CachedBalance < entry.DebitAmount))
+                        throw new InvalidOperationException("Reversal requires active accounts and sufficient funds in the receiving account.");
+                }
 
                 // Create Reversal Transaction
                 var reversalTxId = Guid.NewGuid();
@@ -459,7 +516,7 @@ public class TransferService : ITransferService
 
     private static string ComputePayloadHash(CreateTransferRequest request)
     {
-        var raw = $"{request.SourceAccountId}:{request.DestinationAccountId}:{request.Amount:F4}:{request.Currency}";
+        var raw = JsonSerializer.Serialize(new { request.SourceAccountId, request.DestinationAccountId, request.Amount, Currency = request.Currency.Trim().ToUpperInvariant(), request.Purpose });
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(bytes);
     }

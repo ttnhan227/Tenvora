@@ -76,8 +76,11 @@ public record SettlementBatchResponse(
     string Currency,
     string Status,
     DateTime CreatedAt,
-    DateTime? SettledAt
+    DateTime? SettledAt,
+    List<SettlementTransactionResponse>? Transactions = null
 );
+
+public record SettlementTransactionResponse(Guid Id, string ReferenceNumber, decimal Amount, string Status);
 
 public record TriggerReconciliationRequest(
     string? Notes
@@ -117,6 +120,11 @@ public record RiskEvaluationResponse(
     string Decision,
     List<string> RuleHits,
     DateTime CreatedAt
+);
+
+public record SubmitRiskDecisionRequest(
+    [Required] string Decision,
+    string? Notes
 );
 
 public record AdminCreateUserRequest(

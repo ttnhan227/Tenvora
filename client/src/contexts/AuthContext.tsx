@@ -1,12 +1,12 @@
-﻿import React, { createContext, useContext, useEffect, useState } from "react";
-import { UserProfile, authService, AuthResponse } from "@/services/authService";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { UserProfile, authService, AuthResponse, ApiResponse } from "@/services/authService";
 
 interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<boolean>;
+  register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<ApiResponse<AuthResponse>>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: result.data.email,
           role: result.data.role,
           isActive: true,
-          preferredCurrency: "USD",
+          preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
         };
         setUser(profile);
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (companyName: string, email: string, password: string, baseCurrency: string = "USD"): Promise<boolean> => {
+  const register = async (companyName: string, email: string, password: string, baseCurrency: string = "USD"): Promise<ApiResponse<AuthResponse>> => {
     try {
       const result = await authService.register({ companyName, email, password, baseCurrency });
       if (result.success && result.data) {
@@ -82,17 +82,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: result.data.email,
           role: result.data.role,
           isActive: true,
-          preferredCurrency: baseCurrency,
+          preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
-        return true;
+        return result;
       }
-      return false;
+      return result;
     } catch (error) {
       console.error("Register error:", error);
-      return false;
+      return {
+        success: false,
+        message: "Unable to create your account right now.",
+        errors: ["Unable to create your account right now. Please try again."],
+      };
     }
   };
 
@@ -128,4 +132,8 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+export const useOptionalAuth = () => {
+  return useContext(AuthContext);
 };

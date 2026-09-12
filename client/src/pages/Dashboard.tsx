@@ -1,484 +1,413 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Plus,
+  Calendar,
+  Percent,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  ArrowRightLeft,
+  DollarSign,
+} from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowRightLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  AlertTriangle,
-  Layers,
-  ShieldCheck,
-  ShieldAlert,
-  Wallet,
-  BookOpen,
-  Activity,
-  ChevronRight,
-  Newspaper,
-  RefreshCw,
-  ExternalLink,
-  Plus,
-  Server,
-  Filter,
-} from "lucide-react";
-import {
-  MoneyDisplay,
-  StatusBadge,
-  MonospaceId,
-  DataTable,
-  Column,
-} from "@/components/design-system";
-import { accountService, Account } from "@/services/accountService";
-import { paymentService, Transaction } from "@/services/paymentService";
-import { reconciliationService, ReconciliationRun } from "@/services/reconciliationService";
-import { settlementService, SettlementBatch } from "@/services/settlementService";
-import { intelligenceService, ExternalArticle, MarketExchangeRate } from "@/services/intelligenceService";
-import { riskService, RiskEvaluationItem } from "@/services/riskService";
+import { useAuth } from "@/contexts/AuthContext";
+import { taxService, type TaxSummary } from "@/services/taxService";
+import { invoiceService, type InvoiceSummary, type InvoiceStats } from "@/services/invoiceService";
+import { paymentService, type Transaction } from "@/services/paymentService";
+import { WorkspaceAiInsight } from "@/components/assistant/WorkspaceAiInsight";
+
+function formatCurrency(amount: number, currency: string = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
 export default function Dashboard() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [recentRuns, setRecentRuns] = useState<ReconciliationRun[]>([]);
-  const [batches, setBatches] = useState<SettlementBatch[]>([]);
-  const [articles, setArticles] = useState<ExternalArticle[]>([]);
-  const [marketRates, setMarketRates] = useState<MarketExchangeRate[]>([]);
-  const [riskEvaluations, setRiskEvaluations] = useState<RiskEvaluationItem[]>([]);
+  const { user } = useAuth();
+  const [taxSummary, setTaxSummary] = useState<TaxSummary | null>(null);
+  const [invoiceStats, setInvoiceStats] = useState<InvoiceStats | null>(null);
+  const [openInvoices, setOpenInvoices] = useState<InvoiceSummary[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    async function loadDashboardData() {
+      setLoading(true);
+      try {
+        const [taxesRes, statsRes, invoicesRes, txRes] = await Promise.all([
+          taxService.getTaxSummary(),
+          invoiceService.getInvoiceStats(),
+          invoiceService.getInvoices("Sent"),
+          paymentService.getTransactions(undefined, 5),
+        ]);
+
+        setTaxSummary(taxesRes);
+        setInvoiceStats(statsRes);
+        setOpenInvoices(invoicesRes.slice(0, 4));
+        if (txRes.success && txRes.data) {
+          setRecentTransactions(txRes.data);
+        }
+      } catch (err) {
+        setError("Unable to load your financial data. Refresh to retry.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadDashboardData();
   }, []);
 
-  async function loadData() {
-    setLoading(true);
-    const [accRes, txRes, reconRes, batchRes, intelRes, ratesRes, riskRes] = await Promise.all([
-      accountService.getAccounts(),
-      paymentService.getTransactions(undefined, 15),
-      reconciliationService.getRuns(),
-      settlementService.getBatches(),
-      intelligenceService.getFeed(undefined, undefined, 4),
-      intelligenceService.getMarketRates(),
-      riskService.getEvaluations(10),
-    ]);
-
-    if (accRes.success && accRes.data) setAccounts(accRes.data);
-    if (txRes.success && txRes.data) setTransactions(txRes.data);
-    if (reconRes.success && reconRes.data) setRecentRuns(reconRes.data);
-    if (batchRes.success && batchRes.data) setBatches(batchRes.data);
-    if (intelRes.success && intelRes.data) setArticles(intelRes.data.articles);
-    if (ratesRes.success && ratesRes.data) setMarketRates(ratesRes.data);
-    if (riskRes.success && riskRes.data) setRiskEvaluations(riskRes.data);
-    setLoading(false);
-  }
-
-  // Financial calculations
-  const assetAccounts = accounts.filter((a) => a.accountType === "Asset");
-  const availableLiquidity = assetAccounts.reduce((acc, a) => acc + a.cachedBalance, 0);
-
-  const pendingTransactions = transactions.filter((t) => t.status === "Pending");
-  const pendingAmount = pendingTransactions.reduce((acc, t) => acc + t.amount, 0);
-
-  const postedTransactions = transactions.filter((t) => t.status === "Posted" || t.status === "Settled");
-  const todayVolume = postedTransactions.reduce((acc, t) => acc + t.amount, 0);
-
-  const latestRecon = recentRuns[0];
-  const pendingBatches = batches.filter((b) => b.status === "Pending" || b.status === "Open");
-  const highRiskReviews = riskEvaluations.filter((r) => r.riskLevel === "High" || r.riskLevel === "Critical" || r.decision === "FlaggedForReview");
-  const failedCount = transactions.filter((t) => t.status === "Failed").length;
-
-  const transactionColumns: Column<Transaction>[] = [
-    {
-      key: "referenceNumber",
-      header: "Reference",
-      sortable: true,
-      render: (tx) => (
-        <MonospaceId id={tx.referenceNumber} to={`/transactions/${tx.id}`} label="Reference Number" />
-      ),
-    },
-    {
-      key: "transactionType",
-      header: "Type",
-      sortable: true,
-      render: (tx) => <span className="font-mono text-muted-foreground">{tx.transactionType}</span>,
-    },
-    {
-      key: "amount",
-      header: "Amount",
-      align: "right",
-      sortable: true,
-      render: (tx) => (
-        <MoneyDisplay amount={tx.amount} currency={tx.currency} size="xs" />
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      align: "center",
-      sortable: true,
-      render: (tx) => <StatusBadge status={tx.status} size="sm" />,
-    },
-    {
-      key: "createdAt",
-      header: "Timestamp",
-      align: "right",
-      sortable: true,
-      render: (tx) => (
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {new Date(tx.createdAt).toLocaleDateString()} {new Date(tx.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      align: "right",
-      render: (tx) => (
-        <Link
-          to={`/transactions/${tx.id}`}
-          className="text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline inline-flex items-center gap-0.5"
-        >
-          <span>View</span>
-          <ChevronRight className="h-3 w-3" />
-        </Link>
-      ),
-    },
-  ];
+  const availableSpend = taxSummary?.availableSpendingBalance ?? 0;
+  const taxVault = taxSummary?.taxVaultBalance ?? 0;
+  const incomingInvoices = invoiceStats?.totalOutstandingAmount ?? 0;
+  const openCount = invoiceStats?.openInvoicesCount ?? openInvoices.length;
+  const taxRate = taxSummary?.defaultTaxRatePercent ?? 25;
+  const reportingCurrency = taxSummary?.currency ?? user?.preferredCurrency ?? "USD";
+  const invoiceReportingCurrency = invoiceStats?.currency ?? reportingCurrency;
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+      <div className="space-y-8 pb-12">
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+
+        {/* Warm Greeting & Quick Action Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground font-sans">
-              Operations Overview
+            <div className="flex items-center gap-2 mb-1">
+              <span className="rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Freelancer cash-flow workspace
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Welcome back, {user?.companyName?.split(" ")[0] || "there"} 👋
             </h1>
-            <p className="text-xs text-muted-foreground">
-              Real-time payment rails, continuous ledger reconciliation, and treasury liquidity.
+            <p className="text-sm text-muted-foreground mt-0.5">
+              See what has been paid, what is still due, what to reserve, and what may be safe to spend.
             </p>
           </div>
-
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadData}
-              disabled={loading}
-              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground bg-card border-border"
-            >
-              <RefreshCw className={`h-3 w-3 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+            <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs font-semibold rounded-xl">
+              <Link to="/invoices?create=1">
+                <Plus size={16} className="mr-1.5" /> Create Invoice
+              </Link>
             </Button>
-            <Link to="/transfers">
-              <Button size="sm" className="h-7 px-3 bg-[#635BFF] hover:bg-[#533AFD] text-white text-xs font-semibold rounded-md shadow-xs">
-                <Plus className="h-3 w-3 mr-1" />
-                Initiate Transfer
-              </Button>
-            </Link>
           </div>
         </div>
 
-        {/* 1. Stripe-Style Financial KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          <div className="p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#4F5B76] dark:text-[#94A3B8] font-mono">
-              Available Liquidity
-            </div>
-            <div className="mt-1 text-xl font-bold font-mono text-foreground tracking-tight">
-              <MoneyDisplay amount={availableLiquidity} currency="USD" size="lg" />
-            </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              {assetAccounts.length} operational treasury accounts
-            </div>
-          </div>
-
-          <div className="p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#4F5B76] dark:text-[#94A3B8] font-mono">
-              Pending Clearings
-            </div>
-            <div className="mt-1 text-xl font-bold font-mono text-foreground tracking-tight">
-              <MoneyDisplay amount={pendingAmount} currency="USD" size="lg" />
-            </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              {pendingTransactions.length} payments awaiting batch commit
-            </div>
-          </div>
-
-          <div className="p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#4F5B76] dark:text-[#94A3B8] font-mono">
-              Today's Processed Volume
-            </div>
-            <div className="mt-1 text-xl font-bold font-mono text-foreground tracking-tight">
-              <MoneyDisplay amount={todayVolume} currency="USD" size="lg" />
-            </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              {postedTransactions.length} balanced journal transfers
-            </div>
-          </div>
-
-          <div className="p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)]">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#4F5B76] dark:text-[#94A3B8] font-mono">
-              Settlement Status
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-xl font-bold font-mono text-foreground">
-                {batches.length} Batches
-              </span>
-              <StatusBadge status={pendingBatches.length > 0 ? "Pending" : "Settled"} size="sm" />
-            </div>
-            <div className="mt-1 text-[11px] text-muted-foreground">
-              {pendingBatches.length} batches queued for clearing
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Operational Health & Actionable Alerts */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Operational State Indicators */}
-          <div className="lg:col-span-8 p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)] space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-border/70">
-              <span className="text-xs font-bold font-mono uppercase tracking-wider text-foreground flex items-center gap-2">
-                <Activity className="h-3.5 w-3.5 text-[#635BFF]" />
-                Operational Rails Status
-              </span>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                Continuous Invariant Verification
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-2.5 rounded bg-muted/30 border border-border/60 space-y-1">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase">Payment Engine</div>
-                <div className="flex items-center gap-1.5 font-bold font-mono text-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  <span>Healthy</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">Ascending Locks</div>
-              </div>
-
-              <div className="p-2.5 rounded bg-muted/30 border border-border/60 space-y-1">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase">Reconciliation</div>
-                <div className="flex items-center gap-1.5 font-bold font-mono text-foreground">
-                  <span className={`h-1.5 w-1.5 rounded-full ${latestRecon?.discrepancyCount ? "bg-amber-500" : "bg-emerald-500"}`} />
-                  <span>{latestRecon ? `${latestRecon.status}` : "Verified"}</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {latestRecon?.discrepancyCount ?? 0} discrepancies
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded bg-muted/30 border border-border/60 space-y-1">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase">Risk Review Queue</div>
-                <div className="flex items-center gap-1.5 font-bold font-mono text-foreground">
-                  <span className={`h-1.5 w-1.5 rounded-full ${highRiskReviews.length > 0 ? "bg-amber-500" : "bg-emerald-500"}`} />
-                  <span>{highRiskReviews.length} Flagged</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">Deterministic Rules</div>
-              </div>
-
-              <div className="p-2.5 rounded bg-muted/30 border border-border/60 space-y-1">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase">Failed Transfers</div>
-                <div className="flex items-center gap-1.5 font-bold font-mono text-foreground">
-                  <span className={`h-1.5 w-1.5 rounded-full ${failedCount > 0 ? "bg-red-500" : "bg-emerald-500"}`} />
-                  <span>{failedCount} Incurred</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground">Atomic rollback</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actionable Alerts Panel */}
-          <div className="lg:col-span-4 p-4 rounded-md border border-border bg-card shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)] flex flex-col justify-between space-y-2.5">
+        {/* Core decision: estimated safe to spend from confirmed records */}
+        <div className="rounded-3xl bg-brand-ink text-white p-6 sm:p-8 shadow-xl shadow-slate-950/20 relative overflow-hidden ring-1 ring-white/10">
+          <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+          <div className="relative z-10 grid gap-7 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
             <div>
-              <div className="flex items-center justify-between pb-2 border-b border-border/70">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-foreground">
-                  Action Required
-                </span>
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  {highRiskReviews.length + (latestRecon?.discrepancyCount ? 1 : 0)} items
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-mono uppercase tracking-widest text-slate-400">Estimated safe to spend</span>
+                <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-slate-200">
+                  Based on confirmed records
                 </span>
               </div>
-
-              <div className="space-y-2 mt-2">
-                {highRiskReviews.length > 0 && (
-                  <Link
-                    to="/risk"
-                    className="p-2.5 rounded-md bg-[#FFF8EB] border border-[#FFE1A8] dark:bg-[#78350F]/20 dark:border-[#D97706]/30 flex items-center justify-between hover:opacity-90 transition-opacity"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="h-3.5 w-3.5 text-[#D97706] shrink-0" />
-                      <div className="text-xs">
-                        <p className="font-semibold text-[#8F5B00] dark:text-[#FCD34D]">
-                          {highRiskReviews.length} transaction{highRiskReviews.length > 1 ? "s" : ""} flagged for review
-                        </p>
-                        <p className="text-[10px] text-[#B45309] dark:text-[#FDE68A]">
-                          Threshold or balance depletion rules triggered
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3 w-3 text-[#D97706] shrink-0" />
-                  </Link>
-                )}
-
-                {latestRecon?.discrepancyCount && latestRecon.discrepancyCount > 0 ? (
-                  <Link
-                    to="/reconciliation"
-                    className="p-2.5 rounded-md bg-[#FEF2F2] border border-[#FECACA] dark:bg-[#7F1D1D]/20 dark:border-[#DC2626]/30 flex items-center justify-between hover:opacity-90 transition-opacity"
-                  >
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-[#DF1B41] shrink-0" />
-                      <div className="text-xs">
-                        <p className="font-semibold text-[#991B1B] dark:text-[#FCA5A5]">
-                          {latestRecon.discrepancyCount} reconciliation discrepancies
-                        </p>
-                        <p className="text-[10px] text-[#B91C1C] dark:text-[#FECACA]">
-                          Review balance variances in run #{latestRecon.runNumber}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-3 w-3 text-[#DF1B41] shrink-0" />
-                  </Link>
-                ) : (
-                  <div className="p-2.5 rounded-md bg-[#EBFBF3] border border-[#A3E6CD] dark:bg-[#064E3B]/20 dark:border-[#059669]/30 text-xs text-[#0E6251] dark:text-[#6EE7B7] flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#00D924] shrink-0" />
-                    <span className="font-medium">All general ledger balances perfectly reconciled.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px]">
-              <Link to="/reconciliation" className="text-[#635BFF] hover:underline font-mono font-semibold">
-                Audit Checkpoints →
-              </Link>
-              <Link to="/settlements" className="text-[#635BFF] hover:underline font-mono font-semibold">
-                Batch Queues →
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Primary Data Table: Recent Transactions Journal */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-foreground">Recent Transactions</h2>
-              <p className="text-[11px] text-muted-foreground">
-                Direct double-entry ledger postings with immutable audit records
+              <p className="mt-3 text-4xl sm:text-5xl font-black tracking-tight font-mono text-white">
+                {loading ? "..." : formatCurrency(availableSpend, reportingCurrency)}
+              </p>
+              <p className="mt-3 max-w-xl text-xs leading-relaxed text-slate-300">
+                Confirmed income after your estimated {taxRate}% tax reserve. Tenvora does not read your bank balance or move funds.
               </p>
             </div>
-            <Link
-              to="/transactions"
-              className="text-xs font-semibold text-[#635BFF] hover:underline inline-flex items-center gap-1 font-mono"
-            >
-              <span>View all transactions</span>
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
 
-          <DataTable
-            data={transactions.slice(0, 8)}
-            columns={transactionColumns}
-            keyExtractor={(tx) => tx.id}
-            loading={loading}
-            pageSize={8}
-            emptyTitle="No transactions recorded"
-            emptyDescription="There are no payment operations in this organization partition."
-            emptyAction={
-              <Link to="/transfers">
-                <Button size="sm" className="h-7 text-xs bg-foreground text-background">
-                  Initiate First Transfer
-                </Button>
-              </Link>
-            }
-          />
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current calculation</p>
+              <dl className="mt-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-slate-300">Confirmed income this year</dt>
+                  <dd className="font-mono font-bold text-white">{loading ? "..." : formatCurrency(taxSummary?.ytdGrossIncome ?? 0, reportingCurrency)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-slate-300">Unpaid invoices excluded</dt>
+                  <dd className="font-mono font-bold text-white">{loading ? "..." : formatCurrency(incomingInvoices, invoiceReportingCurrency)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-2">
+                  <dt className="font-semibold text-white">Tax planning rule</dt>
+                  <dd className="font-mono font-black text-amber-300">{taxRate}%</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
         </div>
 
-        {/* 4. Restrained Financial Intelligence & Reference Rates */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between pb-2 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Newspaper className="h-3.5 w-3.5 text-muted-foreground" />
-              <h2 className="text-xs font-bold font-mono uppercase tracking-wider text-foreground">
-                Financial Intelligence &amp; Market Context
-              </h2>
+        {/* Milestone Banner (Positive Reinforcement) */}
+        {taxVault > 0 && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                🎯
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">
+                  You have recorded {formatCurrency(taxVault, reportingCurrency)} in your estimated tax reserve.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  This reflects confirmed allocations recorded in your workspace. Review the estimate before filing or moving real funds.
+                </p>
+              </div>
             </div>
-            <Link
-              to="/intelligence"
-              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline font-mono inline-flex items-center gap-1"
-            >
-              <span>All Bulletins</span>
-              <ChevronRight className="h-3 w-3" />
-            </Link>
+          </div>
+        )}
+
+        {/* Secondary Overview Cards: Tax Vault & Awaiting Payment */}
+        <div className="grid gap-5 sm:grid-cols-2">
+          {/* Card 1: Protected Tax Vault */}
+          <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs relative overflow-hidden transition-all hover:shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <ShieldCheck size={16} className="text-amber-600 dark:text-amber-400" /> Estimated tax reserve
+              </span>
+              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-400">
+                {taxSummary?.autoTaxSetAsideEnabled ? `${taxRate}% rule on` : "Rule off"}
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
+                {loading ? "..." : formatCurrency(taxVault, reportingCurrency)}
+              </p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                A planning category in Tenvora—not a separate bank account
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-border/60 flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Verify deadlines for your location</span>
+              <Link to="/taxes" className="font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1">
+                Review estimate <ArrowRight size={13} />
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Curated Regulatory News List */}
-            <div className="lg:col-span-8 divide-y divide-border/60 border border-border bg-card rounded">
-              {articles.slice(0, 3).map((art) => (
-                <div key={art.id} className="p-3 hover:bg-muted/20 transition-colors flex flex-col justify-between gap-1.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-muted text-foreground border border-border">
-                          {art.source}
-                        </span>
-                        <span className="text-[10px] font-mono text-muted-foreground">
-                          {new Date(art.publishedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <a
-                        href={art.canonicalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-semibold text-foreground hover:underline block leading-snug truncate"
-                      >
-                        {art.title}
-                      </a>
-                    </div>
-                    <a
-                      href={art.canonicalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-foreground shrink-0 p-1"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-1">
-                    {art.summary}
+          {/* Card 2: Money on the Way (Open Invoices) */}
+          <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs relative overflow-hidden transition-all hover:shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Clock size={16} className="text-amber-500" /> Awaiting Payment
+              </span>
+              <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                {openCount} unpaid
+              </span>
+            </div>
+            <div className="mt-4">
+              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
+                {loading ? "..." : formatCurrency(incomingInvoices, invoiceReportingCurrency)}
+              </p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Expected from sent client invoices due this month
+              </p>
+            </div>
+            <div className="mt-5 border-t border-border/60 pt-3.5 text-xs">
+              <span className="text-muted-foreground">
+                {taxSummary?.autoTaxSetAsideEnabled ? `${taxRate}% reserve rule enabled` : "Reserve rule is currently off"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid: Invoices & Activity vs Tax Schedule & AI Copilot */}
+        <div className="grid gap-6 lg:grid-cols-[1.65fr_1fr]">
+          {/* Left column: upcoming invoices and recent income */}
+          <div className="space-y-6">
+            {/* Open Invoices Waiting for Client Payment */}
+            <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
+              <div className="flex items-center justify-between pb-4 border-b border-border/60">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">Open Client Invoices</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Invoices awaiting client payment. The reserve rule is applied only when it is enabled.
                   </p>
                 </div>
-              ))}
+              </div>
+
+              <div className="divide-y divide-border/60 mt-1">
+                {openInvoices.length > 0 ? (
+                  openInvoices.map((inv) => (
+                    <div key={inv.id} className="py-4 flex items-center justify-between gap-4 hover:bg-muted/10 rounded-xl px-2 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs font-mono shrink-0">
+                          {inv.clientName?.slice(0, 2).toUpperCase() || "CL"}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-foreground">{inv.clientName}</span>
+                            <span className="text-xs font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">{inv.invoiceNumber}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Due {new Date(inv.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {inv.paymentTerms || "Net 14"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground font-mono">
+                          {formatCurrency(inv.totalAmount, inv.currency)}
+                        </p>
+                        <Link
+                          to={`/invoices?pay=${inv.id}`}
+                          className="text-xs font-medium text-primary hover:underline flex items-center justify-end gap-1 mt-0.5"
+                        >
+                          <CheckCircle2 size={12} /> Record Payment
+                        </Link>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center space-y-2">
+                    <p className="text-sm font-semibold text-foreground">All client invoices are paid up! 🎉</p>
+                    <p className="text-xs text-muted-foreground">No invoices awaiting payment right now. Send your next invoice when milestone work is ready.</p>
+                    <p className="text-[11px] font-medium text-primary">Use Create Invoice at the top when the next milestone is ready.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* ECB Reference Rates Snapshot */}
-            <div className="lg:col-span-4 p-3 rounded border border-border bg-card space-y-2">
-              <div className="flex items-center justify-between text-xs pb-1.5 border-b border-border">
-                <span className="font-mono text-[10px] font-bold uppercase text-muted-foreground">
-                  ECB Reference FX Rates
-                </span>
-                <span className="text-[9px] font-mono text-muted-foreground">Daily 16:00 CET</span>
-              </div>
-              <div className="space-y-1">
-                {marketRates.slice(0, 4).map((rate) => (
-                  <div
-                    key={rate.targetCurrency}
-                    className="flex items-center justify-between px-2 py-1 rounded bg-muted/20 border border-border/50 text-xs font-mono"
-                  >
-                    <span className="text-muted-foreground">
-                      {rate.baseCurrency}/{rate.targetCurrency}
-                    </span>
-                    <span className="font-bold text-foreground">{rate.rate.toFixed(4)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="pt-1 text-right">
-                <Link to="/intelligence" className="text-[10px] font-mono text-muted-foreground hover:text-foreground hover:underline">
-                  Full Market Context →
+            {/* Recent income activity */}
+            <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
+              <div className="flex items-center justify-between pb-4 border-b border-border/60">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">Recent Income Activity</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Confirmed client income and tax-reserve planning
+                  </p>
+                </div>
+                <Link to="/payments" className="inline-flex min-h-8 items-center text-xs font-semibold text-primary hover:underline">
+                  View All →
                 </Link>
               </div>
+
+              <div className="divide-y divide-border/60 mt-1">
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((tx) => {
+                    const isCredit = tx.description?.toLowerCase().includes("client") || tx.referenceNumber.startsWith("PAY-");
+                    const isTaxSplit = tx.description?.toLowerCase().includes("tax") || tx.referenceNumber.startsWith("TAX-");
+
+                    return (
+                      <div key={tx.id} className="py-3.5 flex items-center justify-between gap-4 hover:bg-muted/10 rounded-xl px-2 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isTaxSplit
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                : isCredit
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {isTaxSplit ? (
+                              <Percent size={17} />
+                            ) : isCredit ? (
+                              <DollarSign size={17} />
+                            ) : (
+                              <ArrowRightLeft size={17} />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {tx.description || tx.referenceNumber}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(tx.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}{" "}
+                              · {tx.status}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`text-sm font-bold font-mono ${
+                              isTaxSplit
+                                ? "text-amber-700 dark:text-amber-400"
+                                : isCredit
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-foreground"
+                            }`}
+                          >
+                            {isCredit ? "+" : ""}{formatCurrency(tx.amount, tx.currency)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="py-6 text-center text-xs text-muted-foreground">
+                    Transactions and client payments will appear here.
+                  </p>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Right Column: Taxes Box & AI Financial Copilot */}
+          <div className="space-y-6">
+            {/* Quarterly Tax Snapshot */}
+            <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Calendar size={14} className="text-amber-600 dark:text-amber-400" /> Estimated Taxes
+                </span>
+                <span className="text-xs font-semibold text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  On Track
+                </span>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground">Estimated tax planning checkpoint</p>
+                <p className="text-lg font-bold text-foreground mt-0.5">
+                  {taxSummary?.nextQuarterDeadline
+                    ? new Date(taxSummary.nextQuarterDeadline).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "Not configured"}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-muted/40 p-4 space-y-2 border border-border/60">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Quarter Target Estimate</span>
+                  <span className="font-semibold text-foreground font-mono">
+                    {loading ? "..." : taxSummary ? formatCurrency(taxSummary.estimatedCurrentQuarterLiability, reportingCurrency) : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Recorded tax reserve</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400 font-mono">
+                    {formatCurrency(taxVault, reportingCurrency)}
+                  </span>
+                </div>
+                <div className="w-full bg-border/60 rounded-full h-2 mt-2">
+                  <div
+                    className="bg-amber-500 h-2 rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round((taxVault / Math.max(1, taxSummary?.estimatedCurrentQuarterLiability ?? 0)) * 100)
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            <WorkspaceAiInsight
+              title="AI workspace summary"
+              prompt="Give me a concise overview of my most important financial priority today and explain why using my current workspace records."
+              className="rounded-3xl"
+            />
           </div>
         </div>
       </div>

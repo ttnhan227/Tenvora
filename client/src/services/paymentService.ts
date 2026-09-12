@@ -15,6 +15,8 @@ export interface Transaction {
   settlementBatchId?: string;
   createdAt: string;
   postedAt?: string;
+  settledAt?: string;
+  ledgerEntries?: import("./ledgerService").LedgerEntry[];
   ledgerEntriesCount: number;
 }
 
@@ -24,6 +26,7 @@ export interface CreateTransferRequest {
   amount: number;
   currency: string;
   description?: string;
+  purpose?: string;
 }
 
 export interface CreatePaymentResponse {
@@ -40,7 +43,7 @@ export interface CreatePaymentResponse {
 export const paymentService = {
   executeTransfer: async (idempotencyKey: string, request: CreateTransferRequest): Promise<ApiResponse<CreatePaymentResponse>> => {
     try {
-      const response = await apiClient.post("/payments/transfers", request, {
+      const response = await apiClient.post("/payments/transfers", { ...request, purpose: request.purpose ?? request.description }, {
         headers: {
           "Idempotency-Key": idempotencyKey,
         },

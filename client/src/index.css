@@ -14,6 +14,8 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   html.dark {
@@ -25,10 +27,16 @@
     font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     letter-spacing: -0.011em;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image:
+      radial-gradient(circle at 10% -10%, hsl(var(--primary) / 0.08), transparent 32rem),
+      radial-gradient(circle at 92% 8%, hsl(var(--accent-signal) / 0.055), transparent 28rem);
+    background-attachment: fixed;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight text-foreground;
+    @apply font-semibold tracking-tight;
   }
 
   /* Universal tabular figures for finance precision */
