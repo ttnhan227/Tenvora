@@ -62,10 +62,20 @@ public class InvoicesController : ControllerBase
 
     [HttpPost("{id:guid}/pay")]
     [Authorize(Roles = "TenantAdmin,OperationsManager")]
-    public async Task<IActionResult> PayInvoice(Guid id, [FromBody] PayInvoiceRequest request)
+    public async Task<IActionResult> PayInvoice(Guid id, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, [FromBody] PayInvoiceRequest request)
     {
+        if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Length > 100)
+            return BadRequest(ApiResult.Fail("The 'Idempotency-Key' header is required."));
         var tenantId = User.GetTenantId();
-        var result = await _invoiceService.PayInvoiceAsync(tenantId, id, request);
+        var result = await _invoiceService.PayInvoiceAsync(tenantId, id, idempotencyKey.Trim(), request);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> CancelInvoice(Guid id, [FromBody] CancelInvoiceRequest? request)
+    {
+        var result = await _invoiceService.CancelInvoiceAsync(User.GetTenantId(), id, request ?? new(null));
         return result.ToActionResult();
     }
 

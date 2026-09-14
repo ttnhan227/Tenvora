@@ -62,4 +62,7 @@ public class TokenService
             CreatedAt = DateTime.UtcNow
         };
     }
+
+    public static string HashRefreshToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Threading.RateLimiting;
+using System.Security.Claims;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 using Tenvora.Api.Data.Interceptors;
@@ -63,7 +64,7 @@ builder.Services.AddRateLimiter(options =>
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 1000,
+                PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true
@@ -71,10 +72,12 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("payments-rate-limit", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 2000,
+                PermitLimit = 120,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true
@@ -168,7 +171,9 @@ builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
 builder.Services.AddScoped<IRiskService, RiskService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<ITaxService, TaxService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
@@ -220,7 +225,7 @@ var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -268,9 +273,8 @@ if (Directory.Exists(webRootPath))
 }
 
 app.UseCors("ClientApp");
-app.UseRateLimiter();
-
 app.UseAuthentication();
+app.UseRateLimiter();
 
 // SECURITY: Set PostgreSQL session variable 'app.current_tenant_id' after authentication
 // for PostgreSQL Row-Level Security (RLS) enforcement at the database layer.
@@ -283,8 +287,9 @@ app.Use(async (context, next) =>
         var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (Guid.TryParse(userIdClaim, out var userId))
         {
-            await using var scope = app.Services.CreateAsyncScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Reuse the request-scoped context whose connection was pinned and
+            // configured by TenantContextMiddleware; a new scope would bypass RLS.
+            var db = context.RequestServices.GetRequiredService<AppDbContext>();
             var tenantClaim = context.User.FindFirst("tenantId")?.Value;
             var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
             var isActive = Guid.TryParse(tenantClaim, out var tenantId) && await db.Users.AnyAsync(u => u.Id == userId && u.TenantId == tenantId && u.Role == roleClaim && u.IsActive);

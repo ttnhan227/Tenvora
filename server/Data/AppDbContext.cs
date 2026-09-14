@@ -17,8 +17,11 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Project> Projects => Set<Project>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<InvoicePayment> InvoicePayments => Set<InvoicePayment>();
+    public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<PaymentRequest> PaymentRequests => Set<PaymentRequest>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
@@ -59,10 +62,25 @@ public class AppDbContext : DbContext
                 .HasForeignKey(c => c.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            entity.HasMany(e => e.Projects)
+                .WithOne()
+                .HasForeignKey(p => p.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             entity.HasMany(e => e.Invoices)
                 .WithOne()
                 .HasForeignKey(i => i.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.InvoicePayments)
+                .WithOne()
+                .HasForeignKey(p => p.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Expenses)
+                .WithOne()
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasMany(e => e.Accounts)
                 .WithOne()
@@ -185,6 +203,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Amount).HasPrecision(18, 4).IsRequired();
             entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.Property(e => e.RelatedEntityType).HasMaxLength(30);
 
             entity.HasOne(e => e.PaymentRequest)
                 .WithMany(p => p.Transactions)
@@ -204,6 +224,8 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.ReferenceNumber }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.OriginalTransactionId });
+            entity.HasIndex(e => new { e.TenantId, e.RelatedEntityType, e.RelatedEntityId });
+            entity.ToTable(t => t.HasCheckConstraint("CK_Transactions_Amount_Positive", "\"Amount\" > 0"));
         });
 
         // LedgerEntry Configuration (Immutable Double-Entry lines)
@@ -224,6 +246,7 @@ public class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.TenantId, e.TransactionId });
             entity.HasIndex(e => new { e.TenantId, e.AccountId, e.PostedAt });
+            entity.ToTable(t => t.HasCheckConstraint("CK_LedgerEntries_OneSide", "(\"DebitAmount\" > 0 AND \"CreditAmount\" = 0) OR (\"CreditAmount\" > 0 AND \"DebitAmount\" = 0)"));
         });
 
         // IdempotencyRecord Configuration
@@ -365,6 +388,42 @@ public class AppDbContext : DbContext
                 .WithOne(i => i.Client)
                 .HasForeignKey(i => i.ClientId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Projects)
+                .WithOne(p => p.Client)
+                .HasForeignKey(p => p.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Expenses)
+                .WithOne(x => x.Client)
+                .HasForeignKey(x => x.ClientId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Project>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue(ProjectStatuses.Active).IsRequired();
+            entity.Property(e => e.BudgetAmount).HasPrecision(18, 4);
+            entity.Property(e => e.Currency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.ClientId });
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.Name });
+            entity.HasMany(e => e.Invoices)
+                .WithOne(i => i.Project)
+                .HasForeignKey(i => i.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasMany(e => e.Expenses)
+                .WithOne(x => x.Project)
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Projects_Budget_NonNegative", "\"BudgetAmount\" IS NULL OR \"BudgetAmount\" >= 0");
+                t.HasCheckConstraint("CK_Projects_Status", "\"Status\" IN ('Planned','Active','Completed','Archived')");
+            });
         });
 
         // Invoice Configuration
@@ -401,6 +460,17 @@ public class AppDbContext : DbContext
                 .WithOne(item => item.Invoice!)
                 .HasForeignKey(item => item.InvoiceId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(e => e.Payments)
+                .WithOne(p => p.Invoice!)
+                .HasForeignKey(p => p.InvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Invoices_Amounts", "\"Subtotal\" >= 0 AND \"TaxAmount\" >= 0 AND (\"TotalAmount\" > 0 OR (\"Status\" = 'Cancelled' AND \"TotalAmount\" = 0)) AND \"AmountPaid\" >= 0 AND \"AmountPaid\" <= \"TotalAmount\"");
+                t.HasCheckConstraint("CK_Invoices_Status", "\"Status\" IN ('Draft','Sent','Viewed','PartiallyPaid','Paid','Overdue','Cancelled')");
+                t.HasCheckConstraint("CK_Invoices_Dates", "\"DueDate\" >= \"IssueDate\"");
+            });
         });
 
         // InvoiceItem Configuration
@@ -413,6 +483,49 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Amount).HasPrecision(18, 4).IsRequired();
 
             entity.HasIndex(e => e.InvoiceId);
+        });
+
+        modelBuilder.Entity<InvoicePayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(18, 4).IsRequired();
+            entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.Reference).HasMaxLength(200);
+            entity.HasOne(e => e.Transaction)
+                .WithMany()
+                .HasForeignKey(e => e.TransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.InvoiceId, e.PaidAt });
+            entity.ToTable(t => t.HasCheckConstraint("CK_InvoicePayments_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Merchant).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Category).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Reference).HasMaxLength(200);
+            entity.Property(e => e.Amount).HasPrecision(18, 4).IsRequired();
+            entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue(ExpenseStatuses.Posted).IsRequired();
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Transaction).WithMany().HasForeignKey(e => e.TransactionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ExpenseDate });
+            entity.HasIndex(e => new { e.TenantId, e.Category });
+            entity.HasIndex(e => new { e.TenantId, e.ProjectId });
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Expenses_Amount_Positive", "\"Amount\" > 0");
+                t.HasCheckConstraint("CK_Expenses_Status", "\"Status\" IN ('Posted','Void')");
+                t.HasCheckConstraint("CK_Expenses_Category", "\"Category\" IN ('Software','Equipment','Workspace','Transportation','Marketing','Professional Services','Education','Other')");
+            });
         });
     }
 }

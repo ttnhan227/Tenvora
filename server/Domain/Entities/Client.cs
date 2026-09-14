@@ -41,4 +41,6 @@ public class Client
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+    public ICollection<Project> Projects { get; set; } = new List<Project>();
+    public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
 }

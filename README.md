@@ -1,9 +1,9 @@
 # Tenvora — freelancer finance workspace
 
-Tenvora is a freelancer cash-flow workspace. It connects invoices to confirmed
-income, records a configurable tax-reserve estimate, and calculates an
-estimated safe-to-spend balance from workspace records. Tenvora AI adds concise,
-context-aware explanations using the signed-in user's current data. It has a
+Tenvora is a freelancer cash-flow workspace. It connects client projects,
+invoices, payment history, expenses, and cash-flow reports in one auditable
+record. Optional tax-reserve planning and contextual explanations use the
+signed-in user's current data. It has a
 React/Vite frontend, an ASP.NET Core API, and PostgreSQL persistence.
 
 > **Current scope:** Tenvora is not a bank, money transmitter, tax adviser,
@@ -13,22 +13,26 @@ React/Vite frontend, an ASP.NET Core API, and PostgreSQL persistence.
 ## Core workflow
 
 1. Add a client and create an invoice.
-2. Export a CSV statement from a bank or payment platform.
-3. Import it in **Income**. The browser parses the file locally and suggests
+2. Optionally connect the engagement to a project and record business expenses.
+3. Export a CSV statement from a bank or payment platform.
+4. Import it in **Income**. The browser parses the file locally and suggests
    matches from amount, currency, invoice reference, and client name.
-4. Confirm a recognized deposit. Tenvora records the payment and balanced
+5. Confirm a recognized deposit. Tenvora records the payment and balanced
    ledger entries; the raw CSV is not uploaded or stored.
-5. When enabled, the saved reserve percentage is recorded as an internal tax
-   planning allocation. The remaining operating record powers the estimated
-   safe-to-spend view.
+6. Use the dashboard and reports to review posted income, spending, open
+   invoices, and net cash flow in the workspace base currency.
 
 ## Implemented capabilities
 
 - Registration, login, access-token refresh, logout, and protected routes.
 - Tenant-scoped users with `TenantAdmin`, `OperationsManager`,
   `ComplianceOfficer`, and `ReadOnly` roles.
-- Client records and invoice creation, sending state, partial/full payment
-  recording, and invoice statistics.
+- Clients and projects with connected invoice and expense totals.
+- Invoice creation, lifecycle controls, partial/full append-only payment
+  history, idempotent payment recording, and invoice statistics.
+- Categorized expenses with idempotent creation and compensating voids.
+- A unified financial overview, server-filtered transaction history, and
+  date-range cash-flow reports.
 - Internal multi-currency asset accounts, account-to-account transfers,
   idempotency keys, reversals, and transaction history.
 - Double-entry journal records and cached-balance reconciliation.
@@ -165,13 +169,11 @@ Seed identities are controlled by `.env`:
 
 | Variable | Default email | Role |
 | --- | --- | --- |
-| `SEED_ADMIN_EMAIL` | `admin@tenvora.internal` | `TenantAdmin` |
-| `SEED_OPS_EMAIL` | `ops.manager@tenvora.internal` | `OperationsManager` |
-| `SEED_COMPLIANCE_EMAIL` | `compliance@tenvora.internal` | `ComplianceOfficer` |
+| `SEED_ADMIN_EMAIL` | `owner@tenvora.internal` | `TenantAdmin` |
 
-Passwords come only from the matching `SEED_*_PASSWORD` variables. Seeding is
-idempotent; changing a seed password does not rotate an already-created user's
-password.
+The balanced freelancer sample is created only when `SEED_DEMO_DATA=true`.
+Its password and tenant API key must be explicitly configured; changing a seed
+password does not rotate an already-created user's password.
 
 ## Deployment limitations
 
@@ -179,11 +181,9 @@ Before using Tenvora beyond a controlled demonstration, at minimum:
 
 - replace the superuser database connection with a restricted application role
   and prove RLS enforcement with cross-tenant database tests;
-- add database-level journal constraints/immutability controls, or document and
-  accept that invariants are currently enforced in the application layer;
+- add database role/trigger controls that make posted journals immutable even
+  to privileged application clients;
 - integrate support delivery and outbound email before presenting those flows as live;
-- upgrade React Router when a non-breaking remediation path is available, or
-  complete and test the required v7 migration;
 - configure TLS, secret management, backups, monitoring, and deployment-specific
   CORS origins;
 - run the container build and restart/volume workflow in the target environment.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { WorkspaceAiInsight } from "@/components/assistant/WorkspaceAiInsight";
@@ -10,6 +10,7 @@ import {
   CreateInvoiceItemRequest,
 } from "@/services/invoiceService";
 import { clientService, ClientSummary } from "@/services/clientService";
+import { projectService, type ProjectSummary } from "@/services/projectService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +56,7 @@ export const InvoicesList: React.FC = () => {
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [stats, setStats] = useState<InvoiceStats | null>(null);
   const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [taxRule, setTaxRule] = useState({ enabled: false, rate: 25 });
@@ -76,6 +78,7 @@ export const InvoicesList: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [createError, setCreateError] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [currency, setCurrency] = useState(user?.preferredCurrency || "USD");
   const [paymentTerms, setPaymentTerms] = useState("Net 14");
   const [notes, setNotes] = useState("Thank you for your business! Payment due within terms.");
@@ -88,32 +91,42 @@ export const InvoicesList: React.FC = () => {
   const [invoiceToPay, setInvoiceToPay] = useState<InvoiceSummary | null>(null);
   const [autoTaxSetAside, setAutoTaxSetAside] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentKey, setPaymentKey] = useState(crypto.randomUUID());
 
   // Invoice Detail / Receipt Modal state
   const [viewInvoice, setViewInvoice] = useState<InvoiceSummary | null>(null);
+  const [destructiveTarget, setDestructiveTarget] = useState<InvoiceSummary | null>(null);
+  const [destructivePending, setDestructivePending] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError("");
-      const [invList, invStats, clientList, taxSummary] = await Promise.all([
+      const [invList, invStats, clientList, projectList, taxSummary] = await Promise.all([
         invoiceService.getInvoices(),
         invoiceService.getInvoiceStats(),
         clientService.getClients(),
+        projectService.list(),
         taxService.getTaxSummary(),
       ]);
       setInvoices(invList);
       setStats(invStats);
       setClients(clientList);
+      setProjects(projectList);
       setTaxRule({ enabled: taxSummary.autoTaxSetAsideEnabled, rate: taxSummary.defaultTaxRatePercent });
       setAutoTaxSetAside(taxSummary.autoTaxSetAsideEnabled);
-      if (clientList.length > 0 && !selectedClientId) {
+      if (clientList.length > 0) {
         const firstClient = clientList[0];
-        setSelectedClientId(firstClient.id);
-        setCurrency(firstClient.currency || user?.preferredCurrency || "USD");
-        setPaymentTerms(firstClient.defaultPaymentTermsDays > 0
-          ? `Net ${firstClient.defaultPaymentTermsDays}`
-          : "Due on Receipt");
+        setSelectedClientId((current) => {
+          if (current) return current;
+          setCurrency(firstClient.currency || user?.preferredCurrency || "USD");
+          setPaymentTerms(firstClient.defaultPaymentTermsDays > 0
+            ? `Net ${firstClient.defaultPaymentTermsDays}`
+            : "Due on Receipt");
+          return firstClient.id;
+        });
       }
     } catch (err) {
       console.error("Failed to load invoices:", err);
@@ -121,11 +134,11 @@ export const InvoicesList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.preferredCurrency]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (loading) return;
@@ -141,6 +154,9 @@ export const InvoicesList: React.FC = () => {
       const invoice = invoices.find((item) => item.id === paymentInvoiceId);
       if (invoice && invoice.status !== "Paid") {
         setInvoiceToPay(invoice);
+        setPayAmount(Math.max(0, invoice.totalAmount - invoice.amountPaid));
+        setPaymentReference("");
+        setPaymentKey(crypto.randomUUID());
         setPayModalOpen(true);
       }
       setSearchParams({}, { replace: true });
@@ -165,6 +181,7 @@ export const InvoicesList: React.FC = () => {
 
   const handleClientSelection = (clientId: string) => {
     setSelectedClientId(clientId);
+    setSelectedProjectId("");
     const client = clients.find((item) => item.id === clientId);
     if (!client) return;
 
@@ -206,6 +223,7 @@ export const InvoicesList: React.FC = () => {
       setSubmitting(true);
       const req: CreateInvoiceRequest = {
         clientId: selectedClientId,
+        projectId: selectedProjectId || undefined,
         currency,
         paymentTerms,
         notes,
@@ -226,6 +244,7 @@ export const InvoicesList: React.FC = () => {
       setCreateError("");
       // Reset form
       setLineItems([{ description: "", quantity: 1, unitPrice: 0 }]);
+      setSelectedProjectId("");
       await loadData();
       if (sendImmediately && !markedAsSent) {
         toast.warning("Invoice draft saved, but it could not be marked as sent. Open the draft and try again.");
@@ -251,19 +270,44 @@ export const InvoicesList: React.FC = () => {
     }
   };
 
+  const handleInvoiceDestructiveAction = async () => {
+    if (!destructiveTarget) return;
+    try {
+      setDestructivePending(true);
+      if (destructiveTarget.status === "Draft") {
+        await invoiceService.deleteInvoice(destructiveTarget.id);
+        toast.success("Draft invoice deleted.");
+      } else {
+        await invoiceService.cancelInvoice(destructiveTarget.id, "Cancelled by the workspace owner");
+        toast.success("Invoice cancelled. Its history remains available.");
+      }
+      setDestructiveTarget(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "We couldn't update this invoice.");
+    } finally {
+      setDestructivePending(false);
+    }
+  };
+
   const handleRecordPayment = async () => {
     if (!invoiceToPay) return;
     const remainingAmount = Math.max(0, invoiceToPay.totalAmount - invoiceToPay.amountPaid);
+    if (payAmount <= 0 || payAmount > remainingAmount) {
+      toast.error("Enter a payment amount greater than zero and no more than the outstanding balance.");
+      return;
+    }
     try {
       setPaying(true);
       await invoiceService.payInvoice(invoiceToPay.id, {
-        amount: remainingAmount,
+        amount: payAmount,
         autoTaxSetAside,
-      });
+        reference: paymentReference || undefined,
+      }, paymentKey);
       const settled = {
         invoiceNumber: invoiceToPay.invoiceNumber,
         clientName: invoiceToPay.clientName,
-        amount: remainingAmount,
+        amount: payAmount,
         currency: invoiceToPay.currency,
         autoTaxSetAside,
         taxRate: taxRule.rate,
@@ -271,7 +315,7 @@ export const InvoicesList: React.FC = () => {
       setPayModalOpen(false);
       setInvoiceToPay(null);
       setCelebrationData(settled);
-      toast.success(`Payment recorded: ${formatMoney(remainingAmount, invoiceToPay.currency)} from ${invoiceToPay.clientName}. Your cash-flow estimate is updated.`);
+      toast.success(`Payment recorded: ${formatMoney(payAmount, invoiceToPay.currency)} from ${invoiceToPay.clientName}. Your cash-flow estimate is updated.`);
       await loadData();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to record payment");
@@ -287,7 +331,7 @@ export const InvoicesList: React.FC = () => {
       filterStatus === "all"
         ? true
         : filterStatus === "open"
-        ? inv.status === "Sent" || inv.status === "Viewed"
+        ? ["Sent", "Viewed", "PartiallyPaid", "Overdue"].includes(inv.status)
         : inv.status.toLowerCase() === filterStatus.toLowerCase();
 
     const matchesSearch =
@@ -316,6 +360,12 @@ export const InvoicesList: React.FC = () => {
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
             <Eye className="w-3 h-3" /> Viewed
+          </span>
+        );
+      case "PartiallyPaid":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+            <DollarSign className="w-3 h-3" /> Partially paid
           </span>
         );
       case "Overdue":
@@ -565,11 +615,14 @@ export const InvoicesList: React.FC = () => {
                           </Button>
                         )}
 
-                        {(inv.status === "Sent" || inv.status === "Viewed" || inv.status === "Overdue") && (
+                        {(inv.status === "Sent" || inv.status === "Viewed" || inv.status === "PartiallyPaid" || inv.status === "Overdue") && (
                           <Button
                             size="sm"
                             onClick={() => {
                               setInvoiceToPay(inv);
+                              setPayAmount(Math.max(0, inv.totalAmount - inv.amountPaid));
+                              setPaymentReference("");
+                              setPaymentKey(crypto.randomUUID());
                               setAutoTaxSetAside(taxRule.enabled);
                               setPayModalOpen(true);
                             }}
@@ -577,6 +630,11 @@ export const InvoicesList: React.FC = () => {
                           >
                             <DollarSign className="h-3.5 w-3.5 mr-1" />
                             Record Payment
+                          </Button>
+                        )}
+                        {(inv.status === "Draft" || (["Sent", "Viewed", "Overdue"].includes(inv.status) && inv.amountPaid === 0)) && (
+                          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={() => setDestructiveTarget(inv)}>
+                            {inv.status === "Draft" ? "Delete draft" : "Cancel"}
                           </Button>
                         )}
                       </td>
@@ -640,6 +698,19 @@ export const InvoicesList: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="invoice-project" className="text-xs font-semibold">Project (optional)</Label>
+                <Select value={selectedProjectId || "none"} onValueChange={value => setSelectedProjectId(value === "none" ? "" : value)}>
+                  <SelectTrigger id="invoice-project" className="text-xs bg-background"><SelectValue placeholder="No project" /></SelectTrigger>
+                  <SelectContent className="bg-card">
+                    <SelectItem value="none" className="text-xs">No project</SelectItem>
+                    {projects.filter(project => project.clientId === selectedClientId && project.status !== "Archived").map(project => (
+                      <SelectItem key={project.id} value={project.id} className="text-xs">{project.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Payment Terms & Notes */}
@@ -817,6 +888,13 @@ export const InvoicesList: React.FC = () => {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={!!destructiveTarget} onOpenChange={next => !next && setDestructiveTarget(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{destructiveTarget?.status === "Draft" ? "Delete this draft?" : "Cancel this invoice?"}</DialogTitle><DialogDescription>{destructiveTarget?.status === "Draft" ? "This removes the unpaid draft. No financial transaction will be changed." : "The invoice will remain in your records as cancelled and will no longer count as outstanding."}</DialogDescription></DialogHeader>
+            <DialogFooter><Button variant="outline" onClick={() => setDestructiveTarget(null)}>Keep invoice</Button><Button variant="destructive" disabled={destructivePending} onClick={handleInvoiceDestructiveAction}>{destructivePending ? "Updating…" : destructiveTarget?.status === "Draft" ? "Delete draft" : "Cancel invoice"}</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Record Payment Dialog (With Auto Tax Set Aside Split Breakdown) */}
         <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
           <DialogContent className="max-w-md bg-card border border-border">
@@ -826,17 +904,21 @@ export const InvoicesList: React.FC = () => {
                 Record Client Payment
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Mark {invoiceToPay?.invoiceNumber} from {invoiceToPay?.clientName} as paid.
+                Record a confirmed payment without changing or deleting earlier payment history.
               </DialogDescription>
             </DialogHeader>
 
             {invoiceToPay && (
               <div className="space-y-4 py-2">
-                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Payment Amount</p>
-                  <p className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                    {formatMoney(invoiceToPay.totalAmount - invoiceToPay.amountPaid, invoiceToPay.currency)}
-                  </p>
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
+                  <Label htmlFor="payment-amount" className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Payment amount ({invoiceToPay.currency})</Label>
+                  <Input id="payment-amount" type="number" min="0.01" max={invoiceToPay.totalAmount - invoiceToPay.amountPaid} step="0.01" value={payAmount} onChange={event => setPayAmount(Number(event.target.value))} className="bg-card text-lg font-bold tabular-nums" />
+                  <p className="text-[11px] text-muted-foreground">Outstanding: {formatMoney(invoiceToPay.totalAmount - invoiceToPay.amountPaid, invoiceToPay.currency)}</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="payment-reference" className="text-xs font-semibold">Reference (optional)</Label>
+                  <Input id="payment-reference" value={paymentReference} onChange={event => setPaymentReference(event.target.value)} placeholder="Bank reference or note" />
                 </div>
 
                 {/* Tax Set-Aside Ring-Fence Box */}

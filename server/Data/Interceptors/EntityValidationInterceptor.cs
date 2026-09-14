@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Tenvora.Api.Common;
 using Tenvora.Api.Domain.Entities;
 
 namespace Tenvora.Api.Data.Interceptors;
@@ -72,6 +73,30 @@ public sealed class EntityValidationInterceptor : SaveChangesInterceptor
                 if (string.IsNullOrWhiteSpace(account.Currency) || account.Currency.Length != 3)
                     throw new ValidationException("Financial Integrity Gate: Account currency must be a 3-letter ISO-4217 code.");
             }
+            else if (entity is InvoicePayment invoicePayment && invoicePayment.Amount <= 0)
+            {
+                throw new ValidationException("Financial Integrity Gate: Invoice payment amount must be positive.");
+            }
+            else if (entity is Expense expense && expense.Amount <= 0)
+            {
+                throw new ValidationException("Financial Integrity Gate: Expense amount must be positive.");
+            }
+        }
+
+        // A posted transaction is indivisible: every new journal must balance
+        // before EF is allowed to send any part of it to the database.
+        foreach (var transaction in context.ChangeTracker.Entries<Transaction>()
+                     .Where(e => e.State == EntityState.Added && e.Entity.Status == TransactionStatuses.Posted)
+                     .Select(e => e.Entity))
+        {
+            var lines = context.ChangeTracker.Entries<LedgerEntry>()
+                .Where(e => e.State == EntityState.Added && e.Entity.TransactionId == transaction.Id)
+                .Select(e => e.Entity)
+                .ToList();
+            if (lines.Count < 2 || lines.Sum(e => e.DebitAmount) != lines.Sum(e => e.CreditAmount) || lines.Sum(e => e.DebitAmount) != transaction.Amount)
+                throw new ValidationException("Financial Integrity Gate: a posted transaction requires a balanced journal equal to its amount.");
+            if (lines.Any(e => e.TenantId != transaction.TenantId || e.Currency != transaction.Currency))
+                throw new ValidationException("Financial Integrity Gate: journal tenant and currency must match the transaction.");
         }
     }
 }

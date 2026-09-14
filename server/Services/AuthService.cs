@@ -53,7 +53,7 @@ public sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             CompanyName = request.CompanyName.Trim(),
             ApiKey = Guid.NewGuid().ToString("N"),
-            PlanType = "Enterprise",
+            PlanType = "FreelancerPro",
             BaseCurrency = string.IsNullOrWhiteSpace(request.BaseCurrency) ? "USD" : request.BaseCurrency.Trim().ToUpperInvariant(),
             Status = "Active",
             CreatedAt = DateTime.UtcNow,
@@ -124,12 +124,14 @@ public sealed class AuthService : IAuthService
 
         token.Revoked = true;
         var newRefreshToken = _tokenService.CreateRefreshToken(token.UserId);
+        var rawRefreshToken = newRefreshToken.Token;
+        newRefreshToken.Token = TokenService.HashRefreshToken(rawRefreshToken);
         await _refreshTokenRepository.AddAsync(newRefreshToken);
 
         var accessToken = _tokenService.CreateAccessToken(token.User);
         var response = new AuthResponse(
             accessToken,
-            newRefreshToken.Token,
+            rawRefreshToken,
             token.User.Id,
             token.User.TenantId,
             token.User.Email,
@@ -167,11 +169,13 @@ public sealed class AuthService : IAuthService
     {
         var accessToken = _tokenService.CreateAccessToken(user);
         var refreshToken = _tokenService.CreateRefreshToken(user.Id);
+        var rawRefreshToken = refreshToken.Token;
+        refreshToken.Token = TokenService.HashRefreshToken(rawRefreshToken);
         await _refreshTokenRepository.AddAsync(refreshToken);
 
         var response = new AuthResponse(
             accessToken,
-            refreshToken.Token,
+            rawRefreshToken,
             user.Id,
             user.TenantId,
             user.Email,

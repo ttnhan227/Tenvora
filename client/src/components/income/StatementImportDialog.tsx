@@ -125,7 +125,7 @@ function remainingAmount(invoice: InvoiceSummary) {
 function referencedOpenInvoice(row: StatementRow, invoices: InvoiceSummary[]) {
   const description = row.description.toLowerCase();
   return invoices.find((invoice) =>
-    ["Sent", "Viewed", "Overdue"].includes(invoice.status) &&
+    ["Sent", "Viewed", "PartiallyPaid", "Overdue"].includes(invoice.status) &&
     invoice.currency.toUpperCase() === row.currency &&
     description.includes(invoice.invoiceNumber.toLowerCase()),
   );
@@ -136,7 +136,7 @@ export function suggestInvoice(row: StatementRow, invoices: InvoiceSummary[]) {
 
   return invoices
     .filter((invoice) =>
-      ["Sent", "Viewed", "Overdue"].includes(invoice.status) &&
+      ["Sent", "Viewed", "PartiallyPaid", "Overdue"].includes(invoice.status) &&
       invoice.currency.toUpperCase() === row.currency &&
       row.amount <= remainingAmount(invoice) + 0.01,
     )
@@ -252,7 +252,7 @@ export function StatementImportDialog({
     setError("");
     setProcessingRow(row.id);
     try {
-      await invoiceService.payInvoice(invoice.id, { amount: row.amount, autoTaxSetAside: true });
+      await invoiceService.payInvoice(invoice.id, { amount: row.amount, autoTaxSetAside: true, reference: row.description }, `statement-${invoice.id}-${row.id}`);
       setRecordedRows((current) => new Set(current).add(row.id));
       await onPaymentRecorded();
       toast.success(`${invoice.invoiceNumber} updated from the imported deposit.`);

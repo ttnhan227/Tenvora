@@ -4,6 +4,7 @@ using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 using Tenvora.Api.Domain.Entities;
 using Tenvora.Api.Dtos;
+using Tenvora.Api.Models;
 using Tenvora.Api.Repositories;
 using Tenvora.Api.Services;
 using Xunit;
@@ -20,6 +21,25 @@ public class AuthorizationAndSecurityTests
             .Options;
 
         return new AppDbContext(options);
+    }
+
+    [Fact]
+    public async Task RefreshTokenLookup_HashesThePresentedCredential()
+    {
+        using var context = CreateInMemoryDbContext();
+        var raw = "one-time-browser-refresh-credential";
+        var user = new User { Id = Guid.NewGuid(), TenantId = Guid.NewGuid(), Email = "owner@example.test", PasswordHash = "unused" };
+        context.RefreshTokens.Add(new RefreshToken
+        {
+            Id = Guid.NewGuid(), UserId = user.Id, User = user,
+            Token = TokenService.HashRefreshToken(raw), ExpiresAt = DateTime.UtcNow.AddDays(1)
+        });
+        await context.SaveChangesAsync();
+
+        var stored = await context.RefreshTokens.AsNoTracking().SingleAsync();
+        Assert.NotEqual(raw, stored.Token);
+        Assert.Equal(64, stored.Token.Length);
+        Assert.NotNull(await new RefreshTokenRepository(context).GetByTokenAsync(raw));
     }
 
     [Fact]

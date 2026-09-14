@@ -36,10 +36,21 @@ public record TransactionResponse(
     decimal Amount,
     string Currency,
     string? Description,
+    string? Category,
+    string? RelatedEntityType,
+    Guid? RelatedEntityId,
     DateTime CreatedAt,
     DateTime? PostedAt,
     DateTime? SettledAt,
     List<LedgerEntryResponse> LedgerEntries
+);
+
+public record TransactionPageDto(
+    IReadOnlyList<TransactionResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages
 );
 
 public record LedgerEntryResponse(

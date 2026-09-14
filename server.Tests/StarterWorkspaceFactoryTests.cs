@@ -31,15 +31,25 @@ public class StarterWorkspaceFactoryTests
         Assert.NotEmpty(tenant.Accounts);
         Assert.NotEmpty(tenant.Clients);
         Assert.NotEmpty(tenant.Invoices);
+        Assert.NotEmpty(tenant.Projects);
+        Assert.NotEmpty(tenant.Expenses);
+        Assert.NotEmpty(tenant.InvoicePayments);
         Assert.NotEmpty(tenant.Transactions);
 
-        var taxTx = tenant.Transactions.First(t => t.ReferenceNumber.StartsWith("TAX-SPLIT"));
-        Assert.Equal(2, taxTx.LedgerEntries.Count);
-        
-        var totalDebits = taxTx.LedgerEntries.Sum(l => l.DebitAmount);
-        var totalCredits = taxTx.LedgerEntries.Sum(l => l.CreditAmount);
+        foreach (var transaction in tenant.Transactions)
+        {
+            Assert.Equal(2, transaction.LedgerEntries.Count);
+            Assert.Equal(transaction.LedgerEntries.Sum(l => l.DebitAmount), transaction.LedgerEntries.Sum(l => l.CreditAmount));
+            Assert.Equal(transaction.Amount, transaction.LedgerEntries.Sum(l => l.DebitAmount));
+        }
 
-        Assert.Equal(totalDebits, totalCredits);
-        Assert.Equal(taxTx.Amount, totalDebits);
+        foreach (var account in tenant.Accounts)
+        {
+            var lines = tenant.Transactions.SelectMany(t => t.LedgerEntries).Where(l => l.AccountId == account.Id);
+            var derived = account.AccountType is "Liability" or "Equity"
+                ? lines.Sum(l => l.CreditAmount - l.DebitAmount)
+                : lines.Sum(l => l.DebitAmount - l.CreditAmount);
+            Assert.Equal(account.CachedBalance, derived);
+        }
     }
 }

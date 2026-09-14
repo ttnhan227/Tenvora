@@ -215,6 +215,112 @@ namespace Tenvora.Api.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Merchant")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Posted");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TenantId", "Category");
+
+                    b.HasIndex("TenantId", "ExpenseDate");
+
+                    b.HasIndex("TenantId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ProjectId");
+
+                    b.ToTable("Expenses", t =>
+                        {
+                            t.HasCheckConstraint("CK_Expenses_Amount_Positive", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_Expenses_Category", "\"Category\" IN ('Software','Equipment','Workspace','Transportation','Marketing','Professional Services','Education','Other')");
+
+                            t.HasCheckConstraint("CK_Expenses_Status", "\"Status\" IN ('Posted','Void')");
+                        });
+                });
+
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -314,6 +420,9 @@ namespace Tenvora.Api.Migrations
                     b.Property<Guid?>("PaymentTransactionId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -362,6 +471,8 @@ namespace Tenvora.Api.Migrations
 
                     b.HasIndex("PaymentTransactionId");
 
+                    b.HasIndex("ProjectId");
+
                     b.HasIndex("TenantId", "ClientId");
 
                     b.HasIndex("TenantId", "DueDate");
@@ -371,7 +482,14 @@ namespace Tenvora.Api.Migrations
 
                     b.HasIndex("TenantId", "Status");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", t =>
+                        {
+                            t.HasCheckConstraint("CK_Invoices_Amounts", "\"Subtotal\" >= 0 AND \"TaxAmount\" >= 0 AND (\"TotalAmount\" > 0 OR (\"Status\" = 'Cancelled' AND \"TotalAmount\" = 0)) AND \"AmountPaid\" >= 0 AND \"AmountPaid\" <= \"TotalAmount\"");
+
+                            t.HasCheckConstraint("CK_Invoices_Dates", "\"DueDate\" >= \"IssueDate\"");
+
+                            t.HasCheckConstraint("CK_Invoices_Status", "\"Status\" IN ('Draft','Sent','Viewed','PartiallyPaid','Paid','Overdue','Cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.InvoiceItem", b =>
@@ -407,6 +525,67 @@ namespace Tenvora.Api.Migrations
                     b.HasIndex("InvoiceId");
 
                     b.ToTable("InvoiceItems");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TenantId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "InvoiceId", "PaidAt");
+
+                    b.ToTable("InvoicePayments", t =>
+                        {
+                            t.HasCheckConstraint("CK_InvoicePayments_Amount_Positive", "\"Amount\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.LedgerEntry", b =>
@@ -463,7 +642,10 @@ namespace Tenvora.Api.Migrations
 
                     b.HasIndex("TenantId", "AccountId", "PostedAt");
 
-                    b.ToTable("LedgerEntries");
+                    b.ToTable("LedgerEntries", t =>
+                        {
+                            t.HasCheckConstraint("CK_LedgerEntries_OneSide", "(\"DebitAmount\" > 0 AND \"CreditAmount\" = 0) OR (\"CreditAmount\" > 0 AND \"DebitAmount\" = 0)");
+                        });
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.PaymentRequest", b =>
@@ -527,6 +709,75 @@ namespace Tenvora.Api.Migrations
                     b.HasIndex("TenantId", "Status", "CreatedAt");
 
                     b.ToTable("PaymentRequests");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("BudgetAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("USD");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Active");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("TenantId", "ClientId");
+
+                    b.HasIndex("TenantId", "Name");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Projects", t =>
+                        {
+                            t.HasCheckConstraint("CK_Projects_Budget_NonNegative", "\"BudgetAmount\" IS NULL OR \"BudgetAmount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Projects_Status", "\"Status\" IN ('Planned','Active','Completed','Archived')");
+                        });
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationDiscrepancy", b =>
@@ -767,6 +1018,10 @@ namespace Tenvora.Api.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -792,6 +1047,13 @@ namespace Tenvora.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<DateTime?>("SettledAt")
                         .HasColumnType("timestamp with time zone");
@@ -820,9 +1082,14 @@ namespace Tenvora.Api.Migrations
                     b.HasIndex("TenantId", "ReferenceNumber")
                         .IsUnique();
 
+                    b.HasIndex("TenantId", "RelatedEntityType", "RelatedEntityId");
+
                     b.HasIndex("TenantId", "Status", "CreatedAt");
 
-                    b.ToTable("Transactions");
+                    b.ToTable("Transactions", t =>
+                        {
+                            t.HasCheckConstraint("CK_Transactions_Amount_Positive", "\"Amount\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("Tenvora.Api.Models.AuditLog", b =>
@@ -1082,6 +1349,45 @@ namespace Tenvora.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Client", "Client")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Project", "Project")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("Expenses")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Transaction");
+                });
+
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("Tenvora.Api.Domain.Entities.Client", "Client")
@@ -1101,6 +1407,11 @@ namespace Tenvora.Api.Migrations
                         .HasForeignKey("PaymentTransactionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Tenvora.Api.Domain.Entities.Project", "Project")
+                        .WithMany("Invoices")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Tenvora.Api.Models.Tenant", null)
                         .WithMany("Invoices")
                         .HasForeignKey("TenantId")
@@ -1112,6 +1423,8 @@ namespace Tenvora.Api.Migrations
                     b.Navigation("DestinationAccount");
 
                     b.Navigation("PaymentTransaction");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.InvoiceItem", b =>
@@ -1123,6 +1436,31 @@ namespace Tenvora.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.InvoicePayment", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Invoice", "Invoice")
+                        .WithMany("Payments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("InvoicePayments")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Domain.Entities.Transaction", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Transaction");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.LedgerEntry", b =>
@@ -1167,6 +1505,23 @@ namespace Tenvora.Api.Migrations
                     b.Navigation("DestinationAccount");
 
                     b.Navigation("SourceAccount");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Project", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.Client", "Client")
+                        .WithMany("Projects")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany("Projects")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationDiscrepancy", b =>
@@ -1288,7 +1643,11 @@ namespace Tenvora.Api.Migrations
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.Client", b =>
                 {
+                    b.Navigation("Expenses");
+
                     b.Navigation("Invoices");
+
+                    b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.Customer", b =>
@@ -1299,11 +1658,20 @@ namespace Tenvora.Api.Migrations
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.Invoice", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.PaymentRequest", b =>
                 {
                     b.Navigation("Transactions");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.Project", b =>
+                {
+                    b.Navigation("Expenses");
+
+                    b.Navigation("Invoices");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.ReconciliationRun", b =>
@@ -1331,9 +1699,15 @@ namespace Tenvora.Api.Migrations
 
                     b.Navigation("Customers");
 
+                    b.Navigation("Expenses");
+
+                    b.Navigation("InvoicePayments");
+
                     b.Navigation("Invoices");
 
                     b.Navigation("LedgerEntries");
+
+                    b.Navigation("Projects");
 
                     b.Navigation("ReconciliationRuns");
 

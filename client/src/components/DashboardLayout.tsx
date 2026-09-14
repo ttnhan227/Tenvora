@@ -44,21 +44,23 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           <p className="truncate text-sm font-bold text-foreground">
             {user?.companyName || "Freelancer Account"}
           </p>
-          <div className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+          <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-primary/60"></span>
             Cash-flow workspace
           </div>
         </div>
 
         {/* Primary Navigation Items */}
         <nav aria-label="Workspace navigation" className="flex-1 space-y-1 overflow-y-auto px-3 pb-6">
-          {workspaceNav.map((item) => {
+          {workspaceNav.map((item, index) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            const showSection = index === 0 || workspaceNav[index - 1].section !== item.section;
             return (
+              <div key={item.href}>
+              {showSection && <p className="mb-1 mt-4 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70 first:mt-0">{item.section}</p>}
               <Link
-                key={item.href}
                 to={item.href}
                 onClick={() => setOpen(false)}
                 aria-current={isActive ? "page" : undefined}
@@ -79,6 +81,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                   </span>
                 )}
               </Link>
+              </div>
             );
           })}
         </nav>

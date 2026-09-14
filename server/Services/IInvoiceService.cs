@@ -11,5 +11,7 @@ public interface IInvoiceService
     Task<ApiResult<InvoiceSummaryDto>> CreateInvoiceAsync(Guid tenantId, CreateInvoiceRequest request);
     Task<ApiResult<InvoiceSummaryDto>> SendInvoiceAsync(Guid tenantId, Guid invoiceId);
     Task<ApiResult<InvoiceSummaryDto>> PayInvoiceAsync(Guid tenantId, Guid invoiceId, PayInvoiceRequest request);
+    Task<ApiResult<InvoiceSummaryDto>> PayInvoiceAsync(Guid tenantId, Guid invoiceId, string idempotencyKey, PayInvoiceRequest request);
+    Task<ApiResult<InvoiceSummaryDto>> CancelInvoiceAsync(Guid tenantId, Guid invoiceId, CancelInvoiceRequest request);
     Task<ApiResult<bool>> DeleteInvoiceAsync(Guid tenantId, Guid invoiceId);
 }

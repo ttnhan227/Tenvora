@@ -16,6 +16,7 @@ export interface ClientSummary {
   totalPaid: number;
   outstandingBalance: number;
   openInvoicesCount: number;
+  projectsCount: number;
   createdAt: string;
 }
 

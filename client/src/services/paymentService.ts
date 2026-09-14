@@ -11,6 +11,9 @@ export interface Transaction {
   amount: number;
   currency: string;
   description?: string;
+  category?: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
   originalTransactionId?: string;
   settlementBatchId?: string;
   createdAt: string;

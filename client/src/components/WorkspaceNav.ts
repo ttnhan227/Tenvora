@@ -3,9 +3,11 @@ import {
   FileText,
   Users,
   ArrowRightLeft,
-  Percent,
-  Sparkles,
   Settings,
+  ReceiptText,
+  FolderKanban,
+  ChartNoAxesCombined,
+  Landmark,
 } from "lucide-react";
 
 export interface NavItem {
@@ -14,16 +16,19 @@ export interface NavItem {
   icon: typeof Home;
   badge?: string;
   admin?: boolean;
+  section: "Overview" | "Money" | "Work" | "Insights" | "Account";
 }
 
 export const workspaceNav: NavItem[] = [
-  { label: "Home", href: "/dashboard", icon: Home },
-  { label: "Invoices", href: "/invoices", icon: FileText },
-  { label: "Clients", href: "/clients", icon: Users },
-  { label: "Income", href: "/payments", icon: ArrowRightLeft },
-  { label: "Taxes", href: "/taxes", icon: Percent },
-  { label: "Assistant", href: "/assistant", icon: Sparkles, badge: "AI" },
-  { label: "Settings", href: "/system", icon: Settings },
+  { label: "Dashboard", href: "/dashboard", icon: Home, section: "Overview" },
+  { label: "Transactions", href: "/transactions", icon: ArrowRightLeft, section: "Money" },
+  { label: "Income", href: "/payments", icon: Landmark, section: "Money" },
+  { label: "Expenses", href: "/expenses", icon: ReceiptText, section: "Money" },
+  { label: "Clients", href: "/clients", icon: Users, section: "Work" },
+  { label: "Projects", href: "/projects", icon: FolderKanban, section: "Work" },
+  { label: "Invoices", href: "/invoices", icon: FileText, section: "Work" },
+  { label: "Reports", href: "/reports", icon: ChartNoAxesCombined, section: "Insights" },
+  { label: "Settings", href: "/settings", icon: Settings, section: "Account" },
 ];
 
 const extendedRouteLabels: Array<[prefix: string, label: string]> = [

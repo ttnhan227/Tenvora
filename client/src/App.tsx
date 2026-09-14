@@ -14,6 +14,9 @@ const Register = lazy(() => import("./pages/auth/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Invoices = lazy(() => import("./pages/invoices/InvoicesList"));
 const Clients = lazy(() => import("./pages/clients/ClientsList"));
+const Projects = lazy(() => import("./pages/projects/ProjectsList"));
+const Expenses = lazy(() => import("./pages/expenses/ExpensesList"));
+const Reports = lazy(() => import("./pages/reports/ReportsPage"));
 const Payments = lazy(() => import("./pages/payments/PaymentsHub"));
 const Taxes = lazy(() => import("./pages/taxes/TaxesHub"));
 const Assistant = lazy(() => import("./pages/assistant/FreelancerAssistant"));
@@ -38,7 +41,12 @@ const Security = lazy(() => import("./pages/public/SecurityWhitepaper"));
 const StatusPage = lazy(() => import("./pages/public/StatusPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+    mutations: { retry: false },
+  },
+});
 
 export default function App() {
   return (
@@ -48,7 +56,7 @@ export default function App() {
           <Toaster />
           <Sonner />
           <RequestActivityIndicator />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <BrowserRouter>
             <Suspense fallback={<div role="status" className="p-12 text-sm text-muted-foreground">Loading Tenvora...</div>}>
               <Routes>
                 {/* Public Marketing & Auth */}
@@ -68,6 +76,9 @@ export default function App() {
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+                <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+                <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
                 <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} />
                 <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
@@ -99,7 +110,7 @@ export default function App() {
                 <Route path="/help" element={<Navigate to="/contact" replace />} />
                 <Route path="/company" element={<Navigate to="/about" replace />} />
                 <Route path="/compliance" element={<Navigate to="/security" replace />} />
-                <Route path="/settings" element={<Navigate to="/system" replace />} />
+                <Route path="/settings" element={<ProtectedRoute><SystemOperations /></ProtectedRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>

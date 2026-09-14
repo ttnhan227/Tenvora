@@ -14,12 +14,23 @@ public record InvoiceItemRequest(
     decimal UnitPrice
 );
 
+public record InvoicePaymentDto(
+    Guid Id,
+    Guid TransactionId,
+    decimal Amount,
+    string Currency,
+    string? Reference,
+    DateTime PaidAt
+);
+
 public record InvoiceSummaryDto(
     Guid Id,
     string InvoiceNumber,
     Guid ClientId,
     string ClientName,
     string ClientEmail,
+    Guid? ProjectId,
+    string? ProjectName,
     DateTime IssueDate,
     DateTime DueDate,
     string Currency,
@@ -36,7 +47,8 @@ public record InvoiceSummaryDto(
     DateTime? PaidAt,
     DateTime? ViewedAt,
     DateTime CreatedAt,
-    List<InvoiceItemDto> Items
+    List<InvoiceItemDto> Items,
+    List<InvoicePaymentDto> Payments
 );
 
 public record CreateInvoiceRequest(
@@ -49,13 +61,17 @@ public record CreateInvoiceRequest(
     string? PaymentTerms,
     string? Notes,
     Guid? DestinationAccountId,
-    List<InvoiceItemRequest> Items
+    List<InvoiceItemRequest> Items,
+    Guid? ProjectId = null
 );
 
 public record PayInvoiceRequest(
     decimal? Amount,
-    bool AutoTaxSetAside = true
+    bool AutoTaxSetAside = true,
+    string? Reference = null
 );
+
+public record CancelInvoiceRequest(string? Reason);
 
 public record InvoiceStatsDto(
     string Currency,

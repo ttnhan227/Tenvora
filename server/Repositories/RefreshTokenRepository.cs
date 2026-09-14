@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Tenvora.Api.Data;
 using Tenvora.Api.Models;
+using Tenvora.Api.Services;
 
 namespace Tenvora.Api.Repositories;
 
@@ -15,9 +16,10 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
 
     public Task<RefreshToken?> GetByTokenAsync(string token)
     {
+        var tokenHash = TokenService.HashRefreshToken(token);
         return _context.RefreshTokens
             .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.Token == token);
+            .FirstOrDefaultAsync(r => r.Token == tokenHash);
     }
 
     public async Task AddAsync(RefreshToken token)

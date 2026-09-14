@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeading, Panel, Notice, money, usePermissions } from "@/components/WorkspaceUI";
@@ -31,7 +31,7 @@ export default function TransactionDetail() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setTx(undefined);
@@ -43,11 +43,11 @@ export default function TransactionDetail() {
     if (a.success && a.data) setLogs(a.data);
     setError(!t.success ? t.errors?.join(" ") ?? "Transaction not found." : "");
     setLoading(false);
-  }
+  }, [id]);
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [load]);
 
   async function confirmReversal(e: React.FormEvent) {
     e.preventDefault();

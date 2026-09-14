@@ -12,7 +12,7 @@ public class Tenant
     [JsonIgnore]
     public string ApiKey { get; set; } = default!;
 
-    public string PlanType { get; set; } = "Enterprise";
+    public string PlanType { get; set; } = "FreelancerPro";
     public string BaseCurrency { get; set; } = "USD";
     public string Status { get; set; } = "Active"; // Active, Suspended
     public bool IsDemo { get; set; }
@@ -31,7 +31,10 @@ public class Tenant
     public ICollection<User> Users { get; set; } = new List<User>();
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     public ICollection<Client> Clients { get; set; } = new List<Client>();
+    public ICollection<Project> Projects { get; set; } = new List<Project>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+    public ICollection<InvoicePayment> InvoicePayments { get; set; } = new List<InvoicePayment>();
+    public ICollection<Expense> Expenses { get; set; } = new List<Expense>();
     public ICollection<Account> Accounts { get; set; } = new List<Account>();
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     public ICollection<LedgerEntry> LedgerEntries { get; set; } = new List<LedgerEntry>();

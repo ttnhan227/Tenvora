@@ -37,16 +37,14 @@ export default function LedgerView() {
     if (accountParam && accountParam !== selectedAccountId) {
       setSelectedAccountId(accountParam);
     }
-  }, [accountParam]);
+  }, [accountParam, selectedAccountId]);
 
   useEffect(() => {
     async function loadAccounts() {
       const res = await accountService.getAccounts();
       if (res.success && res.data && res.data.length > 0) {
         setAccounts(res.data);
-        if (!selectedAccountId && !accountParam) {
-          setSelectedAccountId(res.data[0].id);
-        }
+        setSelectedAccountId((current) => current || res.data[0].id);
       } else if (!res.success) {
         setError(res.errors?.join(" ") || "Accounts could not be loaded.");
       }
@@ -71,7 +69,7 @@ export default function LedgerView() {
       setLoading(false);
     }
     loadHistory();
-  }, [selectedAccountId]);
+  }, [selectedAccountId, setSearchParams]);
 
   const totalDebits = history?.entries.reduce((sum, e) => sum + e.debitAmount, 0) || 0;
   const totalCredits = history?.entries.reduce((sum, e) => sum + e.creditAmount, 0) || 0;

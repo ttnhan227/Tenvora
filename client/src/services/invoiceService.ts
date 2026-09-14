@@ -14,6 +14,8 @@ export interface InvoiceSummary {
   clientId: string;
   clientName: string;
   clientEmail: string;
+  projectId?: string;
+  projectName?: string;
   issueDate: string;
   dueDate: string;
   currency: string;
@@ -22,7 +24,7 @@ export interface InvoiceSummary {
   taxAmount: number;
   totalAmount: number;
   amountPaid: number;
-  status: 'Draft' | 'Sent' | 'Viewed' | 'Paid' | 'Overdue' | 'Cancelled';
+  status: 'Draft' | 'Sent' | 'Viewed' | 'PartiallyPaid' | 'Paid' | 'Overdue' | 'Cancelled';
   paymentTerms?: string;
   notes?: string;
   destinationAccountId: string;
@@ -31,6 +33,7 @@ export interface InvoiceSummary {
   viewedAt?: string;
   createdAt: string;
   items: InvoiceItem[];
+  payments: Array<{ id: string; transactionId: string; amount: number; currency: string; reference?: string; paidAt: string }>;
 }
 
 export interface InvoiceStats {
@@ -52,6 +55,7 @@ export interface CreateInvoiceItemRequest {
 
 export interface CreateInvoiceRequest {
   clientId: string;
+  projectId?: string;
   invoiceNumber?: string;
   issueDate?: string;
   dueDate?: string;
@@ -66,6 +70,7 @@ export interface CreateInvoiceRequest {
 export interface PayInvoiceRequest {
   amount?: number;
   autoTaxSetAside?: boolean;
+  reference?: string;
 }
 
 export const invoiceService = {
@@ -97,8 +102,13 @@ export const invoiceService = {
     return res.data.data;
   },
 
-  async payInvoice(id: string, data?: PayInvoiceRequest): Promise<InvoiceSummary> {
-    const res = await apiClient.post(`/invoices/${id}/pay`, data ?? { autoTaxSetAside: true });
+  async payInvoice(id: string, data?: PayInvoiceRequest, idempotencyKey: string = crypto.randomUUID()): Promise<InvoiceSummary> {
+    const res = await apiClient.post(`/invoices/${id}/pay`, data ?? { autoTaxSetAside: true }, { headers: { 'Idempotency-Key': idempotencyKey } });
+    return res.data.data;
+  },
+
+  async cancelInvoice(id: string, reason?: string): Promise<InvoiceSummary> {
+    const res = await apiClient.post(`/invoices/${id}/cancel`, { reason });
     return res.data.data;
   },
 

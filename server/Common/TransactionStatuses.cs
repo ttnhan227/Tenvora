@@ -19,6 +19,8 @@ public static class TransactionTypes
     public const string Fee = "Fee";
     public const string Adjustment = "Adjustment";
     public const string Reversal = "Reversal";
+    public const string InvoicePayment = "InvoicePayment";
+    public const string Expense = "Expense";
 }
 
 public static class AccountTypes
@@ -28,6 +30,7 @@ public static class AccountTypes
     public const string Equity = "Equity";
     public const string Clearing = "Clearing";
     public const string Settlement = "Settlement";
+    public const string Expense = "Expense";
 }
 
 public static class AccountStatuses

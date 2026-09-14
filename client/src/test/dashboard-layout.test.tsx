@@ -12,16 +12,20 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 describe("Freelancer workspace navigation", () => {
   it("exposes primary freelancer routes and hides enterprise admin clutter", () => {
-    render(
+    const { container } = render(
       <MemoryRouter>
         <DashboardLayout>
           <p>Freelancer dashboard content</p>
         </DashboardLayout>
       </MemoryRouter>
     );
-    for (const name of ["Home", "Invoices", "Clients", "Income", "Taxes", "Assistant", "Settings"]) {
-      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    const linkNames = Array.from(container.querySelectorAll("a"), (link) => link.textContent?.trim());
+    expect(linkNames).toEqual(expect.arrayContaining([
+      "Dashboard", "Transactions", "Income", "Expenses", "Clients", "Projects", "Invoices", "Reports", "Settings",
+    ]));
+    for (const section of ["Overview", "Money", "Work", "Insights", "Account"]) {
+      expect(screen.getByText(section)).toBeInTheDocument();
     }
-    expect(screen.queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
+    expect(linkNames).not.toContain("Team");
   });
 });

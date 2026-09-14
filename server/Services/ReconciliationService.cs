@@ -58,7 +58,7 @@ public class ReconciliationService : IReconciliationService
         {
             var entries = allEntries.Where(e => e.AccountId == account.Id);
             var net = entries.Sum(e => e.DebitAmount - e.CreditAmount);
-            var calculatedBalance = account.AccountType == "Asset" ? net : -net;
+            var calculatedBalance = account.AccountType is AccountTypes.Asset or AccountTypes.Expense ? net : -net;
 
             if (calculatedBalance != account.CachedBalance)
             {
@@ -106,10 +106,13 @@ public class ReconciliationService : IReconciliationService
 
     public async Task<ClientReconciliationResponse> ReconcileClientInvoicesAsync(Guid tenantId)
     {
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
         var invoices = await _context.Invoices
             .Include(i => i.Client)
+            .Include(i => i.Project)
             .Include(i => i.Items)
-            .Where(i => i.TenantId == tenantId)
+            .Include(i => i.Payments)
+            .Where(i => i.TenantId == tenantId && i.Status != InvoiceStatuses.Draft && i.Status != InvoiceStatuses.Cancelled)
             .ToListAsync();
 
         var transactions = await _context.Transactions
@@ -120,31 +123,41 @@ public class ReconciliationService : IReconciliationService
         var unmatchedInvoices = new List<InvoiceSummaryDto>();
         decimal matchedAmount = 0m;
 
-        var linkedTxIds = invoices.Where(i => i.PaymentTransactionId.HasValue).Select(i => i.PaymentTransactionId!.Value).ToHashSet();
+        var linkedTxIds = invoices.SelectMany(i => i.Payments).Select(p => p.TransactionId).ToHashSet();
+        linkedTxIds.UnionWith(invoices.Where(i => i.PaymentTransactionId.HasValue).Select(i => i.PaymentTransactionId!.Value));
 
         foreach (var invoice in invoices)
         {
-            if (invoice.Status == "Paid" && invoice.PaymentTransactionId.HasValue)
+            if (invoice.Status == InvoiceStatuses.Paid)
             {
                 matchedInvoices.Add(MapInvoice(invoice));
                 matchedAmount += invoice.AmountPaid;
                 continue;
             }
 
+            var remaining = invoice.TotalAmount - invoice.AmountPaid;
             var match = transactions.FirstOrDefault(t =>
-                !linkedTxIds.Contains(t.Id) &&
+                !linkedTxIds.Contains(t.Id) && t.Amount > 0 && t.Amount <= remaining && t.Currency == invoice.Currency &&
                 (t.ReferenceNumber.Contains(invoice.InvoiceNumber, StringComparison.OrdinalIgnoreCase) ||
                  (t.Description != null && t.Description.Contains(invoice.InvoiceNumber, StringComparison.OrdinalIgnoreCase)) ||
-                 (t.Amount == invoice.TotalAmount && t.Currency == invoice.Currency && (t.Description != null && invoice.Client != null && t.Description.Contains(invoice.Client.Name, StringComparison.OrdinalIgnoreCase))))
+                 (t.Amount == remaining && t.Description != null && invoice.Client != null && t.Description.Contains(invoice.Client.Name, StringComparison.OrdinalIgnoreCase)))
             );
 
             if (match != null)
             {
                 invoice.PaymentTransactionId = match.Id;
-                invoice.Status = "Paid";
-                invoice.AmountPaid = match.Amount;
-                invoice.PaidAt = match.PostedAt ?? match.CreatedAt;
+                invoice.AmountPaid += match.Amount;
+                invoice.Status = invoice.AmountPaid == invoice.TotalAmount ? InvoiceStatuses.Paid : InvoiceStatuses.PartiallyPaid;
+                invoice.PaidAt = invoice.Status == InvoiceStatuses.Paid ? match.PostedAt ?? match.CreatedAt : null;
                 invoice.UpdatedAt = DateTime.UtcNow;
+                var payment = new InvoicePayment
+                {
+                    Id = Guid.NewGuid(), TenantId = tenantId, InvoiceId = invoice.Id, TransactionId = match.Id,
+                    Amount = match.Amount, Currency = match.Currency, IdempotencyKey = $"reconcile-{match.Id:N}",
+                    RequestHash = $"reconcile-{invoice.Id:N}-{match.Id:N}", Reference = match.ReferenceNumber,
+                    PaidAt = match.PostedAt ?? match.CreatedAt, CreatedAt = DateTime.UtcNow
+                };
+                _context.InvoicePayments.Add(payment);
                 linkedTxIds.Add(match.Id);
                 matchedInvoices.Add(MapInvoice(invoice));
                 matchedAmount += match.Amount;
@@ -156,6 +169,7 @@ public class ReconciliationService : IReconciliationService
         }
 
         await _context.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
 
         return new ClientReconciliationResponse(
             invoices.Count,
@@ -173,6 +187,8 @@ public class ReconciliationService : IReconciliationService
         i.ClientId,
         i.Client?.Name ?? "Unknown Client",
         i.Client?.ContactEmail ?? "",
+        i.ProjectId,
+        i.Project?.Name,
         i.IssueDate,
         i.DueDate,
         i.Currency,
@@ -189,7 +205,8 @@ public class ReconciliationService : IReconciliationService
         i.PaidAt,
         i.ViewedAt,
         i.CreatedAt,
-        i.Items.Select(item => new InvoiceItemDto(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount)).ToList()
+        i.Items.Select(item => new InvoiceItemDto(item.Id, item.Description, item.Quantity, item.UnitPrice, item.Amount)).ToList(),
+        i.Payments.Select(p => new InvoicePaymentDto(p.Id, p.TransactionId, p.Amount, p.Currency, p.Reference, p.PaidAt)).ToList()
     );
 
     private static ReconciliationResponse MapReconciliation(ReconciliationRun r) => new(

@@ -1,81 +1,103 @@
-﻿using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 
 namespace Tenvora.Api.Middleware;
 
 /// <summary>
-/// Sets the PostgreSQL session variable app.current_tenant_id based on the authenticated user's tenant claim.
-/// This enforces PostgreSQL Row-Level Security (RLS) policies at the database level in addition to application-layer tenant filters.
-/// Must be placed AFTER UseAuthentication() in the ASP.NET Core pipeline.
+/// Pins an authenticated request to one open PostgreSQL connection and sets the
+/// tenant session value used by RLS. Application queries must still include an
+/// explicit tenant predicate; this is a second boundary, not a replacement.
 /// </summary>
-public class TenantContextMiddleware
+public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<TenantContextMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-
-    public TenantContextMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
-        // Tenant context can only be set after authentication
-        if (context.User.Identity?.IsAuthenticated == true)
+        if (context.User.Identity?.IsAuthenticated != true)
         {
-            var tenantIdClaim = context.User.FindFirst("tenantId")?.Value;
-            if (!Guid.TryParse(tenantIdClaim, out var tenantId))
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "Token has an invalid tenant context." });
-                return;
-            }
-
-            // Store in HttpContext.Items for use by services during this request
-            context.Items["TenantId"] = tenantId;
-
-            // Set the PostgreSQL session variable so RLS policies can filter data at database level
-            try
-            {
-                var dbContext = context.RequestServices.GetRequiredService<AppDbContext>();
-                if (dbContext.Database.IsRelational())
-                {
-                    await dbContext.Database.ExecuteSqlRawAsync(
-                        "SELECT set_config('app.current_tenant_id', @p0, true)",
-                        tenantIdClaim);
-                }
-            }
-            catch
-            {
-                // In-memory / unit-test database fallback
-            }
-        }
-        else
-        {
-            // For unauthenticated requests, clear the tenant context so RLS blocks tenant access
-            try
-            {
-                var dbContext = context.RequestServices.GetRequiredService<AppDbContext>();
-                if (dbContext.Database.IsRelational())
-                {
-                    await dbContext.Database.ExecuteSqlRawAsync(
-                        "SELECT set_config('app.current_tenant_id', '', true)");
-                }
-            }
-            catch
-            {
-                // In-memory / unit-test database fallback
-            }
+            await next(context);
+            return;
         }
 
-        await _next(context);
+        var tenantClaim = context.User.FindFirst("tenantId")?.Value;
+        if (!Guid.TryParse(tenantClaim, out var tenantId))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(ApiResult.Fail("Token has an invalid workspace context."));
+            return;
+        }
+
+        context.Items["TenantId"] = tenantId;
+        var db = context.RequestServices.GetRequiredService<AppDbContext>();
+        if (!db.Database.IsRelational())
+        {
+            await next(context);
+            return;
+        }
+
+        var opened = false;
+        try
+        {
+            await db.Database.OpenConnectionAsync(context.RequestAborted);
+            opened = true;
+            await db.Database.ExecuteSqlRawAsync(
+                "SELECT set_config('app.current_tenant_id', {0}, false)",
+                [tenantId.ToString()], context.RequestAborted);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            if (opened)
+            {
+                try { await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)", CancellationToken.None); }
+                catch (Exception exception) { logger.LogCritical(exception, "Failed to clear a cancelled request's database workspace boundary."); }
+                await db.Database.CloseConnectionAsync();
+            }
+            throw;
+        }
+        catch (Exception exception) when (!context.Response.HasStarted)
+        {
+            logger.LogError(exception, "Failed to establish the database workspace boundary for correlation {CorrelationId}.",
+                context.TraceIdentifier);
+            try
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                await context.Response.WriteAsJsonAsync(ApiResult.Fail("The workspace is temporarily unavailable."), context.RequestAborted);
+            }
+            finally
+            {
+                if (opened)
+                {
+                    try { await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)", CancellationToken.None); }
+                    catch (Exception clearException) { logger.LogCritical(clearException, "Failed to clear a rejected request's database workspace boundary."); }
+                    await db.Database.CloseConnectionAsync();
+                }
+            }
+            return;
+        }
+
+        try
+        {
+            await next(context);
+        }
+        finally
+        {
+            try
+            {
+                // Do not use RequestAborted here: returning a pooled connection
+                // with tenant state still attached could expose the next request.
+                await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)", CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                logger.LogCritical(exception, "Failed to clear the database workspace boundary before returning the connection.");
+            }
+            await db.Database.CloseConnectionAsync();
+        }
     }
 }
 
 public static class TenantContextMiddlewareExtensions
 {
-    public static IApplicationBuilder UseTenantContext(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<TenantContextMiddleware>();
-    }
+    public static IApplicationBuilder UseTenantContext(this IApplicationBuilder builder) =>
+        builder.UseMiddleware<TenantContextMiddleware>();
 }

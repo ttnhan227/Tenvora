@@ -44,7 +44,7 @@ public class LedgerRepository : ILedgerRepository
 
         // For Asset/Expense accounts: Balance = Debits - Credits
         // For Liability/Settlement/Equity accounts: Balance = Credits - Debits
-        if (accountType == AccountTypes.Asset)
+        if (accountType is AccountTypes.Asset or AccountTypes.Expense)
         {
             return totalDebits - totalCredits;
         }

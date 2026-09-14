@@ -8,6 +8,7 @@ public class Invoice
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }
     public Guid ClientId { get; set; }
+    public Guid? ProjectId { get; set; }
 
     [MaxLength(100)]
     public string InvoiceNumber { get; set; } = default!;
@@ -53,9 +54,11 @@ public class Invoice
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public Client? Client { get; set; }
+    public Project? Project { get; set; }
     public Account? DestinationAccount { get; set; }
     public Transaction? PaymentTransaction { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
+    public ICollection<InvoicePayment> Payments { get; set; } = new List<InvoicePayment>();
 }
 
 public class InvoiceItem

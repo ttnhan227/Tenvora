@@ -92,11 +92,20 @@ async function fixture(page: Page, role = "SoloFreelancer") {
       data = { id: "operator", role, email: "alex@riveradesign.co", companyName: "Alex Rivera Design" };
     } else if (path.endsWith("/overview")) {
       data = {
-        balances: [{ currency: "USD", balance: 7500, accounts: 2 }],
-        volume: [{ currency: "USD", amount: 2000, count: 1 }],
-        paymentsInProgress: 0,
-        openBatches: 0,
-        reconciliation: null
+        currency: "USD",
+        currentBalance: 10000,
+        incomeThisMonth: 2000,
+        expensesThisMonth: 480,
+        netCashFlowThisMonth: 1520,
+        outstandingInvoices: 2000,
+        outstandingInvoiceCount: 1,
+        overdueInvoiceCount: 0,
+        cashFlow: [
+          { month: "Aug", income: 4200, expenses: 1350 },
+          { month: "Sep", income: 2000, expenses: 480 },
+        ],
+        outstandingItems: [{ id: "inv-1", invoiceNumber: "INV-001", clientName: "Acme Corp", dueDate: date, outstandingAmount: 2000, currency: "USD", status: "Sent" }],
+        recentTransactions: [{ id: "transaction", description: "Acme Corp payment", type: "InvoicePayment", status: "Posted", amount: 2000, currency: "USD", date, category: "Client income" }]
       };
     } else if (path.endsWith("/accounts/source")) {
       data = accounts[0];
@@ -117,6 +126,8 @@ async function fixture(page: Page, role = "SoloFreelancer") {
       data = transaction;
     } else if (path.endsWith("/payments/transactions")) {
       data = [transaction];
+    } else if (path.endsWith("/transactions")) {
+      data = { items: [transaction], page: 1, pageSize: 25, totalCount: 1, totalPages: 1 };
     } else if (path.includes("/audit")) {
       data = [
         { id: "aud-1", tenantId: "t-1", action: "TransactionPosted", entityType: "Transaction", entityId: "transaction", performedBy: "alex@riveradesign.co", timestamp: date }
@@ -163,6 +174,14 @@ async function fixture(page: Page, role = "SoloFreelancer") {
       data = invoices;
     } else if (path.endsWith("/clients")) {
       data = clients;
+    } else if (path.endsWith("/projects")) {
+      data = [{ id: "project-1", clientId: "cli-1", clientName: "Acme Corp", name: "Brand refresh", description: "Identity system and launch assets", status: "Active", currency: "USD", budgetAmount: 8000, totalBilled: 2000, totalReceived: 0, totalExpenses: 480, outstandingAmount: 2000, invoiceCount: 1, createdAt: date, updatedAt: date }];
+    } else if (path.endsWith("/expenses/summary")) {
+      data = { currency: "USD", total: 480, count: 1, byCategory: [{ category: "Software", amount: 480 }] };
+    } else if (path.endsWith("/expenses")) {
+      data = [{ id: "expense-1", accountId: "source", transactionId: "expense-tx", clientId: "cli-1", clientName: "Acme Corp", projectId: "project-1", projectName: "Brand refresh", merchant: "Figma", category: "Software", description: "Design tooling", amount: 480, currency: "USD", expenseDate: date, status: "Posted", createdAt: date }];
+    } else if (path.endsWith("/reports/summary")) {
+      data = { currency: "USD", from: "2026-01-01", to: "2026-09-14", income: 10000, expenses: 2800, net: 7200, outstandingInvoices: 2000, incomeByClient: [{ name: "Acme Corp", amount: 10000 }], expensesByCategory: [{ name: "Software", amount: 2800 }], cashFlow: [{ month: "Sep 26", income: 2000, expenses: 480 }] };
     } else if (path.endsWith("/intelligence/feed")) {
       data = {
         totalCount: 0,
@@ -429,34 +448,23 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
     await menuBtn.click();
   });
 
-  test("Dashboard renders hero metrics, navigation drawer, and cards", async ({ page }) => {
-    let dashboardSummaryRequests = 0;
-    page.on("request", (request) => {
-      if (!new URL(request.url()).pathname.endsWith("/ai/query")) return;
-      const body = request.postDataJSON() as { prompt?: string } | null;
-      if (body?.prompt?.includes("concise overview")) dashboardSummaryRequests += 1;
-    });
+  test("Dashboard renders authoritative metrics, navigation drawer, and activity", async ({ page }) => {
     await fixture(page);
     await page.goto("/dashboard");
-    await expect(page.getByText(/Estimated safe to spend/i).first()).toBeVisible();
-    await expect(page.getByText(/Estimated tax reserve/i).first()).toBeVisible();
-    await expect(page.getByText(/Open Client Invoices/i)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Import statement|Import income/i })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: /AI workspace summary/i })).toBeVisible();
-    await expect(page.getByText(/Workspace database context · cached for this session/i)).toBeVisible();
-    await expect(page.getByText(/Based on \$10,000 of confirmed income/i)).toBeVisible();
-    await expect(page.getByRole("link", { name: /Ask this in Assistant/i })).toHaveCount(0);
+    await expect(page.getByText("Current balance", { exact: true })).toBeVisible();
+    await expect(page.getByText("Income this month", { exact: true })).toBeVisible();
+    await expect(page.getByText("Expenses this month", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Outstanding invoices/i })).toBeVisible();
+    await expect(page.getByText("Acme Corp payment", { exact: true })).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/dashboard");
-    await expect(page.getByText(/Estimated safe to spend/i).first()).toBeVisible();
-    await expect(page.getByText(/Based on \$10,000 of confirmed income/i)).toBeVisible();
-    expect(dashboardSummaryRequests).toBe(1);
+    await expect(page.getByText("Current balance", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBeFalsy();
 
     // Test mobile drawer
     await page.getByRole("button", { name: "Open navigation" }).click();
-    for (const tab of ["Home", "Invoices", "Clients", "Income", "Taxes", "Assistant", "Settings"]) {
+    for (const tab of ["Dashboard", "Transactions", "Income", "Expenses", "Clients", "Projects", "Invoices", "Reports", "Settings"]) {
       await expect(page.getByRole("link", { name: tab, exact: true })).toBeVisible();
     }
     await page.getByRole("button", { name: "Close navigation" }).click();
@@ -535,6 +543,42 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
   });
 
+  test("Projects, expenses, reports, and transactions form one connected workspace", async ({ page }) => {
+    await fixture(page);
+
+    await page.goto("/projects");
+    await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    await expect(page.getByText("Brand refresh", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "New project" }).click();
+    await expect(page.getByLabel("Project name")).toBeVisible();
+    await expect(page.getByLabel("Client")).toHaveValue("cli-1");
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await page.goto("/expenses");
+    await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
+    await expect(page.getByText("Figma", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Add expense" }).click();
+    await expect(page.getByLabel("Paid from")).toHaveValue("source");
+    await expect(page.getByText(/permanent financial record/i)).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await page.goto("/reports");
+    await expect(page.getByRole("heading", { name: "Reports", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Income vs expenses/i })).toBeVisible();
+    await expect(page.getByText("Acme Corp", { exact: true })).toBeVisible();
+
+    await page.goto("/transactions");
+    await expect(page.getByRole("heading", { name: "Transactions", exact: true })).toBeVisible();
+    await expect(page.getByText("TX-INVOICE-001", { exact: true })).toBeVisible();
+    await page.getByLabel("Transaction type").selectOption("InvoicePayment");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const route of ["/projects", "/expenses", "/reports", "/transactions"]) {
+      await page.goto(route);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), `${route} should fit mobile`).toBeFalsy();
+    }
+  });
+
   test("Income workspace imports a statement and records a match", async ({ page }) => {
     await fixture(page);
     await page.goto("/payments");
@@ -572,7 +616,7 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
       await expect(page.getByLabel("Invoice match for Marketplace payout, September")).toHaveValue("");
       await page.getByRole("button", { name: /Record match/i }).first().click();
     await expect(page.getByText(/Payment recorded/i)).toBeVisible();
-    expect(recordedPayment).toEqual({ amount: 2000, autoTaxSetAside: true });
+    expect(recordedPayment).toEqual({ amount: 2000, autoTaxSetAside: true, reference: "Acme Corp payment for INV-001" });
     await page.getByRole("button", { name: "Done" }).click();
 
     // Mobile check
@@ -666,7 +710,9 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
   });
 
   test("preserves every public and operational route without runtime or responsive failures", async ({ page }) => {
-    test.setTimeout(120_000);
+    // This deliberately compiles and visits every lazy route at four viewport
+    // sizes, so leave headroom for a cold CI runner.
+    test.setTimeout(300_000);
     const runtimeErrors: string[] = [];
     const failedRequests: string[] = [];
     page.on("pageerror", error => runtimeErrors.push(`${new URL(page.url()).pathname}: ${error.message}`));
@@ -686,6 +732,9 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
       "/dashboard",
       "/invoices",
       "/clients",
+      "/projects",
+      "/expenses",
+      "/reports",
       "/payments",
       "/taxes",
       "/assistant",
@@ -701,6 +750,7 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
       "/audit",
       "/admin/users",
       "/system",
+      "/settings",
       "/intelligence",
     ];
 
@@ -749,10 +799,11 @@ test.describe("Tenvora Freelancer Cash-Flow Workspace", () => {
       });
     });
 
-    for (const route of ["/invoices", "/clients", "/payments", "/taxes"]) {
+    for (const route of ["/dashboard", "/invoices", "/clients", "/projects", "/expenses", "/reports", "/payments", "/transactions", "/taxes"]) {
       await page.goto(route);
-      await expect(page.getByRole("alert")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+      const error = page.getByRole("alert").first();
+      await expect(error).toBeVisible();
+      await expect(error.getByRole("button", { name: "Try again" })).toBeVisible();
     }
 
     await expect(page.getByText("Apr 15, 2026", { exact: true })).toHaveCount(0);

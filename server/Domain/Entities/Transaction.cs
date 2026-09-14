@@ -28,6 +28,9 @@ public class Transaction
     
     [MaxLength(500)]
     public string? Description { get; set; }
+    public string? Category { get; set; }
+    public string? RelatedEntityType { get; set; }
+    public Guid? RelatedEntityId { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PostedAt { get; set; }

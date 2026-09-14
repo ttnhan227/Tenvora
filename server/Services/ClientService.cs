@@ -28,15 +28,17 @@ public class ClientService : IClientService
 
         var clients = await query
             .Include(c => c.Invoices)
+            .Include(c => c.Projects)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
 
         var dtos = clients.Select(c =>
         {
-            var totalInvoiced = c.Invoices.Sum(i => i.TotalAmount);
-            var totalPaid = c.Invoices.Sum(i => i.AmountPaid);
+            var financialInvoices = c.Invoices.Where(i => i.Status != InvoiceStatuses.Cancelled).ToList();
+            var totalInvoiced = financialInvoices.Sum(i => i.TotalAmount);
+            var totalPaid = financialInvoices.Sum(i => i.AmountPaid);
             var outstanding = totalInvoiced - totalPaid;
-            var openCount = c.Invoices.Count(i => i.Status == "Sent" || i.Status == "Viewed" || i.Status == "Overdue");
+            var openCount = financialInvoices.Count(i => i.AmountPaid < i.TotalAmount && i.Status != InvoiceStatuses.Draft);
 
             return new ClientSummaryDto(
                 c.Id,
@@ -54,6 +56,7 @@ public class ClientService : IClientService
                 totalPaid,
                 outstanding,
                 openCount,
+                c.Projects.Count,
                 c.CreatedAt
             );
         }).ToList();
@@ -66,6 +69,8 @@ public class ClientService : IClientService
         var client = await _dbContext.Clients
             .AsNoTracking()
             .Include(c => c.Invoices)
+            .Include(c => c.Projects)
+            .Include(c => c.Expenses)
             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == clientId);
 
         if (client == null)
@@ -73,10 +78,11 @@ public class ClientService : IClientService
             return ApiResult<ClientSummaryDto>.Fail("Client not found");
         }
 
-        var totalInvoiced = client.Invoices.Sum(i => i.TotalAmount);
-        var totalPaid = client.Invoices.Sum(i => i.AmountPaid);
+        var financialInvoices = client.Invoices.Where(i => i.Status != InvoiceStatuses.Cancelled).ToList();
+        var totalInvoiced = financialInvoices.Sum(i => i.TotalAmount);
+        var totalPaid = financialInvoices.Sum(i => i.AmountPaid);
         var outstanding = totalInvoiced - totalPaid;
-        var openCount = client.Invoices.Count(i => i.Status == "Sent" || i.Status == "Viewed" || i.Status == "Overdue");
+        var openCount = financialInvoices.Count(i => i.AmountPaid < i.TotalAmount && i.Status != InvoiceStatuses.Draft);
 
         var dto = new ClientSummaryDto(
             client.Id,
@@ -94,6 +100,7 @@ public class ClientService : IClientService
             totalPaid,
             outstanding,
             openCount,
+            client.Projects.Count,
             client.CreatedAt
         );
 
@@ -112,6 +119,11 @@ public class ClientService : IClientService
             return ApiResult<ClientSummaryDto>.Fail("Contact email is required");
         }
 
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant();
+        if (currency.Length != 3) return ApiResult<ClientSummaryDto>.Fail("Currency must be a three-letter code.");
+        if (request.DefaultPaymentTermsDays is < 0 or > 365) return ApiResult<ClientSummaryDto>.Fail("Payment terms must be between 0 and 365 days.");
+        if (request.HourlyRate is < 0 || request.HourlyRate.HasValue && decimal.Round(request.HourlyRate.Value, 4) != request.HourlyRate.Value)
+            return ApiResult<ClientSummaryDto>.Fail("Hourly rate cannot be negative and may have at most four decimal places.");
         var client = new Client
         {
             Id = Guid.NewGuid(),
@@ -121,7 +133,7 @@ public class ClientService : IClientService
             Phone = request.Phone?.Trim(),
             Company = request.Company?.Trim(),
             Address = request.Address?.Trim(),
-            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "USD" : request.Currency.Trim().ToUpperInvariant(),
+            Currency = currency,
             DefaultPaymentTermsDays = request.DefaultPaymentTermsDays ?? 14,
             HourlyRate = request.HourlyRate,
             Status = "Active",
@@ -149,6 +161,7 @@ public class ClientService : IClientService
             0m,
             0m,
             0,
+            0,
             client.CreatedAt
         );
 
@@ -159,12 +172,26 @@ public class ClientService : IClientService
     {
         var client = await _dbContext.Clients
             .Include(c => c.Invoices)
+            .Include(c => c.Projects)
+            .Include(c => c.Expenses)
             .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == clientId);
 
         if (client == null)
         {
             return ApiResult<ClientSummaryDto>.Fail("Client not found");
         }
+
+        if (request.Status != null && request.Status is not ("Active" or "Lead" or "Archived"))
+            return ApiResult<ClientSummaryDto>.Fail("Choose a valid client status.");
+        if (!string.IsNullOrWhiteSpace(request.Currency) && request.Currency.Trim().Length != 3)
+            return ApiResult<ClientSummaryDto>.Fail("Currency must be a three-letter code.");
+        if (request.DefaultPaymentTermsDays is < 0 or > 365)
+            return ApiResult<ClientSummaryDto>.Fail("Payment terms must be between 0 and 365 days.");
+        if (request.HourlyRate is < 0 || request.HourlyRate.HasValue && decimal.Round(request.HourlyRate.Value, 4) != request.HourlyRate.Value)
+            return ApiResult<ClientSummaryDto>.Fail("Hourly rate cannot be negative and may have at most four decimal places.");
+        if (!string.IsNullOrWhiteSpace(request.Currency) && !string.Equals(request.Currency.Trim(), client.Currency, StringComparison.OrdinalIgnoreCase) &&
+            (client.Invoices.Count > 0 || client.Projects.Count > 0 || client.Expenses.Count > 0))
+            return ApiResult<ClientSummaryDto>.Fail("Client currency cannot change after financial activity has been recorded.");
 
         if (!string.IsNullOrWhiteSpace(request.Name)) client.Name = request.Name.Trim();
         if (!string.IsNullOrWhiteSpace(request.ContactEmail)) client.ContactEmail = request.ContactEmail.Trim().ToLowerInvariant();
@@ -180,10 +207,11 @@ public class ClientService : IClientService
         client.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
 
-        var totalInvoiced = client.Invoices.Sum(i => i.TotalAmount);
-        var totalPaid = client.Invoices.Sum(i => i.AmountPaid);
+        var financialInvoices = client.Invoices.Where(i => i.Status != InvoiceStatuses.Cancelled).ToList();
+        var totalInvoiced = financialInvoices.Sum(i => i.TotalAmount);
+        var totalPaid = financialInvoices.Sum(i => i.AmountPaid);
         var outstanding = totalInvoiced - totalPaid;
-        var openCount = client.Invoices.Count(i => i.Status == "Sent" || i.Status == "Viewed" || i.Status == "Overdue");
+        var openCount = financialInvoices.Count(i => i.AmountPaid < i.TotalAmount && i.Status != InvoiceStatuses.Draft);
 
         var dto = new ClientSummaryDto(
             client.Id,
@@ -201,6 +229,7 @@ public class ClientService : IClientService
             totalPaid,
             outstanding,
             openCount,
+            client.Projects.Count,
             client.CreatedAt
         );
 
