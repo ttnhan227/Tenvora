@@ -1,4 +1,13 @@
-bin
-obj
-.git
-.vscode
+bin/
+obj/
+.git/
+.gitignore
+.vscode/
+.vs/
+*.sln.DotSettings
+appsettings.Development.json
+.env
+.env.local
+node_modules/
+.DS_Store
+*.log
