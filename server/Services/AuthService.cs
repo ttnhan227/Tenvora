@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
@@ -33,10 +33,16 @@ public sealed class AuthService : IAuthService
 
     public async Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
+        // Validate password strength
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
+            return ApiResult<AuthResponse>.Fail("Password must be at least 12 characters long.");
+        if (!request.Password.Any(c => char.IsUpper(c)) || !request.Password.Any(c => char.IsLower(c)) || !request.Password.Any(c => char.IsDigit(c)))
+            return ApiResult<AuthResponse>.Fail("Password must contain uppercase, lowercase, and numeric characters.");
+
         var email = request.Email.Trim().ToLowerInvariant();
         var company = request.CompanyName.Trim();
         await using var write = await FinancialWriteScope.BeginAsync(_context, Guid.Empty);
-        var emailAlreadyRegistered = await _context.Users.AnyAsync(u => u.Email == email);
+        var emailAlreadyRegistered = await _context.Users.AnyAsync(u => u.Email.ToLower() == email);
         if (emailAlreadyRegistered)
         {
             return ApiResult<AuthResponse>.Fail("Email already registered.");
@@ -187,3 +193,4 @@ public sealed class AuthService : IAuthService
         return ApiResult<AuthResponse>.Ok(response);
     }
 }
+

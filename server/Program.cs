@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -103,8 +103,8 @@ builder.Services.AddCors(options =>
         var extraOrigins = Environment.GetEnvironmentVariable("CLIENT_ORIGINS");
         if (!string.IsNullOrWhiteSpace(extraOrigins))
         {
-            origins.AddRange(
-                extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            var validOrigins = extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(o => Uri.TryCreate(o, UriKind.Absolute, out _)).ToList();
+            origins.AddRange(validOrigins);
         }
 
         policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
@@ -363,3 +363,4 @@ catch (Exception ex)
 }
 
 await app.RunAsync();
+

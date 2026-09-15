@@ -97,7 +97,7 @@ public sealed class InvoiceService(AppDbContext db) : IInvoiceService
         }
         invoice.Subtotal = Money(invoice.Items.Sum(i => i.Amount));
         invoice.TaxRate = request.TaxRate ?? 0m;
-        invoice.TaxAmount = Money(invoice.Subtotal * invoice.TaxRate / 100m);
+        invoice.TaxAmount = Money(Money(invoice.Subtotal * invoice.TaxRate) / 100m);
         invoice.TotalAmount = Money(invoice.Subtotal + invoice.TaxAmount);
         if (invoice.TotalAmount <= 0) return ApiResult<InvoiceSummaryDto>.Fail("Invoice total must be greater than zero.");
         db.Invoices.Add(invoice);

@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -124,6 +124,7 @@ public class TransferService : ITransferService
 
             var sortedIds = new[] { request.SourceAccountId, request.DestinationAccountId }.OrderBy(x => x).ToList();
             List<SemaphoreSlim>? acquiredSemaphores = null;
+            // Only use in-memory locks for non-relational databases; relational DBs use row-level locks
             if (!isRelational)
             {
                 acquiredSemaphores = new List<SemaphoreSlim>();
@@ -206,7 +207,7 @@ public class TransferService : ITransferService
                 if (_riskService != null)
                 {
                     var riskEval = _riskService.EvaluatePayment(paymentRequest, sourceAccount, destAccount);
-                    await _context.RiskEvaluations.AddAsync(new RiskEvaluation
+                    if (riskEval != null)
                     {
                         Id = Guid.NewGuid(),
                         TenantId = tenantId,
@@ -215,10 +216,13 @@ public class TransferService : ITransferService
                         RiskLevel = riskEval.RiskLevel,
                         Decision = riskEval.Decision,
                         RuleHitsJson = JsonSerializer.Serialize(riskEval.RuleHits),
-                        CreatedAt = DateTime.UtcNow
-                    });
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
                 }
 
+                    }
+                }
                 // 5. Create Financial Transaction entity
                 var txId = Guid.NewGuid();
                 var refNumber = $"TX-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
@@ -524,3 +528,6 @@ public class TransferService : ITransferService
         return Convert.ToHexString(bytes);
     }
 }
+
+
+

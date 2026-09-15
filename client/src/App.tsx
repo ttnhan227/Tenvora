@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -44,7 +45,13 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
-    mutations: { retry: false },
+    mutations: { 
+      retry: false,
+      onError: (error: any) => {
+        const message = error?.response?.data?.error || error?.message || 'An error occurred';
+        console.error('Mutation failed:', message);
+      },
+    },
   },
 });
 
@@ -57,7 +64,8 @@ export default function App() {
           <Sonner />
           <RequestActivityIndicator />
           <BrowserRouter>
-            <Suspense fallback={<div role="status" className="p-12 text-sm text-muted-foreground">Loading Tenvora...</div>}>
+            <ErrorBoundary>
+              <Suspense fallback={<div role="status" className="p-12 text-sm text-muted-foreground">Loading Tenvora...</div>}>
               <Routes>
                 {/* Public Marketing & Auth */}
                 <Route path="/" element={<Index />} />
@@ -115,6 +123,7 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            </ErrorBoundary>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

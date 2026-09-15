@@ -30,7 +30,10 @@ public sealed class UserRepository : IUserRepository
 
     public Task<User?> GetByInviteTokenAsync(string token)
     {
-        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.InviteToken == token && u.InviteTokenExpiresAt > DateTime.UtcNow);
+        // Token lookup is case-sensitive; normalize for comparison
+        var normalizedToken = token.Trim();
+        return _context.Users.Include(u => u.Tenant)
+            .FirstOrDefaultAsync(u => u.InviteToken != null && u.InviteToken.Equals(normalizedToken, StringComparison.Ordinal) && u.InviteTokenExpiresAt > DateTime.UtcNow);
     }
 
     public async Task<IEnumerable<User>> GetAllByTenantAsync(Guid tenantId)

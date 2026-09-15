@@ -34,7 +34,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-let refreshInFlight: Promise<any> | null = null;
+// Mutex to serialize token refresh operations
+let refreshMutex = Promise.resolve();
 
 // Response interceptor to handle 401 and refresh token
 apiClient.interceptors.response.use(
@@ -66,17 +67,24 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        if (!refreshInFlight) {
-          refreshInFlight = axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken })
-            .finally(() => { refreshInFlight = null; });
-        }
-        const response = await refreshInFlight;
+        // Use mutex to ensure only one refresh request at a time
+        const refreshResult = await (refreshMutex = refreshMutex.then(async () => {
+          try {
+            const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
+            const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+            localStorage.setItem("accessToken", accessToken);
+            localStorage.setItem("refreshToken", newRefreshToken);
+            return accessToken;
+          } catch (refreshError) {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+            throw refreshError;
+          }
+        }));
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${refreshResult}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem("accessToken");
