@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -209,20 +209,20 @@ public class TransferService : ITransferService
                     var riskEval = _riskService.EvaluatePayment(paymentRequest, sourceAccount, destAccount);
                     if (riskEval != null)
                     {
-                        Id = Guid.NewGuid(),
-                        TenantId = tenantId,
-                        PaymentRequestId = pReqId,
-                        Score = riskEval.Score,
-                        RiskLevel = riskEval.RiskLevel,
-                        Decision = riskEval.Decision,
-                        RuleHitsJson = JsonSerializer.Serialize(riskEval.RuleHits),
+                        await _context.RiskEvaluations.AddAsync(new RiskEvaluation
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            PaymentRequestId = pReqId,
+                            Score = riskEval.Score,
+                            RiskLevel = riskEval.RiskLevel,
+                            Decision = riskEval.Decision,
+                            RuleHitsJson = JsonSerializer.Serialize(riskEval.RuleHits),
                             CreatedAt = DateTime.UtcNow
                         });
                     }
                 }
 
-                    }
-                }
                 // 5. Create Financial Transaction entity
                 var txId = Guid.NewGuid();
                 var refNumber = $"TX-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";

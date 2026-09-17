@@ -25,22 +25,20 @@ RUN apt-get update \
     libkrb5-3 \
     libgssapi-krb5-2 \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser
 
 WORKDIR /app
 
 # Copy published artifacts from build stage
-COPY --from=build --chown=appuser:appuser /app/publish .
+COPY --from=build --chown=app:app /app/publish .
 
-# Switch to non-root user
-USER appuser
+# Switch to non-root user (built into .NET images)
+USER app
 
 EXPOSE 5000
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD dotnet --version || exit 1
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
 
 ENTRYPOINT ["dotnet", "Tenvora.Api.dll"]
