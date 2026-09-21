@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseStatementCsv, suggestInvoice, type StatementRow } from "@/components/income/StatementImportDialog";
+import { parseStatementCsv, suggestInvoice, type StatementRow } from "@/lib/statementParser";
 import type { InvoiceSummary } from "@/services/invoiceService";
 
 const invoice = {

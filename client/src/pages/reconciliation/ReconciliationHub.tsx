@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeading, Panel, Notice, usePermissions } from "@/components/WorkspaceUI";
+import { PageHeading, Panel, Notice } from "@/components/WorkspaceUI";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { reconciliationService, type ReconciliationRun } from "@/services/reconciliationService";
 export default function ReconciliationHub() {

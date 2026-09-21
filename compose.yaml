@@ -2,8 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: tenvora-postgres
-    env_file:
-      - .env
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tenvora_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -12,6 +11,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - tenvora_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tenvora_db}"]
       interval: 5s
@@ -23,8 +24,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
     container_name: tenvora-api
-    env_file:
-      - .env
+    restart: unless-stopped
     environment:
       PORT: 5000
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
@@ -43,31 +43,46 @@ services:
       AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/models}
       AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-flash-latest}
       AI_VISION_MODEL: ${AI_VISION_MODEL:-gemini-flash-latest}
-      SEED_TENANT_NAME: ${SEED_TENANT_NAME:?Set SEED_TENANT_NAME in .env}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Northstar Creative Studio}
       SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:?Set SEED_TENANT_API_KEY in .env}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?Set SEED_ADMIN_EMAIL in .env}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in .env}
-      SEED_OPS_EMAIL: ${SEED_OPS_EMAIL:?Set SEED_OPS_EMAIL in .env}
-      SEED_OPS_PASSWORD: ${SEED_OPS_PASSWORD:?Set SEED_OPS_PASSWORD in .env}
-      SEED_COMPLIANCE_EMAIL: ${SEED_COMPLIANCE_EMAIL:?Set SEED_COMPLIANCE_EMAIL in .env}
-      SEED_COMPLIANCE_PASSWORD: ${SEED_COMPLIANCE_PASSWORD:?Set SEED_COMPLIANCE_PASSWORD in .env}
+      SEED_OPS_EMAIL: ${SEED_OPS_EMAIL:-}
+      SEED_OPS_PASSWORD: ${SEED_OPS_PASSWORD:-}
+      SEED_COMPLIANCE_EMAIL: ${SEED_COMPLIANCE_EMAIL:-}
+      SEED_COMPLIANCE_PASSWORD: ${SEED_COMPLIANCE_PASSWORD:-}
     ports:
       - "${PORT:-5000}:5000"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - tenvora_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
     container_name: tenvora-client
-    env_file:
-      - .env
+    restart: unless-stopped
     ports:
       - "${VITE_PORT:-5173}:8080"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
+    networks:
+      - tenvora_net
 
 volumes:
   postgres_data:
+
+networks:
+  tenvora_net:
+    driver: bridge

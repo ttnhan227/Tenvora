@@ -11,6 +11,12 @@ internal static class FinancialWriteScope
     public static async Task<IDbContextTransaction?> BeginAsync(AppDbContext db, Guid tenantId)
     {
         if (!db.Database.IsRelational()) return null;
+        if (db.Database.CurrentTransaction != null)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtext({tenantId.ToString()}))");
+            return null;
+        }
+
         var transaction = await db.Database.BeginTransactionAsync();
         try
         {

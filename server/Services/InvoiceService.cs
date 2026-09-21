@@ -76,11 +76,23 @@ public sealed class InvoiceService(AppDbContext db) : IInvoiceService
         var issueDate = request.IssueDate ?? DateTime.UtcNow;
         var dueDate = request.DueDate ?? issueDate.AddDays(client.DefaultPaymentTermsDays > 0 ? client.DefaultPaymentTermsDays : 14);
         if (dueDate < issueDate) return ApiResult<InvoiceSummaryDto>.Fail("Due date cannot be before issue date.");
-        var invoiceNumber = string.IsNullOrWhiteSpace(request.InvoiceNumber)
-            ? $"INV-{DateTime.UtcNow.Year}-{await db.Invoices.CountAsync(i => i.TenantId == tenantId) + 1:D3}"
-            : request.InvoiceNumber.Trim();
-        if (await db.Invoices.AnyAsync(i => i.TenantId == tenantId && i.InvoiceNumber == invoiceNumber))
-            return ApiResult<InvoiceSummaryDto>.Fail("Invoice number already exists.");
+        string invoiceNumber;
+        if (string.IsNullOrWhiteSpace(request.InvoiceNumber))
+        {
+            var nextIndex = await db.Invoices.CountAsync(i => i.TenantId == tenantId) + 1;
+            invoiceNumber = $"INV-{DateTime.UtcNow.Year}-{nextIndex:D3}";
+            while (await db.Invoices.AnyAsync(i => i.TenantId == tenantId && i.InvoiceNumber == invoiceNumber))
+            {
+                nextIndex++;
+                invoiceNumber = $"INV-{DateTime.UtcNow.Year}-{nextIndex:D3}";
+            }
+        }
+        else
+        {
+            invoiceNumber = request.InvoiceNumber.Trim();
+            if (await db.Invoices.AnyAsync(i => i.TenantId == tenantId && i.InvoiceNumber == invoiceNumber))
+                return ApiResult<InvoiceSummaryDto>.Fail("Invoice number already exists.");
+        }
 
         var invoice = new Invoice
         {

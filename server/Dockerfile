@@ -6,24 +6,25 @@ WORKDIR /src
 COPY Tenvora.Api.csproj ./
 
 # Restore dependencies (cached if csproj unchanged)
-RUN dotnet restore Tenvora.Api.csproj
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet restore Tenvora.Api.csproj
 
 # Copy source code
 COPY . ./
 
 # Build and publish
-RUN dotnet publish -c Release -o /app/publish \
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet publish -c Release -o /app/publish \
     --no-restore \
-    --self-contained false
+    --self-contained false \
+    -p:UseAppHost=false
 
 # ===== RUNTIME STAGE =====
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
-# Install required system libraries
+# Install required runtime utilities
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    libkrb5-3 \
-    libgssapi-krb5-2 \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*

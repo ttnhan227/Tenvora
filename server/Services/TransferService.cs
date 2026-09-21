@@ -370,12 +370,9 @@ public class TransferService : ITransferService
         var executionStrategy = _context.Database.CreateExecutionStrategy();
         return await executionStrategy.ExecuteAsync(async () =>
         {
-            var isRelational = _context.Database.IsRelational();
-            await using var dbTransaction = isRelational ? await _context.Database.BeginTransactionAsync() : null;
+            await using var dbTransaction = await FinancialWriteScope.BeginAsync(_context, tenantId);
             try
             {
-                if (isRelational)
-                    await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtext({tenantId.ToString()}))");
                 await _context.Entry(originalTx).ReloadAsync();
                 if (originalTx.TransactionType != TransactionTypes.Transfer || originalTx.Status is not (TransactionStatuses.Posted or TransactionStatuses.Settled))
                     throw new InvalidOperationException("Only completed transfers can be reversed once.");

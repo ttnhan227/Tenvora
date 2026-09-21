@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeading, Panel, Notice, money, usePermissions } from "@/components/WorkspaceUI";
+import { PageHeading, Panel, Notice } from "@/components/WorkspaceUI";
+import { money } from "@/lib/money";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { accountService, type Account } from "@/services/accountService";
 import { ledgerService, type AccountLedgerHistory } from "@/services/ledgerService";

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -13,7 +17,7 @@ env:
 jobs:
   # ===== BACKEND TESTS =====
   backend-test:
-    name: Build & Test .NET API
+    name: Build & Test .NET Solution
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -25,13 +29,13 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore Dependencies
-        run: dotnet restore server/Tenvora.Api.csproj
+        run: dotnet restore Tenvora.sln
 
-      - name: Build Backend
-        run: dotnet build server/Tenvora.Api.csproj --no-restore -c Release
+      - name: Build Solution
+        run: dotnet build Tenvora.sln --no-restore -c Release
 
       - name: Run Backend Tests
-        run: dotnet test server.Tests/Tenvora.Tests.csproj --no-build -c Release --verbosity normal
+        run: dotnet test Tenvora.sln --no-build -c Release --verbosity normal
 
   # ===== FRONTEND TESTS =====
   frontend-test:
@@ -44,32 +48,39 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: client/package-lock.json
 
       - name: Install Dependencies
-        run: cd client && npm ci
-
-      - name: Run Tests
-        run: cd client && npm test -- --run
+        working-directory: client
+        run: npm ci
 
       - name: Run Linter
-        run: cd client && npm run lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Run Unit Tests
+        working-directory: client
+        run: npm test -- --run
 
       - name: Build Frontend
-        run: cd client && npm run build
+        working-directory: client
+        run: npm run build
 
   # ===== SECURITY SCANNING =====
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -77,16 +88,16 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
 
-  # ===== BUILD & PUSH DOCKER IMAGES =====
+  # ===== BUILD & VALIDATE DOCKER IMAGES =====
   build-docker:
     name: Build & Push Docker Images
-    needs: [backend-test, frontend-test, security-scan]
+    needs: [backend-test, frontend-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -98,6 +109,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -129,22 +141,22 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Server image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./server
           file: ./server/Dockerfile
-          push: true
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build and push Client image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./client
           file: ./client/Dockerfile
-          push: true
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta-client.outputs.tags }}
           labels: ${{ steps.meta-client.outputs.labels }}
           cache-from: type=gha
@@ -153,7 +165,7 @@ jobs:
   # ===== DEPLOY TO RENDER =====
   deploy:
     name: Deploy to Render
-    needs: build-docker
+    needs: [build-docker]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:

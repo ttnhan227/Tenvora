@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeading, Panel, Notice, money, usePermissions } from "@/components/WorkspaceUI";
+import { PageHeading, Panel, Notice } from "@/components/WorkspaceUI";
+import { money } from "@/lib/money";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

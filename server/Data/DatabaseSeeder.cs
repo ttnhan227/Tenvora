@@ -42,6 +42,45 @@ public static class DatabaseSeeder
         };
 
         StarterWorkspaceFactory.Populate(tenant, owner, now);
+
+        var opsEmail = Environment.GetEnvironmentVariable("SEED_OPS_EMAIL")?.Trim().ToLowerInvariant();
+        var opsPassword = Environment.GetEnvironmentVariable("SEED_OPS_PASSWORD")?.Trim();
+        if (!string.IsNullOrWhiteSpace(opsEmail) && !string.IsNullOrWhiteSpace(opsPassword) && !opsPassword.StartsWith("your_", StringComparison.OrdinalIgnoreCase))
+        {
+            var opsUser = new User
+            {
+                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                TenantId = tenant.Id,
+                Email = opsEmail,
+                PasswordHash = Services.PasswordHasher.Hash(opsPassword),
+                Role = "OperationsManager",
+                IsActive = true,
+                PreferredCurrency = "USD",
+                CreatedAt = now.AddDays(-60),
+                UpdatedAt = now
+            };
+            tenant.Users.Add(opsUser);
+        }
+
+        var complianceEmail = Environment.GetEnvironmentVariable("SEED_COMPLIANCE_EMAIL")?.Trim().ToLowerInvariant();
+        var compliancePassword = Environment.GetEnvironmentVariable("SEED_COMPLIANCE_PASSWORD")?.Trim();
+        if (!string.IsNullOrWhiteSpace(complianceEmail) && !string.IsNullOrWhiteSpace(compliancePassword) && !compliancePassword.StartsWith("your_", StringComparison.OrdinalIgnoreCase))
+        {
+            var complianceUser = new User
+            {
+                Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+                TenantId = tenant.Id,
+                Email = complianceEmail,
+                PasswordHash = Services.PasswordHasher.Hash(compliancePassword),
+                Role = "ComplianceOfficer",
+                IsActive = true,
+                PreferredCurrency = "USD",
+                CreatedAt = now.AddDays(-60),
+                UpdatedAt = now
+            };
+            tenant.Users.Add(complianceUser);
+        }
+
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();
     }

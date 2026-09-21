@@ -107,7 +107,7 @@ export default function App() {
                 <Route
                   path="/admin/users"
                   element={
-                    <ProtectedRoute requiredRole={["TenantAdmin", "OperationsManager"]}>
+                    <ProtectedRoute requiredRole={["TenantAdmin"]}>
                       <UserManagement />
                     </ProtectedRoute>
                   }

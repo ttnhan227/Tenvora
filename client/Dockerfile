@@ -2,11 +2,16 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
+# Support optional build arguments
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Copy package files for dependency caching
 COPY package*.json ./
 
 # Build tooling such as TypeScript and Vite is installed from devDependencies.
-RUN npm ci && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copy source code
 COPY . .

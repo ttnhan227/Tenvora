@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -177,6 +177,7 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<ITaxService, TaxService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
 if (!string.Equals(Environment.GetEnvironmentVariable("ENABLE_INTELLIGENCE_SYNC"), "false", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
@@ -198,7 +199,22 @@ if (connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreC
     var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
     var portNum = uri.Port > 0 ? uri.Port : 5432;
     var database = uri.AbsolutePath.TrimStart('/');
-    connectionString = $"Host={uri.Host};Port={portNum};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+
+    var query = uri.Query.TrimStart('?');
+    var isLocalOrDocker = uri.Host is "localhost" or "127.0.0.1" or "postgres";
+    var sslMode = isLocalOrDocker ? "Disable" : "Require";
+    foreach (var part in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var kv = part.Split('=');
+        if (kv.Length == 2 && kv[0].Equals("sslmode", StringComparison.OrdinalIgnoreCase))
+        {
+            sslMode = kv[1].Equals("disable", StringComparison.OrdinalIgnoreCase) ? "Disable" :
+                      kv[1].Equals("require", StringComparison.OrdinalIgnoreCase) ? "Require" :
+                      kv[1].Equals("prefer", StringComparison.OrdinalIgnoreCase) ? "Prefer" : kv[1];
+        }
+    }
+
+    connectionString = $"Host={uri.Host};Port={portNum};Database={database};Username={username};Password={password};SSL Mode={sslMode};Trust Server Certificate=true";
 }
 
 builder.Services.AddHttpContextAccessor();
