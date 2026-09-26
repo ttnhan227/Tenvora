@@ -6,6 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  googleLogin: (credential: string) => Promise<ApiResponse<AuthResponse>>;
   register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<ApiResponse<AuthResponse>>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -58,6 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
           preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
+          googleLinked: result.data.googleLinked,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -67,6 +69,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Login error:", error);
       return false;
+    }
+  };
+
+  const googleLogin = async (credential: string): Promise<ApiResponse<AuthResponse>> => {
+    try {
+      const result = await authService.googleLogin({ credential });
+      if (result.success && result.data) {
+        localStorage.setItem("accessToken", result.data.accessToken);
+        localStorage.setItem("refreshToken", result.data.refreshToken);
+        const profile: UserProfile = {
+          id: result.data.userId,
+          tenantId: result.data.tenantId,
+          email: result.data.email,
+          role: result.data.role,
+          isActive: true,
+          preferredCurrency: result.data.preferredCurrency,
+          companyName: result.data.companyName,
+          googleLinked: result.data.googleLinked ?? true,
+        };
+        setUser(profile);
+        localStorage.setItem("user", JSON.stringify(profile));
+        return result;
+      }
+      return result;
+    } catch (error) {
+      console.error("Google login error:", error);
+      return {
+        success: false,
+        message: "Google sign-in failed. Please try again.",
+        errors: ["Google sign-in failed. Please try again."],
+      };
     }
   };
 
@@ -84,6 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isActive: true,
           preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
+          googleLinked: result.data.googleLinked,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -118,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     login,
+    googleLogin,
     register,
     logout,
     refreshProfile,

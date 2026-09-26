@@ -14,6 +14,6 @@ describe("NotFound", () => {
     );
 
     expect(screen.getByRole("heading", { name: "404" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /return to home/i })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /Tenvora home/i })).toHaveAttribute("href", "/");
   });
 });

@@ -1,9 +1,0 @@
-import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageHeading, Panel, Notice } from "@/components/WorkspaceUI";
-import { riskService, type RiskEvaluationItem } from "@/services/riskService";
-export default function RiskHub() {
- const [items, setItems] = useState<RiskEvaluationItem[]>([]); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
- async function load() { setLoading(true); const r = await riskService.getEvaluations(); if (r.success) setItems(r.data ?? []); else setError(r.errors?.join(" ") ?? "Risk checks could not be loaded."); setLoading(false); } useEffect(() => { void load(); }, []);
- return <DashboardLayout><div className="space-y-6"><PageHeading title="Risk checks" description="Inspect simple rule-based observations recorded when payments were created." /><Notice>These checks are informational. They do not approve, block, or reverse payments, and are not a fraud detection or compliance certification service.</Notice>{error && <Notice>{error} <button onClick={load} className="underline">Retry</button></Notice>}{loading ? <Notice>Loading checks...</Notice> : !items.length ? <Notice>No checks yet. Observations will appear after payments are created.</Notice> : items.map(i => <Panel key={i.id} title={`${i.riskLevel} risk · score ${i.score}/100`}><p className="text-xs text-muted-foreground">{new Date(i.createdAt).toLocaleString()} · Payment request {i.paymentRequestId}</p><ul className="mt-4 space-y-2 text-sm">{i.ruleHits.length ? i.ruleHits.map(r => <li key={r}>{r}</li>) : <li>No configured rules were triggered.</li>}</ul><p className="mt-3 text-sm text-muted-foreground">{i.score >= 25 ? "Inspect the payment and account activity before making further transfers." : "No additional action suggested by these checks."}</p></Panel>)}</div></DashboardLayout>;
-}

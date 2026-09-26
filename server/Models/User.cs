@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Tenvora.Api.Models;
 
@@ -11,7 +11,10 @@ public class User
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 
-    public string Role { get; set; } = "OperationsManager"; // TenantAdmin, OperationsManager, ComplianceOfficer, ApiClient
+    public string? GoogleSub { get; set; }
+    public bool GoogleLinked => !string.IsNullOrEmpty(GoogleSub);
+
+    public string Role { get; set; } = "OperationsManager"; // TenantAdmin, OperationsManager, ReadOnly
     public bool IsActive { get; set; } = true;
     public string PreferredCurrency { get; set; } = "USD";
 

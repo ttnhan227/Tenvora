@@ -1,4 +1,4 @@
-﻿using Tenvora.Api.Common;
+using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Models;
 using Tenvora.Api.Repositories;
@@ -16,7 +16,7 @@ public sealed class AdminUserService : IAdminUserService
 
     public async Task<ApiResult<AdminUserResponse>> CreateUserAsync(Guid tenantId, AdminCreateUserRequest request)
     {
-        if (!new[] { "TenantAdmin", "OperationsManager", "ComplianceOfficer", "ReadOnly" }.Contains(request.Role))
+        if (!new[] { "TenantAdmin", "OperationsManager", "ReadOnly" }.Contains(request.Role))
             return ApiResult<AdminUserResponse>.Fail("Choose a supported workspace role.");
         var existing = await _userRepository.GetByEmailAndTenantAsync(request.Email.Trim().ToLowerInvariant(), tenantId);
         if (existing != null)
@@ -45,7 +45,8 @@ public sealed class AdminUserService : IAdminUserService
             user.Role,
             user.IsActive,
             user.PreferredCurrency,
-            user.CreatedAt
+            user.CreatedAt,
+            user.GoogleLinked
         ));
     }
 
@@ -58,7 +59,8 @@ public sealed class AdminUserService : IAdminUserService
             u.Role,
             u.IsActive,
             u.PreferredCurrency,
-            u.CreatedAt
+            u.CreatedAt,
+            u.GoogleLinked
         )).ToList();
 
         return ApiResult<List<AdminUserResponse>>.Ok(response);

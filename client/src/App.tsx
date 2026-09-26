@@ -1,132 +1,57 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RequestActivityIndicator } from "@/components/RequestActivityIndicator";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Invoices = lazy(() => import("./pages/invoices/InvoicesList"));
-const Clients = lazy(() => import("./pages/clients/ClientsList"));
-const Projects = lazy(() => import("./pages/projects/ProjectsList"));
-const Expenses = lazy(() => import("./pages/expenses/ExpensesList"));
-const Reports = lazy(() => import("./pages/reports/ReportsPage"));
-const Payments = lazy(() => import("./pages/payments/PaymentsHub"));
-const Taxes = lazy(() => import("./pages/taxes/TaxesHub"));
-const Assistant = lazy(() => import("./pages/assistant/FreelancerAssistant"));
-const AccountsList = lazy(() => import("./pages/accounts/AccountsList"));
-const AccountDetail = lazy(() => import("./pages/accounts/AccountDetail"));
-const Transfers = lazy(() => import("./pages/payments/Transfers"));
-const TransactionsList = lazy(() => import("./pages/payments/TransactionsList"));
-const TransactionDetail = lazy(() => import("./pages/payments/TransactionDetail"));
-const LedgerView = lazy(() => import("./pages/ledger/LedgerView"));
-const ReconciliationHub = lazy(() => import("./pages/reconciliation/ReconciliationHub"));
-const SettlementBatches = lazy(() => import("./pages/settlements/SettlementBatches"));
-const RiskHub = lazy(() => import("./pages/risk/RiskHub"));
-const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
+const BusinessHome = lazy(() => import("./pages/business/BusinessHome"));
+const CustomersPage = lazy(() => import("./pages/business/CustomersPage"));
+const CustomerDetailPage = lazy(() => import("./pages/business/CustomerDetailPage"));
+const ProductsPage = lazy(() => import("./pages/business/ProductsPage"));
+const SalesPage = lazy(() => import("./pages/business/SalesPage"));
+const SuppliersPage = lazy(() => import("./pages/business/SuppliersPage"));
+const PurchasesPage = lazy(() => import("./pages/business/PurchasesPage"));
+const BusinessExpensesPage = lazy(() => import("./pages/business/BusinessExpensesPage"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
-const SystemOperations = lazy(() => import("./pages/system/SystemOperations"));
-const IntelligenceHub = lazy(() => import("./pages/intelligence/IntelligenceHub"));
-const Docs = lazy(() => import("./pages/public/Documentation"));
-const Pricing = lazy(() => import("./pages/public/PricingPage"));
-const About = lazy(() => import("./pages/public/AboutPage"));
-const Contact = lazy(() => import("./pages/public/ContactPage"));
-const Security = lazy(() => import("./pages/public/SecurityWhitepaper"));
-const StatusPage = lazy(() => import("./pages/public/StatusPage"));
+const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
-    mutations: { 
-      retry: false,
-      onError: (error: any) => {
-        const message = error?.response?.data?.error || error?.message || 'An error occurred';
-        console.error('Mutation failed:', message);
-      },
-    },
+    mutations: { retry: false },
   },
 });
 
 export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <RequestActivityIndicator />
-          <BrowserRouter>
-            <ErrorBoundary>
-              <Suspense fallback={<div role="status" className="p-12 text-sm text-muted-foreground">Loading Tenvora...</div>}>
-              <Routes>
-                {/* Public Marketing & Auth */}
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/docs" element={<Docs />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/security" element={<Security />} />
-                <Route path="/news" element={<Navigate to="/docs" replace />} />
-                <Route path="/news/:slug" element={<Navigate to="/docs" replace />} />
-                <Route path="/status" element={<StatusPage />} />
-
-                {/* Freelancer cash-flow workspace routes */}
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-                <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-                <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-                <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-                <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
-                <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} />
-                <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
-
-                {/* Detail & Extended Financial Operations Views */}
-                <Route path="/transactions/:id" element={<ProtectedRoute><TransactionDetail /></ProtectedRoute>} />
-                <Route path="/accounts" element={<ProtectedRoute><AccountsList /></ProtectedRoute>} />
-                <Route path="/accounts/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
-                <Route path="/transfers" element={<ProtectedRoute><Transfers /></ProtectedRoute>} />
-                <Route path="/transactions" element={<ProtectedRoute><TransactionsList /></ProtectedRoute>} />
-                <Route path="/ledger" element={<ProtectedRoute><LedgerView /></ProtectedRoute>} />
-                <Route path="/settlements" element={<ProtectedRoute><SettlementBatches /></ProtectedRoute>} />
-                <Route path="/reconciliation" element={<ProtectedRoute><ReconciliationHub /></ProtectedRoute>} />
-                <Route path="/risk" element={<ProtectedRoute><RiskHub /></ProtectedRoute>} />
-                <Route path="/audit" element={<ProtectedRoute><AuditLogView /></ProtectedRoute>} />
-                <Route path="/system" element={<ProtectedRoute><SystemOperations /></ProtectedRoute>} />
-                <Route path="/intelligence" element={<ProtectedRoute><IntelligenceHub /></ProtectedRoute>} />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <ProtectedRoute requiredRole={["TenantAdmin"]}>
-                      <UserManagement />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Backward-compatible public aliases */}
-                <Route path="/documentation" element={<Navigate to="/docs" replace />} />
-                <Route path="/help" element={<Navigate to="/contact" replace />} />
-                <Route path="/company" element={<Navigate to="/about" replace />} />
-                <Route path="/compliance" element={<Navigate to="/security" replace />} />
-                <Route path="/settings" element={<ProtectedRoute><SystemOperations /></ProtectedRoute>} />
-
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-            </ErrorBoundary>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  return <QueryClientProvider client={queryClient}><AuthProvider><TooltipProvider>
+    <Toaster /><Sonner /><RequestActivityIndicator />
+    <BrowserRouter><ErrorBoundary><Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-background p-8 text-sm font-bold text-muted-foreground"><span className="mr-3 h-3 w-3 animate-pulse rounded-full bg-primary" />Opening Tenvora…</div>}>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<ProtectedRoute><BusinessHome /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+        <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />
+        <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
+        <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
+        <Route path="/suppliers" element={<ProtectedRoute><SuppliersPage /></ProtectedRoute>} />
+        <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><BusinessExpensesPage /></ProtectedRoute>} />
+        <Route path="/team" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><UserManagement /></ProtectedRoute>} />
+        <Route path="/audit" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><AuditLogView /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<Navigate to="/team" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense></ErrorBoundary></BrowserRouter>
+  </TooltipProvider></AuthProvider></QueryClientProvider>;
 }

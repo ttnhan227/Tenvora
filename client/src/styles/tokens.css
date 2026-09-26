@@ -1,138 +1,85 @@
-/**
- * Tenvora Master Design Tokens
- *
- * Palette Specifications:
- * - Current Cobalt (#3569FF / #5B7CFF): Primary brand action, focus rings, interactive elements
- * - Tenvora Ink (#0B1220): Brand foundation and app-icon field
- * - Current Teal (#0FA58E / #21C4A8): Supporting flow lane and positive financial signal
- * - Space Black (#060B17): Premium dark workspace canvas
- * - Crisp White (#FFFFFF): High-contrast typography and light surface cards
- * - Reserve Emerald (#10B981): tax-reserve allocations and verified states
- * - Amber Gold (#F59E0B): Pending invoices, tax deadlines, warning states
- * - Rose Crimson (#EF4444): Overdue invoices, failed transactions, destructive actions
- */
-
+/** Tenvora 2.0 — warm business-notebook design tokens. */
 :root {
-  --brand-ink: 220 49% 8%;           /* #0B1220 */
-  --brand-cobalt: 225 100% 60%;      /* #3569FF */
-  --brand-teal: 171 83% 35%;         /* #0FA58E */
-
-  /* Canvas & Base Foreground */
-  --background: 210 40% 98%;          /* #F8FAFC Cool Slate Cloud */
-  --foreground: 222 47% 11%;          /* #0F172A Deep Inky Slate */
-
-  /* Surface Cards & Popovers */
-  --card: 0 0% 100%;                  /* #FFFFFF Pure White Surface */
-  --card-foreground: 222 47% 11%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-
-  /* Electric Cobalt - Core Brand Action */
-  --primary: 225 100% 60%;            /* #3569FF */
-  --primary-foreground: 0 0% 100%;
-
-  /* High-Signal Secondary Accent */
-  --accent-signal: 225 100% 60%;
-  --accent-signal-fg: 0 0% 100%;
-
-  /* Secondary & Muted Surfaces */
-  --secondary: 210 40% 96%;           /* #F1F5F9 */
-  --secondary-foreground: 222 47% 11%;
-
-  --muted: 210 40% 94%;               /* #E2E8F0 */
-  --muted-foreground: 215 16% 47%;    /* #64748B */
-
-  --accent: 214 95% 93%;              /* #DBEAFE Soft Cobalt Tint */
-  --accent-foreground: 225 65% 48%;   /* #2B54CA */
-
-  /* Semantic Financial Status Tokens */
-  --destructive: 0 84% 60%;           /* #EF4444 */
-  --destructive-foreground: 0 0% 100%;
-  --success: 160 84% 39%;             /* #10B981 Reserve Emerald */
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;              /* #F59E0B Amber */
-  --warning-foreground: 0 0% 100%;
-  --info: 225 100% 60%;               /* #3569FF */
-  --info-foreground: 0 0% 100%;
-  --reversed: 262 83% 58%;            /* #8B5CF6 */
-  --reversed-foreground: 0 0% 100%;
-
-  /* Form & Interactive Elements */
-  --border: 214 32% 91%;              /* #E2E8F0 */
-  --input: 214 32% 91%;
-  --ring: 225 100% 60%;               /* #3569FF */
-
-  --radius: 0.75rem;
-
-  /* Workspace Navigation Tokens */
-  --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-primary: 225 100% 60%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 214 95% 93%;
-  --sidebar-accent-foreground: 225 65% 48%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-ring: 221 83% 53%;
+  --brand-ink: 154 32% 18%;
+  --brand-teal: 158 38% 31%;
+  --background: 42 38% 95%;
+  --foreground: 150 18% 16%;
+  --card: 43 55% 98%;
+  --card-foreground: 150 18% 16%;
+  --popover: 43 55% 98%;
+  --popover-foreground: 150 18% 16%;
+  --primary: 158 38% 31%;
+  --primary-foreground: 45 55% 97%;
+  --accent-signal: 39 82% 58%;
+  --accent-signal-fg: 150 25% 14%;
+  --secondary: 42 29% 90%;
+  --secondary-foreground: 150 20% 20%;
+  --muted: 42 24% 91%;
+  --muted-foreground: 145 10% 42%;
+  --accent: 146 25% 88%;
+  --accent-foreground: 158 42% 25%;
+  --destructive: 5 58% 48%;
+  --destructive-foreground: 45 55% 97%;
+  --success: 151 42% 38%;
+  --success-foreground: 45 55% 97%;
+  --warning: 37 83% 52%;
+  --warning-foreground: 150 25% 14%;
+  --info: 201 45% 43%;
+  --info-foreground: 45 55% 97%;
+  --reversed: 271 30% 48%;
+  --reversed-foreground: 45 55% 97%;
+  --border: 38 24% 81%;
+  --input: 38 24% 77%;
+  --ring: 158 38% 31%;
+  --radius: 0.9rem;
+  --sidebar-background: 43 49% 97%;
+  --sidebar-foreground: 150 18% 19%;
+  --sidebar-primary: 158 38% 31%;
+  --sidebar-primary-foreground: 45 55% 97%;
+  --sidebar-accent: 145 24% 89%;
+  --sidebar-accent-foreground: 158 42% 24%;
+  --sidebar-border: 38 24% 83%;
+  --sidebar-ring: 158 38% 31%;
 }
 
 .dark {
-  --brand-ink: 220 49% 8%;           /* #0B1220 remains the fixed brand field */
-  --brand-cobalt: 228 100% 68%;      /* #5B7CFF */
-  --brand-teal: 170 70% 45%;         /* #21C4A8 */
-
-  /* Space Black premium workspace canvas */
-  --background: 222 61% 6%;           /* #060B17 Space Black */
-  --foreground: 210 40% 98%;          /* #F8FAFC Crisp Light */
-
-  /* Midnight Navy Elevated Surfaces */
-  --card: 224 50% 10%;                /* #0B132B Midnight Navy */
-  --card-foreground: 210 40% 98%;
-
-  --popover: 224 50% 10%;
-  --popover-foreground: 210 40% 98%;
-
-  /* High-Vibrancy Cobalt in Dark UI */
-  --primary: 228 100% 68%;            /* #5B7CFF */
-  --primary-foreground: 222 61% 6%;
-
-  --accent-signal: 228 100% 68%;
-  --accent-signal-fg: 222 61% 6%;
-
-  /* Secondary & Muted Dark Surfaces */
-  --secondary: 222 40% 14%;           /* #131E3D */
-  --secondary-foreground: 210 40% 98%;
-
-  --muted: 222 35% 15%;
-  --muted-foreground: 215 20% 65%;    /* #94A3B8 */
-
-  --accent: 224 45% 16%;
-  --accent-foreground: 217 91% 60%;
-
-  /* Semantic Financial Status Tokens */
-  --destructive: 0 84% 60%;           /* #EF4444 */
-  --destructive-foreground: 0 0% 100%;
-  --success: 160 84% 39%;             /* #10B981 */
-  --success-foreground: 222 61% 6%;
-  --warning: 38 92% 50%;              /* #F59E0B */
-  --warning-foreground: 222 61% 6%;
-  --info: 228 100% 68%;               /* #5B7CFF */
-  --info-foreground: 222 61% 6%;
-  --reversed: 262 83% 58%;
-  --reversed-foreground: 0 0% 100%;
-
-  /* High-Precision Dark Hairlines */
-  --border: 222 30% 18%;              /* #1C2B4E */
-  --input: 222 30% 20%;
-  --ring: 228 100% 68%;
-
-  /* Dark Navigation Tokens */
-  --sidebar-background: 224 50% 8%;   /* Deep Institutional Midnight */
-  --sidebar-foreground: 215 20% 75%;
-  --sidebar-primary: 228 100% 68%;
-  --sidebar-primary-foreground: 222 61% 6%;
-  --sidebar-accent: 224 45% 16%;
-  --sidebar-accent-foreground: 217 91% 60%;
-  --sidebar-border: 222 30% 18%;
-  --sidebar-ring: 217 91% 60%;
+  --brand-ink: 44 44% 90%;
+  --brand-teal: 151 35% 64%;
+  --background: 150 17% 10%;
+  --foreground: 42 34% 91%;
+  --card: 150 15% 14%;
+  --card-foreground: 42 34% 91%;
+  --popover: 150 15% 14%;
+  --popover-foreground: 42 34% 91%;
+  --primary: 151 35% 64%;
+  --primary-foreground: 153 30% 12%;
+  --accent-signal: 39 72% 61%;
+  --accent-signal-fg: 153 30% 12%;
+  --secondary: 150 13% 19%;
+  --secondary-foreground: 42 34% 91%;
+  --muted: 150 12% 20%;
+  --muted-foreground: 40 15% 66%;
+  --accent: 151 20% 22%;
+  --accent-foreground: 151 35% 70%;
+  --destructive: 5 56% 57%;
+  --destructive-foreground: 45 55% 97%;
+  --success: 151 38% 55%;
+  --success-foreground: 153 30% 12%;
+  --warning: 39 72% 61%;
+  --warning-foreground: 153 30% 12%;
+  --info: 199 50% 65%;
+  --info-foreground: 153 30% 12%;
+  --reversed: 271 40% 68%;
+  --reversed-foreground: 153 30% 12%;
+  --border: 145 11% 27%;
+  --input: 145 11% 32%;
+  --ring: 151 35% 64%;
+  --sidebar-background: 150 17% 12%;
+  --sidebar-foreground: 42 28% 86%;
+  --sidebar-primary: 151 35% 64%;
+  --sidebar-primary-foreground: 153 30% 12%;
+  --sidebar-accent: 151 18% 21%;
+  --sidebar-accent-foreground: 151 35% 70%;
+  --sidebar-border: 145 11% 25%;
+  --sidebar-ring: 151 35% 64%;
 }

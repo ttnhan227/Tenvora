@@ -118,9 +118,9 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Tenvora Cash-Flow Workspace API",
+        Title = "Tenvora Business Management API",
         Version = "v1",
-        Description = "API documentation for freelancer clients, invoices, confirmed income, internal planning allocations, balanced ledger records, and reconciliation."
+        Description = "API documentation for Tenvora customers, products, sales, purchases, payments, expenses, and business activity."
     });
 
     var jwtSecurityScheme = new OpenApiSecurityScheme
@@ -152,37 +152,13 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITenantRepository, TenantRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
-builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
-builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
-builder.Services.AddScoped<IPaymentRequestRepository, PaymentRequestRepository>();
-builder.Services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
-builder.Services.AddScoped<ISettlementRepository, SettlementRepository>();
-builder.Services.AddScoped<IReconciliationRepository, ReconciliationRepository>();
 
 // Services
+builder.Services.AddSingleton<IGoogleAuthValidator, GoogleAuthValidator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IAccountService, AccountService>();
-builder.Services.AddScoped<ITransferService, TransferService>();
-builder.Services.AddScoped<ILedgerService, LedgerService>();
-builder.Services.AddScoped<ISettlementService, SettlementService>();
-builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
-builder.Services.AddScoped<IRiskService, RiskService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IBusinessService, BusinessService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
-builder.Services.AddScoped<IClientService, ClientService>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IInvoiceService, InvoiceService>();
-builder.Services.AddScoped<IExpenseService, ExpenseService>();
-builder.Services.AddScoped<ITaxService, TaxService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<IAiService, AiService>();
-builder.Services.AddSingleton<IIntelligenceService, IntelligenceService>();
-if (!string.Equals(Environment.GetEnvironmentVariable("ENABLE_INTELLIGENCE_SYNC"), "false", StringComparison.OrdinalIgnoreCase))
-    builder.Services.AddHostedService<IntelligenceBackgroundSyncService>();
-builder.Services.AddSingleton<IBackgroundTaskQueue>(_ => new BackgroundTaskQueue(1000));
-builder.Services.AddHostedService<QueuedHostedService>();
 
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
@@ -273,7 +249,7 @@ if (enableSwagger)
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tenvora Operations API v1");
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Tenvora Business API v1");
         options.RoutePrefix = "swagger";
     });
 }

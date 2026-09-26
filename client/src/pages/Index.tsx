@@ -1,164 +1,54 @@
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Percent,
-  FileText,
-  Sparkles,
-  CheckCircle2,
-  Users,
-  Wallet,
-  FileUp,
-} from "lucide-react";
+import { ArrowRight, BookOpenCheck, Check, PackageOpen, ReceiptText, Search, Users, WalletCards } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 
-const features = [
-  {
-    icon: FileUp,
-    title: "Statement Import & Matching",
-    body: "Import a CSV statement and review suggested matches between real deposits and unpaid invoices. The file stays in your browser.",
-  },
-  {
-    icon: FileText,
-    title: "Invoices That Explain Cash Flow",
-    body: "Track what has been sent, paid, partially paid, or overdue—and connect confirmed income back to the right client and invoice.",
-  },
-  {
-    icon: Users,
-    title: "Client Payment Context",
-    body: "Keep contacts, billing terms, rates, outstanding balances, and payment history together so follow-up decisions are easier.",
-  },
-  {
-    icon: Wallet,
-    title: "Estimated Safe to Spend",
-    body: "See confirmed income after your configurable tax reserve, clearly separated from unpaid invoices and unverified bank activity.",
-  },
-  {
-    icon: Percent,
-    title: "Tax Reserve Planning",
-    body: "Apply a configurable planning percentage to recorded income and monitor the gap between your estimate and reserved amount.",
-  },
-  {
-    icon: Sparkles,
-    title: "Actionable Financial Assistant",
-    body: "Ask questions grounded in your recorded invoices and balances: what is outstanding, what changed, and what may be safe to spend.",
-  },
-];
-
-const workflow = [
-  { number: "01", title: "Add a client", body: "Save billing contact details, currency, rate, and payment terms." },
-  { number: "02", title: "Create and send an invoice", body: "Record the work, amount, issue date, and due date. Sent does not mean paid." },
-  { number: "03", title: "Review a statement CSV", body: "The browser suggests matches. You decide which deposit belongs to which invoice." },
-  { number: "04", title: "Use the confirmed result", body: "Review recorded income, the planning reserve, and the estimated safe-to-spend balance." },
+const capabilities = [
+  { icon: ReceiptText, title: "Record a sale", body: "Choose the customer and product. Tenvora calculates the total and remembers what is still unpaid." },
+  { icon: Users, title: "Know who owes you", body: "Open a customer and see every sale, payment, and current balance in one clear history." },
+  { icon: PackageOpen, title: "Track what you buy", body: "Keep supplier purchases and payments together, without a separate book or spreadsheet." },
+  { icon: WalletCards, title: "Remember every expense", body: "Quickly note rent, transport, supplies, and other everyday business costs." },
 ];
 
 export default function Index() {
-  return (
-    <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden w-full max-w-full flex flex-col justify-between">
-      {/* Unified High-Contrast Sticky Navbar */}
-      <Navbar />
+  return <div className="flex min-h-screen flex-col bg-background text-foreground"><Navbar /><main className="flex-1">
+    <section className="relative overflow-hidden"><div className="pointer-events-none absolute -right-32 -top-40 h-[34rem] w-[34rem] rounded-full bg-accent/55 blur-3xl" />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.05fr_.95fr] lg:py-28">
+        <div>
+          <span className="notebook-label"><BookOpenCheck className="mr-2 h-4 w-4" />A simpler way to keep business records</span>
+          <h1 className="mt-6 text-5xl leading-[1.03] sm:text-6xl lg:text-7xl">Leave the notebooks behind. <span className="text-primary">Keep the clarity.</span></h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">Record sales, payments, purchases, customers, and expenses in a friendly workspace made for real small businesses—not accountants.</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Button asChild size="lg"><Link to="/register">Start your business notebook<ArrowRight /></Link></Button><Button asChild size="lg" variant="outline"><Link to="/login">I already use Tenvora</Link></Button></div>
+          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-[hsl(var(--success))]" />No accounting jargon</span><span className="flex items-center gap-2"><Check className="h-4 w-4 text-[hsl(var(--success))]" />Works on phone or laptop</span></div>
+        </div>
+        <NotebookPreview />
+      </div>
+    </section>
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative isolate mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6 sm:pb-16 sm:pt-14">
-          <div className="mx-auto max-w-4xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1 text-xs font-semibold text-primary mb-6">
-              <Sparkles size={13} />
-              <span>CASH-FLOW CLARITY FOR FREELANCERS</span>
-            </div>
+    <section className="border-y bg-card/55"><div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><p className="micro-label text-primary">One organized place</p><h2 className="display-type mt-3 text-3xl font-bold sm:text-4xl">Record it once. Find it when you need it.</h2><p className="mt-4 text-muted-foreground">No more checking three notebooks, adding totals by hand, or wondering whether someone has paid.</p></div>
+      <div className="grid gap-3 sm:grid-cols-2">{["Too many separate notebooks", "Hard to remember unpaid sales", "Manual totals and calculations", "Old records are difficult to find"].map((problem, i) => <div key={problem} className="paper-card flex items-center gap-3 p-4"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--warning)/.16)] text-sm font-bold text-amber-800">{i + 1}</span><p className="text-sm font-semibold">{problem}</p></div>)}</div></div>
+    </div></section>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.15] tracking-tight text-slate-900 dark:text-slate-50">
-              Know what came in.<br />
-              Know what is still due.<br />
-              <span className="text-primary">Know what you can spend.</span>
-            </h1>
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24"><div className="max-w-2xl"><p className="micro-label text-primary">Everyday tasks, made clear</p><h2 className="display-type mt-3 text-3xl font-bold sm:text-4xl">Your business record book, without the paperwork.</h2></div><div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{capabilities.map((item, index) => <article key={item.title} className="paper-card group relative overflow-hidden p-5"><span className="absolute right-4 top-3 text-5xl font-bold text-border/45">{index + 1}</span><span className="relative flex h-11 w-11 items-center justify-center rounded-2xl border bg-accent/70 text-primary"><item.icon className="h-5 w-5" /></span><h3 className="relative mt-5 text-lg font-bold">{item.title}</h3><p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p></article>)}</div></section>
 
-            <p className="mx-auto mt-5 sm:mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-slate-600 dark:text-slate-300 font-normal">
-              Tenvora turns invoices and imported statement activity into a clear view of income, estimated tax reserves, and safe-to-spend cash.
-            </p>
+    <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28"><div className="relative overflow-hidden rounded-[2rem] bg-primary px-6 py-12 text-primary-foreground sm:px-12 sm:py-16"><div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full border-[32px] border-white/5" /><div className="relative max-w-2xl"><p className="text-sm font-bold text-primary-foreground/75">Ready when you are</p><h2 className="display-type mt-3 text-3xl font-bold sm:text-4xl">Start with one sale. Tenvora will keep the rest organized.</h2><p className="mt-4 text-primary-foreground/75">A familiar, calm place for the records your business depends on.</p><Button asChild size="lg" className="mt-7 border-card bg-card text-foreground hover:bg-card/90"><Link to="/register">Create your workspace<ArrowRight /></Link></Button></div></div></section>
+  </main><Footer /></div>;
+}
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <Button asChild size="lg" className="rounded-xl shadow-md px-6 sm:px-7 font-bold text-sm sm:text-base h-11 sm:h-12">
-                <Link to="/register">
-                  Start Free Workspace <ArrowRight size={17} className="ml-2" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="rounded-xl border-slate-300 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base h-11 sm:h-12 px-5 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <a href="#workflow">See how it works</a>
-              </Button>
-            </div>
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> No bank credentials required
-              </span>
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> Private CSV statement matching
-              </span>
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" /> Traceable financial records
-              </span>
-            </div>
-          </div>
-
-          <div id="workflow" className="mt-10 scroll-mt-24 rounded-3xl border border-slate-200 bg-white p-5 shadow-lg shadow-slate-300/20 dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20 sm:p-6">
-            <div className="flex flex-col gap-2 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-primary font-mono">THE IMPLEMENTED WORKFLOW</p>
-                <h2 className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">From client to confirmed income in four steps</h2>
-              </div>
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">One connected workflow inside your workspace.</p>
-            </div>
-            <ol className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {workflow.map((step) => (
-                <li key={step.number} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/40">
-                  <p className="font-mono text-xs font-extrabold text-primary">{step.number}</p>
-                  <h3 className="mt-3 font-bold text-slate-900 dark:text-white">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{step.body}</p>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-5 text-xs text-slate-600 dark:text-slate-400">CSV files are reviewed locally in the browser. Tenvora does not connect to a bank or move funds.</p>
-          </div>
-        </section>
-
-        {/* Features Grid */}
-        <section id="features" className="border-t border-slate-200 bg-slate-50/50 py-16 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/40 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mx-auto mb-10 max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary font-mono">
-                DESIGNED FOR INDEPENDENT WORKERS
-              </p>
-              <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl text-slate-900 dark:text-slate-50">
-                From invoice to a useful financial decision
-              </h2>
-              <p className="mt-4 text-slate-600 dark:text-slate-300 text-base leading-relaxed font-normal">
-                Confirm income from a locally reviewed CSV, connect it to the work you billed, plan a tax reserve, and estimate what remains.
-              </p>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {features.map((f) => (
-                <article
-                  key={f.title}
-                  className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition-all hover:border-primary/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/80"
-                >
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <f.icon size={20} />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{f.title}</h3>
-                  <p className="mt-2.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300 font-normal">{f.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-      </main>
-
-      {/* Unified High-Contrast Footer */}
-      <Footer />
+function NotebookPreview() {
+  return <div className="relative mx-auto w-full max-w-[31rem] p-3 sm:p-7" aria-label="Illustration of an organized Tenvora business record">
+    <div className="absolute left-0 top-20 h-36 w-36 rounded-full bg-[hsl(var(--warning)/.25)] blur-2xl" />
+    <div className="paper-card relative rotate-[1.5deg] overflow-hidden p-5 sm:p-7"><div className="absolute inset-y-0 left-10 w-px bg-destructive/15" /><div className="paper-lines absolute inset-x-0 top-24 bottom-0 opacity-55" />
+      <div className="relative flex items-center justify-between border-b pb-4"><div><p className="micro-label text-primary">Today's business</p><p className="mt-1 text-sm text-muted-foreground">Friday, 26 September</p></div><span className="rounded-full bg-[hsl(var(--success)/.1)] px-3 py-1 text-xs font-bold text-[hsl(var(--success))]">All saved</span></div>
+      <div className="relative mt-5 rounded-2xl bg-accent/70 p-5"><p className="text-sm font-bold text-foreground/70">Sales today</p><p className="mt-2 text-3xl font-bold">₫4,250,000</p><p className="mt-1 text-xs text-muted-foreground">₫2,100,000 received</p></div>
+      <div className="relative mt-4 space-y-3"><RecordRow name="Anh Nam" label="Sale · 15 kg" amount="₫2.7M" color="bg-[hsl(var(--warning))]" /><RecordRow name="Chị Hoa" label="Payment received" amount="₫500K" color="bg-[hsl(var(--success))]" /><RecordRow name="Market supplier" label="Purchase · rice bags" amount="₫1.2M" color="bg-primary" /></div>
     </div>
-  );
+    <div className="paper-card absolute -bottom-2 -right-1 flex -rotate-3 items-center gap-3 px-4 py-3 sm:right-0"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--warning)/.18)]"><Search className="h-4 w-4 text-amber-800" /></span><div><p className="text-xs text-muted-foreground">Find any record</p><p className="text-sm font-bold">in a few seconds</p></div></div>
+  </div>;
+}
+
+function RecordRow({ name, label, amount, color }: { name: string; label: string; amount: string; color: string }) {
+  return <div className="flex items-center gap-3 rounded-xl bg-card/85 px-3 py-2.5"><span className={`h-2.5 w-2.5 rounded-full ${color}`} /><div className="min-w-0 flex-1"><p className="text-sm font-bold">{name}</p><p className="text-xs text-muted-foreground">{label}</p></div><p className="tabular-nums text-sm font-bold">{amount}</p></div>;
 }

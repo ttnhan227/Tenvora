@@ -38,6 +38,7 @@ import {
   Column,
 } from "@/components/design-system";
 import { adminUserService, AdminUser } from "@/services/adminUserService";
+import { PageHeader } from "@/components/business/BusinessUI";
 
 export default function UserManagement() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -154,34 +155,25 @@ export default function UserManagement() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Team Members &amp; Permissions
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Manage team access, assign operational role permissions, and control account privileges.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        <PageHeader
+          eyebrow="Business setup"
+          title="Your team"
+          description="Choose who can help keep the record book up to date and what they are allowed to do."
+          actions={<>
             <Button
               variant="outline"
-              size="sm"
               onClick={loadUsers}
               disabled={loading}
-              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-card"
             >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
 
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-8 px-3.5 text-xs font-semibold rounded-md shadow-sm">
-                  <UserPlus className="h-3.5 w-3.5 mr-1.5" />
-                  Add Team Member
+                <Button>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add team member
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[420px] bg-card border border-border text-xs rounded-xl p-6">
@@ -223,9 +215,11 @@ export default function UserManagement() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
+                      minLength={12}
                       required
                       className="h-9 text-xs font-mono"
                     />
+                    <p className="text-[11px] text-muted-foreground">Use at least 12 characters.</p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -236,8 +230,7 @@ export default function UserManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="TenantAdmin">Administrator (Full Access)</SelectItem>
-                        <SelectItem value="OperationsManager">Operations Manager (Transfers &amp; Settlements)</SelectItem>
-                        <SelectItem value="ComplianceOfficer">Compliance Officer (Risk &amp; Audits)</SelectItem>
+                        <SelectItem value="OperationsManager">Operations Manager (Business records)</SelectItem>
                         <SelectItem value="ReadOnly">Read only (View records)</SelectItem>
 
                       </SelectContent>
@@ -252,8 +245,8 @@ export default function UserManagement() {
                 </form>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
+          </>}
+        />
 
         {errorMessage && <p role="alert" className="text-sm text-red-600">{errorMessage}</p>}
         {/* Users DataTable */}

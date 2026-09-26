@@ -1,8 +1,12 @@
-﻿import apiClient from "./apiClient";
+import apiClient from "./apiClient";
 
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface GoogleLoginRequest {
+  credential: string;
 }
 
 export interface RegisterRequest {
@@ -20,6 +24,7 @@ export interface UserProfile {
   isActive: boolean;
   preferredCurrency: string;
   companyName: string;
+  googleLinked?: boolean;
 }
 
 export interface AuthResponse {
@@ -31,6 +36,7 @@ export interface AuthResponse {
   role: string;
   companyName: string;
   preferredCurrency: string;
+  googleLinked?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -88,6 +94,15 @@ export const authService = {
       return response.data;
     } catch (error: unknown) {
       return apiFailure(error, "Login failed");
+    }
+  },
+
+  googleLogin: async (request: GoogleLoginRequest): Promise<ApiResponse<AuthResponse>> => {
+    try {
+      const response = await apiClient.post("/auth/google", request);
+      return response.data;
+    } catch (error: unknown) {
+      return apiFailure(error, "Google sign-in failed");
     }
   },
 

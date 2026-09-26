@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Tenvora.Api.Data;
 using Tenvora.Api.Models;
 
@@ -21,6 +21,11 @@ public sealed class UserRepository : IUserRepository
     public Task<User?> GetByEmailAsync(string email)
     {
         return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Email == email);
+    }
+
+    public Task<User?> GetByGoogleSubAsync(string googleSub)
+    {
+        return _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.GoogleSub == googleSub);
     }
 
     public Task<User?> GetByEmailAndTenantAsync(string email, Guid tenantId)

@@ -4,19 +4,39 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { AuthAside } from "@/components/auth/AuthAside";
+import { GoogleSignInButton, isGoogleAuthEnabled } from "@/components/auth/GoogleSignInButton";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  const handleGoogleCredential = async (cred: string) => {
+    setGoogleBusy(true);
+    setError("");
+    setFieldErrors({});
+    try {
+      const result = await googleLogin(cred);
+      if (result.success) {
+        navigate("/dashboard");
+      } else {
+        setError(result.message || result.errors?.[0] || "Google sign-in failed.");
+      }
+    } catch {
+      setError("An error occurred during Google sign-in.");
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,57 +70,68 @@ export default function Login() {
     }
   };
 
+  const isBusy = isLoading || googleBusy;
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 font-sans text-xs">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <BrandLogo to="/" size="lg" className="justify-center" />
-          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Cash-flow clarity for freelancers and independent studios</p>
-        </div>
+    <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-[1fr_1fr]">
+      <AuthAside title="Pick up exactly where your business left off." />
+      <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
+        <div className="w-full max-w-md">
+          <Link to="/" className="friendly-focus mb-8 inline-flex items-center gap-2 rounded-lg text-sm font-bold text-muted-foreground hover:text-foreground"><ArrowLeft size={16} />Back home</Link>
+          <BrandLogo to="/" size="lg" />
+          <div className="paper-card mt-7 p-6 sm:p-8">
+            <h1 className="text-3xl font-bold">Welcome back</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Open your business notebook and continue where you left off.</p>
 
-        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl rounded-2xl">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 text-center">
-            <h1 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">Welcome Back</h1>
-            <CardDescription className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-              Sign in to your workspace to manage invoices, tax set-asides, and internal balances
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-5">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive" role="alert">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+            {error && (
+              <Alert variant="destructive" role="alert" className="mt-5">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
+            {isGoogleAuthEnabled && (
+              <div className="mt-6 space-y-4">
+                <GoogleSignInButton
+                  disabled={isBusy}
+                  onCredential={handleGoogleCredential}
+                  onError={(msg) => setError(msg)}
+                  text="continue_with"
+                />
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <span className="relative bg-card px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Or continue with email
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
-                  Email Address
-                </Label>
+                <Label htmlFor="email">Email address</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="alex@riveradesign.co"
+                  placeholder="you@yourbusiness.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setFieldErrors((current) => ({ ...current, email: undefined }));
                     setError("");
                   }}
-                  disabled={isLoading}
+                  disabled={isBusy}
                   aria-invalid={!!fieldErrors.email}
                   aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
-                  className={`font-mono text-xs ${fieldErrors.email ? "border-destructive" : ""}`}
+                  className={fieldErrors.email ? "border-destructive" : ""}
                 />
                 {fieldErrors.email && <p id="login-email-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.email}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-bold text-slate-800 dark:text-slate-200 tracking-wide">
-                  Password
-                </Label>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -111,36 +142,28 @@ export default function Login() {
                     setFieldErrors((current) => ({ ...current, password: undefined }));
                     setError("");
                   }}
-                  disabled={isLoading}
+                  disabled={isBusy}
                   aria-invalid={!!fieldErrors.password}
                   aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
-                  className={`font-mono text-xs ${fieldErrors.password ? "border-destructive" : ""}`}
+                  className={fieldErrors.password ? "border-destructive" : ""}
                 />
                 {fieldErrors.password && <p id="login-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.password}</p>}
               </div>
 
               <Button
                 type="submit"
-                disabled={isLoading}
-                size="sm"
-                className="w-full font-bold h-10 mt-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-xs text-sm"
+                disabled={isBusy}
+                size="lg"
+                className="w-full"
               >
                 {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {isLoading ? "Signing in…" : "Sign In to Your Account"}
+                {isLoading ? "Opening your records…" : "Open my business notebook"}
               </Button>
             </form>
-
-            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
-              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                New to Tenvora?{" "}
-                <Link to="/register" className="inline-flex min-h-8 items-center font-bold text-primary hover:underline">
-                  Create a Freelancer Workspace
-                </Link>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <p className="mt-6 border-t pt-5 text-center text-sm text-muted-foreground">New to Tenvora? <Link to="/register" className="font-bold text-primary hover:underline">Start your business notebook</Link></p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

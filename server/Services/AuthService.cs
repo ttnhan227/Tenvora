@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
-using Tenvora.Api.Domain.Entities;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Models;
 using Tenvora.Api.Repositories;
@@ -16,19 +17,28 @@ public sealed class AuthService : IAuthService
     private readonly ITenantRepository _tenantRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly TokenService _tokenService;
+    private readonly IGoogleAuthValidator _googleValidator;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         AppDbContext context,
         IUserRepository userRepository,
         ITenantRepository tenantRepository,
         IRefreshTokenRepository refreshTokenRepository,
-        TokenService tokenService)
+        TokenService tokenService,
+        IGoogleAuthValidator googleValidator,
+        IConfiguration configuration,
+        ILogger<AuthService> logger)
     {
         _context = context;
         _userRepository = userRepository;
         _tenantRepository = tenantRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _tokenService = tokenService;
+        _googleValidator = googleValidator;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<ApiResult<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -59,7 +69,7 @@ public sealed class AuthService : IAuthService
             Id = Guid.NewGuid(),
             CompanyName = request.CompanyName.Trim(),
             ApiKey = Guid.NewGuid().ToString("N"),
-            PlanType = "FreelancerPro",
+            PlanType = "Business",
             BaseCurrency = string.IsNullOrWhiteSpace(request.BaseCurrency) ? "USD" : request.BaseCurrency.Trim().ToUpperInvariant(),
             Status = "Active",
             CreatedAt = DateTime.UtcNow,
@@ -82,22 +92,6 @@ public sealed class AuthService : IAuthService
         await _tenantRepository.AddAsync(tenant);
         await _userRepository.AddAsync(user);
 
-        // Seed initial system operating account
-        var opAccount = new Account
-        {
-            Id = Guid.NewGuid(),
-            TenantId = tenant.Id,
-            AccountNumber = $"OP-{tenant.Id.ToString("N")[..6].ToUpperInvariant()}-{tenant.BaseCurrency}",
-            AccountType = AccountTypes.Asset,
-            Currency = tenant.BaseCurrency,
-            CachedBalance = 0m,
-            Status = AccountStatuses.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-        await _context.Accounts.AddAsync(opAccount);
-        await _context.SaveChangesAsync();
-
         var response = await BuildAuthResponseAsync(user, tenant.CompanyName);
         if (write != null) await write.CommitAsync();
         return response;
@@ -117,6 +111,121 @@ public sealed class AuthService : IAuthService
         }
 
         return await BuildAuthResponseAsync(user, user.Tenant?.CompanyName ?? string.Empty);
+    }
+
+    public async Task<ApiResult<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Credential))
+        {
+            return ApiResult<AuthResponse>.Fail("Google credential is required.");
+        }
+
+        var clientId = Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")
+            ?? _configuration["GoogleAuth:ClientId"]
+            ?? _configuration["GOOGLE_CLIENT_ID"]
+            ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return ApiResult<AuthResponse>.Fail("Google sign-in is not configured.");
+        }
+
+        GoogleAuthPayload claims;
+        try
+        {
+            claims = await _googleValidator.ValidateAsync(request.Credential.Trim(), clientId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Google credential verification failed.");
+            return ApiResult<AuthResponse>.Fail("Invalid Google credential.");
+        }
+
+        if (string.IsNullOrWhiteSpace(claims.Subject) || string.IsNullOrWhiteSpace(claims.Email) || !claims.EmailVerified)
+        {
+            return ApiResult<AuthResponse>.Fail("Google account email is not verified.");
+        }
+
+        var googleSub = claims.Subject;
+        var email = claims.Email.Trim().ToLowerInvariant();
+
+        await using var write = await FinancialWriteScope.BeginAsync(_context, Guid.Empty);
+
+        var user = await _userRepository.GetByGoogleSubAsync(googleSub);
+        if (user is null)
+        {
+            user = await _userRepository.GetByEmailAsync(email);
+            if (user is not null)
+            {
+                var googleIsAuthoritative = email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(claims.HostedDomain);
+                if (!googleIsAuthoritative)
+                {
+                    return ApiResult<AuthResponse>.Fail("Sign in with your password before linking this Google account.");
+                }
+
+                if (!string.IsNullOrEmpty(user.GoogleSub) && user.GoogleSub != googleSub)
+                {
+                    return ApiResult<AuthResponse>.Fail("This email is linked to another Google account.");
+                }
+
+                user.GoogleSub = googleSub;
+                await _userRepository.UpdateAsync(user);
+            }
+            else
+            {
+                var name = !string.IsNullOrWhiteSpace(claims.Name) ? claims.Name.Trim() : email.Split('@')[0];
+                var companyName = $"{name}'s Business";
+
+                if (await _context.Tenants.AnyAsync(t => t.CompanyName == companyName))
+                {
+                    companyName = $"{companyName} ({Guid.NewGuid().ToString("N")[..4]})";
+                }
+
+                var tenant = new Tenant
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyName = companyName,
+                    ApiKey = Guid.NewGuid().ToString("N"),
+                    PlanType = "Business",
+                    BaseCurrency = "USD",
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant.Id,
+                    Tenant = tenant,
+                    Email = email,
+                    GoogleSub = googleSub,
+                    PasswordHash = PasswordHasher.Hash(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")),
+                    Role = "TenantAdmin",
+                    IsActive = true,
+                    PreferredCurrency = tenant.BaseCurrency,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _tenantRepository.AddAsync(tenant);
+                await _userRepository.AddAsync(user);
+            }
+        }
+
+        if (!user.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResult<AuthResponse>.Fail("Google account identity does not match the linked user.");
+        }
+
+        if (!user.IsActive)
+        {
+            return ApiResult<AuthResponse>.Fail("Your account is inactive. Contact your organization administrator.");
+        }
+
+        var response = await BuildAuthResponseAsync(user, user.Tenant?.CompanyName ?? string.Empty);
+        if (write != null) await write.CommitAsync();
+        return response;
     }
 
     public async Task<ApiResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
@@ -143,7 +252,8 @@ public sealed class AuthService : IAuthService
             token.User.Email,
             token.User.Role,
             token.User.Tenant?.CompanyName ?? string.Empty,
-            token.User.PreferredCurrency
+            token.User.PreferredCurrency,
+            token.User.GoogleLinked
         );
 
         if (write != null) await write.CommitAsync();
@@ -165,7 +275,8 @@ public sealed class AuthService : IAuthService
             user.Role,
             user.IsActive,
             user.PreferredCurrency,
-            user.Tenant?.CompanyName ?? string.Empty
+            user.Tenant?.CompanyName ?? string.Empty,
+            user.GoogleLinked
         );
 
         return ApiResult<UserProfileResponse>.Ok(profile);
@@ -187,10 +298,10 @@ public sealed class AuthService : IAuthService
             user.Email,
             user.Role,
             companyName,
-            user.PreferredCurrency
+            user.PreferredCurrency,
+            user.GoogleLinked
         );
 
         return ApiResult<AuthResponse>.Ok(response);
     }
 }
-

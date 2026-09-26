@@ -43,13 +43,13 @@ export function FilterBar({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Bar */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
           <Input
             aria-label={searchLabel}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="h-9 pl-9 pr-9 text-xs bg-card border-border/80 focus-visible:ring-1 focus-visible:ring-ring"
+            className="pl-10 pr-10 bg-card border-border/80"
           />
           {searchQuery && (
             <button
@@ -92,7 +92,7 @@ export function FilterBar({
                 aria-pressed={active}
                 onClick={() => onStatusChange(opt.value)}
                 className={cn(
-                  "min-h-8 px-2.5 py-1 rounded-md text-xs font-medium transition-colors border select-none inline-flex items-center gap-1.5",
+                "min-h-10 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border select-none inline-flex items-center gap-1.5",
                   active
                     ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
                     : "bg-card border-border/80 text-muted-foreground hover:bg-secondary hover:text-foreground"

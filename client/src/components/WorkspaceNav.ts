@@ -1,13 +1,13 @@
 import {
   Home,
-  FileText,
   Users,
-  ArrowRightLeft,
-  Settings,
   ReceiptText,
-  FolderKanban,
-  ChartNoAxesCombined,
-  Landmark,
+  Package,
+  Truck,
+  PackageOpen,
+  WalletCards,
+  UserRoundCog,
+  ClipboardList,
 } from "lucide-react";
 
 export interface NavItem {
@@ -16,32 +16,19 @@ export interface NavItem {
   icon: typeof Home;
   badge?: string;
   admin?: boolean;
-  section: "Overview" | "Money" | "Work" | "Insights" | "Account";
+  section: "Today" | "Record book" | "Business setup";
 }
 
 export const workspaceNav: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: Home, section: "Overview" },
-  { label: "Transactions", href: "/transactions", icon: ArrowRightLeft, section: "Money" },
-  { label: "Income", href: "/payments", icon: Landmark, section: "Money" },
-  { label: "Expenses", href: "/expenses", icon: ReceiptText, section: "Money" },
-  { label: "Clients", href: "/clients", icon: Users, section: "Work" },
-  { label: "Projects", href: "/projects", icon: FolderKanban, section: "Work" },
-  { label: "Invoices", href: "/invoices", icon: FileText, section: "Work" },
-  { label: "Reports", href: "/reports", icon: ChartNoAxesCombined, section: "Insights" },
-  { label: "Settings", href: "/settings", icon: Settings, section: "Account" },
-];
-
-const extendedRouteLabels: Array<[prefix: string, label: string]> = [
-  ["/accounts", "Accounts"],
-  ["/transfers", "Transfers"],
-  ["/transactions", "Transactions"],
-  ["/ledger", "Ledger"],
-  ["/settlements", "Settlements"],
-  ["/reconciliation", "Reconciliation"],
-  ["/risk", "Risk"],
-  ["/audit", "Audit log"],
-  ["/admin/users", "User management"],
-  ["/intelligence", "Intelligence"],
+  { label: "Home", href: "/dashboard", icon: Home, section: "Today" },
+  { label: "Sales", href: "/sales", icon: ReceiptText, section: "Record book" },
+  { label: "Purchases", href: "/purchases", icon: PackageOpen, section: "Record book" },
+  { label: "Expenses", href: "/expenses", icon: WalletCards, section: "Record book" },
+  { label: "Customers", href: "/customers", icon: Users, section: "Business setup" },
+  { label: "Suppliers", href: "/suppliers", icon: Truck, section: "Business setup" },
+  { label: "Products", href: "/products", icon: Package, section: "Business setup" },
+  { label: "Team", href: "/team", icon: UserRoundCog, section: "Business setup", admin: true },
+  { label: "Record history", href: "/audit", icon: ClipboardList, section: "Business setup", admin: true },
 ];
 
 export function getWorkspaceRouteLabel(pathname: string) {
@@ -49,6 +36,6 @@ export function getWorkspaceRouteLabel(pathname: string) {
     (item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)),
   );
 
-  return primary?.label ?? extendedRouteLabels.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "Home";
+  return primary?.label ?? "Home";
 }
 

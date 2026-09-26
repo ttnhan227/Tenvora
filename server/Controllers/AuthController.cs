@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -36,6 +36,30 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         if (!result.Success)
             return Unauthorized(result);
+
+        return Ok(result);
+    }
+
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Credential))
+            return UnprocessableEntity(ApiResult<AuthResponse>.Fail("Google credential is required."));
+
+        var result = await _authService.GoogleLoginAsync(request);
+        if (!result.Success)
+        {
+            if (result.Message.Contains("not configured", StringComparison.OrdinalIgnoreCase))
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, result);
+            if (result.Message.Contains("inactive", StringComparison.OrdinalIgnoreCase))
+                return StatusCode(StatusCodes.Status403Forbidden, result);
+            if (result.Message.Contains("already", StringComparison.OrdinalIgnoreCase) ||
+                result.Message.Contains("Sign in with your password", StringComparison.OrdinalIgnoreCase) ||
+                result.Message.Contains("does not match", StringComparison.OrdinalIgnoreCase) ||
+                result.Message.Contains("linked to another", StringComparison.OrdinalIgnoreCase))
+                return Conflict(result);
+            return Unauthorized(result);
+        }
 
         return Ok(result);
     }

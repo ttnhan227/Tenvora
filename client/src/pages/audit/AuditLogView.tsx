@@ -20,12 +20,13 @@ import {
   FilterBar,
 } from "@/components/design-system";
 import { auditService, AuditLogItem } from "@/services/auditService";
+import { PageHeader } from "@/components/business/BusinessUI";
 
 function getHumanReadableDescription(log: AuditLogItem): string {
   try {
     const before = JSON.parse(log.oldValue || '{}');
     const after = JSON.parse(log.newValue || '{}');
-    const name = after.AccountNumber || after.ReferenceNumber || log.entityType.replace(/([a-z])([A-Z])/g, '$1 $2');
+    const name = after.Name || after.SaleNumber || after.PurchaseNumber || log.entityType.replace(/([a-z])([A-Z])/g, '$1 $2');
     if (after.Status && before.Status) return name + ' changed from ' + before.Status + ' to ' + after.Status + '.';
     return name + ' ' + log.action.toLowerCase() + '.';
   } catch { /* Older activity can omit structured details. */ }
@@ -34,10 +35,6 @@ function getHumanReadableDescription(log: AuditLogItem): string {
       return `New ${log.entityType.toLowerCase()} was created.`;
     case "statuschanged":
       return `${log.entityType} status updated.`;
-    case "reconciled":
-      return `Account reconciliation completed.`;
-    case "reversed":
-      return `Transaction was reversed.`;
     default:
       return `${log.action} performed on ${log.entityType}.`;
   }
@@ -90,37 +87,26 @@ export default function AuditLogView() {
     { value: "ALL", label: "All Activity", count: logs.length },
     { value: "Created", label: "Created", count: logs.filter((l) => l.action === "Created").length },
     { value: "Updated", label: "Updated", count: logs.filter((l) => l.action === "Updated").length },
-    { value: "Reconciled", label: "Reconciled", count: logs.filter((l) => l.action === "Reconciled").length },
-    { value: "Reversed", label: "Reversals", count: logs.filter((l) => l.action === "Reversed").length },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Activity &amp; Audit Log
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              See who changed accounts, payments, and workspace records.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
+        <PageHeader
+          eyebrow="Record history"
+          title="What changed"
+          description="A dependable history of who added or changed customers, sales, purchases, payments, and business records."
+          actions={
             <Button
               variant="outline"
-              size="sm"
               onClick={loadLogs}
               disabled={loading}
-              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground bg-card"
             >
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Filter Bar */}
         <FilterBar
@@ -143,11 +129,11 @@ export default function AuditLogView() {
         )}
 
         {/* Audit Event Table */}
-        <div className="border border-border/80 bg-card rounded-xl overflow-hidden shadow-xs">
+        <div className="paper-card overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-border bg-muted/40 text-muted-foreground uppercase text-[10px] tracking-wider font-semibold">
+              <tr className="border-b border-border bg-muted/40 text-muted-foreground text-xs tracking-wide font-bold">
                 <th scope="col" className="py-3 px-3.5 w-8"><span className="sr-only">Details</span></th>
                 <th className="py-3 px-3.5">Timestamp</th>
                 <th className="py-3 px-3.5">Actor</th>
@@ -157,7 +143,7 @@ export default function AuditLogView() {
                 <th className="py-3 px-3.5">Summary / Notes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50 text-xs">
+            <tbody className="divide-y divide-border/50 text-sm">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">

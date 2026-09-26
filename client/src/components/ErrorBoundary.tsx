@@ -28,17 +28,18 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div className="flex items-center justify-center h-screen">
-            <div className="text-center p-6">
-              <h1 className="text-2xl font-bold text-destructive mb-2">Failed to load</h1>
-              <p className="text-muted-foreground mb-4">
-                {this.state.error?.message || "An error occurred loading this page."}
+          <div className="flex min-h-screen items-center justify-center bg-background p-5">
+            <div className="paper-card max-w-md p-8 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-2xl">!</div>
+              <h1 className="mt-5 text-2xl font-bold">We couldn’t open this page</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your records are safe. Reload the page to try again.
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                className="mt-6 min-h-11 rounded-xl bg-primary px-5 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90"
               >
-                Reload Page
+                Reload page
               </button>
             </div>
           </div>

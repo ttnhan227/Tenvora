@@ -15,37 +15,37 @@ public sealed class SwaggerTagDescriptionsDocumentFilter : IDocumentFilter
             new OpenApiTag
             {
                 Name = "Auth",
-                Description = "Authentication endpoints for enterprise registration, login, token refresh, and user profile management."
+                Description = "Register, sign in, refresh access, and read the current business profile."
             },
             new OpenApiTag
             {
-                Name = "Accounts",
-                Description = "Manage customer and settlement financial accounts and balances."
+                Name = "BusinessDashboard",
+                Description = "Today's activity, incoming and outgoing money, and outstanding balances."
             },
             new OpenApiTag
             {
-                Name = "Payments",
-                Description = "Idempotent payment initiation, processing, and transaction lifecycle management."
+                Name = "Sales",
+                Description = "Customer sales and append-only customer payment history."
             },
             new OpenApiTag
             {
-                Name = "Ledger",
-                Description = "Immutable double-entry journal records, balance history, and financial audit logs."
+                Name = "Purchases",
+                Description = "Supplier purchases and append-only supplier payment history."
             },
             new OpenApiTag
             {
-                Name = "Reconciliation",
-                Description = "Automated ledger consistency verification and discrepancy reporting."
+                Name = "Customers",
+                Description = "Customer details, search, balances, and activity history."
             },
             new OpenApiTag
             {
-                Name = "Risk",
-                Description = "Deterministic rule-based risk evaluation and compliance screening."
+                Name = "Suppliers",
+                Description = "Supplier details, search, balances, and purchase history."
             },
             new OpenApiTag
             {
-                Name = "Operations",
-                Description = "Internal operations monitoring, batch settlement, and incident management."
+                Name = "BusinessExpenses",
+                Description = "Simple categorized business spending records."
             }
         ];
     }

@@ -18,26 +18,26 @@ export default function NotFound() {
           <BrandLogo size="lg" to="" />
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-8 shadow-sm space-y-4">
-          <h1 className="text-5xl font-black tracking-tight text-primary font-mono">
+        <div className="paper-card paper-lines space-y-4 p-8">
+          <h1 className="text-5xl font-black tracking-tight text-primary">
             404
           </h1>
           <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Page Not Found
+            This page isn’t in the notebook
           </h2>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            The page you're looking for doesn't exist or has moved. Head back to your freelancer dashboard or home screen.
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The page may have moved. Return to your business records or go back to the Tenvora home page.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
             <Button asChild className="text-xs font-semibold">
               <Link to="/dashboard">
-                <Home size={14} className="mr-1.5" /> Go to Dashboard
+                <Home size={14} className="mr-1.5" /> Open my records
               </Link>
             </Button>
             <Button asChild variant="outline" className="text-xs">
               <Link to="/">
-                <ArrowLeft size={14} className="mr-1.5" /> Return to Home
+                <ArrowLeft size={14} className="mr-1.5" /> Tenvora home
               </Link>
             </Button>
           </div>

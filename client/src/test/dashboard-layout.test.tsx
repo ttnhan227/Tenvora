@@ -5,27 +5,26 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { email: "alex@riveradesign.co", role: "SoloFreelancer", companyName: "Alex Rivera Design" },
+    user: { email: "owner@example.test", role: "OperationsManager", companyName: "Example Business" },
     logout: vi.fn(),
   }),
 }));
 
-describe("Freelancer workspace navigation", () => {
-  it("exposes primary freelancer routes and hides enterprise admin clutter", () => {
+describe("Business workspace navigation", () => {
+  it("exposes the complete business workflow", () => {
     const { container } = render(
       <MemoryRouter>
         <DashboardLayout>
-          <p>Freelancer dashboard content</p>
+          <p>Business workspace content</p>
         </DashboardLayout>
       </MemoryRouter>
     );
     const linkNames = Array.from(container.querySelectorAll("a"), (link) => link.textContent?.trim());
     expect(linkNames).toEqual(expect.arrayContaining([
-      "Dashboard", "Transactions", "Income", "Expenses", "Clients", "Projects", "Invoices", "Reports", "Settings",
+      "Home", "Sales", "Customers", "Products", "Purchases", "Suppliers", "Expenses",
     ]));
-    for (const section of ["Overview", "Money", "Work", "Insights", "Account"]) {
+    for (const section of ["Today", "Record book", "Business setup"]) {
       expect(screen.getByText(section)).toBeInTheDocument();
     }
-    expect(linkNames).not.toContain("Team");
   });
 });

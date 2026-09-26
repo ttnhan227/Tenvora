@@ -53,13 +53,13 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
             
         var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
 
-        // Process audited entities (Transaction, Account, Customer, PaymentRequest, SettlementBatch, ReconciliationRun)
+        // Process business records while excluding authentication and audit infrastructure.
         foreach (var entry in context.ChangeTracker.Entries())
         {
             if (entry.State is EntityState.Detached or EntityState.Unchanged)
                 continue;
 
-            if (entry.Entity is AuditLog or RefreshToken or IdempotencyRecord)
+            if (entry.Entity is AuditLog or RefreshToken)
                 continue; // Skip infrastructure / log tables
 
             var entityType = entry.Entity.GetType().Name;

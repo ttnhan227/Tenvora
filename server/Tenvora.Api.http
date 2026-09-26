@@ -1,18 +1,10 @@
 @server_HostAddress = http://localhost:5000
 
-### 1. Health Liveness Probe
-GET {{server_HostAddress}}/api/health/live
-Accept: application/json
-
-### 2. Health Readiness Probe
+### Health
 GET {{server_HostAddress}}/api/health/ready
 Accept: application/json
 
-### 3. General Health Check
-GET {{server_HostAddress}}/api/health
-Accept: application/json
-
-### 4. User Login
+### Sign in
 # @name login
 POST {{server_HostAddress}}/api/auth/login
 Content-Type: application/json
@@ -22,23 +14,31 @@ Content-Type: application/json
   "password": "AdminPass123!"
 }
 
-### 5. Get Financial Overview (Requires Token)
 @authToken = {{login.response.body.data.accessToken}}
 
-GET {{server_HostAddress}}/api/overview
+### Dashboard
+GET {{server_HostAddress}}/api/business-dashboard
 Authorization: Bearer {{authToken}}
-Accept: application/json
 
-### 6. Query Tenvora AI Copilot
-POST {{server_HostAddress}}/api/ai/query
+### Customers
+GET {{server_HostAddress}}/api/customers
 Authorization: Bearer {{authToken}}
-Content-Type: application/json
 
-{
-  "prompt": "What is my current safe to spend and tax reserve?"
-}
-
-### 7. Get Invoices List
-GET {{server_HostAddress}}/api/invoices
+### Products
+GET {{server_HostAddress}}/api/products
 Authorization: Bearer {{authToken}}
-Accept: application/json
+
+### Sales
+GET {{server_HostAddress}}/api/sales
+Authorization: Bearer {{authToken}}
+
+### Suppliers and purchases
+GET {{server_HostAddress}}/api/suppliers
+Authorization: Bearer {{authToken}}
+
+GET {{server_HostAddress}}/api/purchases
+Authorization: Bearer {{authToken}}
+
+### Expenses
+GET {{server_HostAddress}}/api/business-expenses
+Authorization: Bearer {{authToken}}

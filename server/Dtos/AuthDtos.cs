@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Tenvora.Api.Dtos;
 
 public record RegisterRequest(
     [Required] string CompanyName,
     [Required, EmailAddress] string Email,
-    [Required, MinLength(6)] string Password,
+    [Required, MinLength(12)] string Password,
     string? BaseCurrency = "USD"
 );
 
@@ -18,6 +18,10 @@ public record RefreshTokenRequest(
     [Required] string RefreshToken
 );
 
+public record GoogleLoginRequest(
+    [Required] string Credential
+);
+
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,
@@ -26,7 +30,8 @@ public record AuthResponse(
     string Email,
     string Role,
     string CompanyName,
-    string PreferredCurrency
+    string PreferredCurrency,
+    bool GoogleLinked = false
 );
 
 public record UserProfileResponse(
@@ -36,5 +41,6 @@ public record UserProfileResponse(
     string Role,
     bool IsActive,
     string PreferredCurrency,
-    string CompanyName
+    string CompanyName,
+    bool GoogleLinked = false
 );

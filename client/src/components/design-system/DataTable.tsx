@@ -106,11 +106,11 @@ export function DataTable<T>({
     paginatedData.every((item) => selectedIds.includes(keyExtractor(item)));
 
   return (
-    <div className={cn("border border-border/90 bg-card rounded-md shadow-[0_1px_3px_rgba(60,66,87,0.06),0_0_1px_rgba(60,66,87,0.12)] overflow-hidden flex flex-col justify-between", className)}>
+    <div className={cn("paper-card overflow-hidden flex flex-col justify-between", className)}>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
+        <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr className="border-b border-border bg-muted/40 text-muted-foreground uppercase text-[10px] tracking-wider font-mono select-none">
+            <tr className="border-b border-border bg-muted/40 text-muted-foreground text-xs tracking-wide select-none">
               {onToggleSelect && (
                 <th className="py-2 px-3 w-8 text-center">
                   <input
@@ -136,7 +136,7 @@ export function DataTable<T>({
                     key={col.key}
                     aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
                     className={cn(
-                      "py-2.5 px-3.5 font-bold transition-colors whitespace-nowrap text-muted-foreground",
+                      "py-3 px-4 font-bold transition-colors whitespace-nowrap text-muted-foreground",
                       alignClass,
                       col.sortable && "hover:text-foreground hover:bg-muted/70",
                       col.headerClassName
@@ -179,7 +179,7 @@ export function DataTable<T>({
                 <tr key={i} className="animate-pulse">
                   {onToggleSelect && <td className="py-2.5 px-3"><div className="h-3.5 w-3.5 bg-muted rounded" /></td>}
                   {columns.map((col) => (
-                    <td key={col.key} className="py-2.5 px-3.5">
+                    <td key={col.key} className="py-3.5 px-4">
                       <div className={cn("h-3.5 bg-muted rounded", col.align === "right" ? "ml-auto w-16" : "w-24")} />
                     </td>
                   ))}
@@ -226,7 +226,7 @@ export function DataTable<T>({
                       return (
                         <td
                           key={col.key}
-                          className={cn("py-2.5 px-3.5 text-xs text-foreground", alignClass, col.className)}
+                          className={cn("py-3.5 px-4 text-sm text-foreground", alignClass, col.className)}
                         >
                           {col.render ? col.render(item) : (item as any)[col.key]}
                         </td>
@@ -242,8 +242,8 @@ export function DataTable<T>({
                   className="py-12 text-center text-muted-foreground"
                 >
                   <div className="max-w-xs mx-auto space-y-2">
-                    <p className="font-semibold text-foreground text-xs">{emptyTitle}</p>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{emptyDescription}</p>
+                    <p className="font-bold text-foreground text-base">{emptyTitle}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{emptyDescription}</p>
                     {emptyAction && <div className="pt-2">{emptyAction}</div>}
                   </div>
                 </td>
@@ -255,7 +255,7 @@ export function DataTable<T>({
 
       {/* Pagination Footer */}
       {!loading && sortedData.length > pageSize && (
-        <div className="px-3.5 py-2 border-t border-border bg-muted/40 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+        <div className="px-4 py-3 border-t border-border bg-muted/40 flex items-center justify-between text-xs text-muted-foreground">
           <div>
             Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} entries
           </div>
