@@ -82,6 +82,7 @@ public sealed class AuthService : IAuthService
             TenantId = tenant.Id,
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = PasswordHasher.Hash(request.Password),
+            HasPassword = true,
             Role = "TenantAdmin",
             IsActive = true,
             PreferredCurrency = tenant.BaseCurrency,
@@ -100,6 +101,11 @@ public sealed class AuthService : IAuthService
     public async Task<ApiResult<AuthResponse>> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email.Trim().ToLowerInvariant());
+        if (user is not null && !user.HasPassword)
+        {
+            return ApiResult<AuthResponse>.Fail("This account was created with Google. Please sign in with Google or set a password in your account settings.");
+        }
+
         if (user is null || !PasswordHasher.Verify(user.PasswordHash, request.Password))
         {
             return ApiResult<AuthResponse>.Fail("Invalid email or password.");
@@ -201,6 +207,7 @@ public sealed class AuthService : IAuthService
                     Email = email,
                     GoogleSub = googleSub,
                     PasswordHash = PasswordHasher.Hash(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")),
+                    HasPassword = false,
                     Role = "TenantAdmin",
                     IsActive = true,
                     PreferredCurrency = tenant.BaseCurrency,
@@ -253,7 +260,8 @@ public sealed class AuthService : IAuthService
             token.User.Role,
             token.User.Tenant?.CompanyName ?? string.Empty,
             token.User.PreferredCurrency,
-            token.User.GoogleLinked
+            token.User.GoogleLinked,
+            token.User.HasPassword
         );
 
         if (write != null) await write.CommitAsync();
@@ -276,10 +284,50 @@ public sealed class AuthService : IAuthService
             user.IsActive,
             user.PreferredCurrency,
             user.Tenant?.CompanyName ?? string.Empty,
-            user.GoogleLinked
+            user.GoogleLinked,
+            user.HasPassword
         );
 
         return ApiResult<UserProfileResponse>.Ok(profile);
+    }
+
+    public async Task<ApiResult> SetPasswordAsync(Guid userId, SetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.NewPassword) || request.NewPassword.Length < 12)
+        {
+            return ApiResult.Fail("Password must be at least 12 characters long.");
+        }
+        if (!request.NewPassword.Any(char.IsUpper) || !request.NewPassword.Any(char.IsLower) || !request.NewPassword.Any(char.IsDigit))
+        {
+            return ApiResult.Fail("Password must contain uppercase, lowercase, and numeric characters.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null || !user.IsActive)
+        {
+            return ApiResult.Fail("User not found.");
+        }
+
+        if (user.HasPassword)
+        {
+            if (string.IsNullOrWhiteSpace(request.CurrentPassword))
+            {
+                return ApiResult.Fail("Current password is required.");
+            }
+            if (!PasswordHasher.Verify(user.PasswordHash, request.CurrentPassword))
+            {
+                return ApiResult.Fail("Current password is incorrect.");
+            }
+        }
+
+        await using var write = await FinancialWriteScope.BeginAsync(_context, Guid.Empty);
+        user.PasswordHash = PasswordHasher.Hash(request.NewPassword);
+        user.HasPassword = true;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
+        if (write != null) await write.CommitAsync();
+
+        return ApiResult.Ok("Password updated successfully.");
     }
 
     private async Task<ApiResult<AuthResponse>> BuildAuthResponseAsync(User user, string companyName)
@@ -299,7 +347,8 @@ public sealed class AuthService : IAuthService
             user.Role,
             companyName,
             user.PreferredCurrency,
-            user.GoogleLinked
+            user.GoogleLinked,
+            user.HasPassword
         );
 
         return ApiResult<AuthResponse>.Ok(response);

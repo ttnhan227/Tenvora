@@ -22,6 +22,11 @@ public record GoogleLoginRequest(
     [Required] string Credential
 );
 
+public record SetPasswordRequest(
+    string? CurrentPassword,
+    [Required, MinLength(12)] string NewPassword
+);
+
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,
@@ -31,7 +36,8 @@ public record AuthResponse(
     string Role,
     string CompanyName,
     string PreferredCurrency,
-    bool GoogleLinked = false
+    bool GoogleLinked = false,
+    bool HasPassword = true
 );
 
 public record UserProfileResponse(
@@ -42,5 +48,6 @@ public record UserProfileResponse(
     bool IsActive,
     string PreferredCurrency,
     string CompanyName,
-    bool GoogleLinked = false
+    bool GoogleLinked = false,
+    bool HasPassword = true
 );

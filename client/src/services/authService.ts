@@ -16,6 +16,11 @@ export interface RegisterRequest {
   baseCurrency?: string;
 }
 
+export interface SetPasswordRequest {
+  currentPassword?: string;
+  newPassword: string;
+}
+
 export interface UserProfile {
   id: string;
   tenantId: string;
@@ -25,6 +30,7 @@ export interface UserProfile {
   preferredCurrency: string;
   companyName: string;
   googleLinked?: boolean;
+  hasPassword?: boolean;
 }
 
 export interface AuthResponse {
@@ -37,6 +43,7 @@ export interface AuthResponse {
   companyName: string;
   preferredCurrency: string;
   googleLinked?: boolean;
+  hasPassword?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -112,6 +119,15 @@ export const authService = {
       return response.data;
     } catch (error: unknown) {
       return apiFailure(error, "Registration failed");
+    }
+  },
+
+  setPassword: async (request: SetPasswordRequest): Promise<ApiResponse<void>> => {
+    try {
+      const response = await apiClient.post("/auth/set-password", request);
+      return response.data;
+    } catch (error: unknown) {
+      return apiFailure(error, "Failed to update password");
     }
   },
 

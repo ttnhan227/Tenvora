@@ -11,6 +11,8 @@ public class User
     [JsonIgnore]
     public string PasswordHash { get; set; } = string.Empty;
 
+    public bool HasPassword { get; set; } = true;
+
     public string? GoogleSub { get; set; }
     public bool GoogleLinked => !string.IsNullOrEmpty(GoogleSub);
 

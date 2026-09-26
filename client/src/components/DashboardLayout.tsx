@@ -1,16 +1,18 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, Plus, MoreHorizontal } from "lucide-react";
+import { Menu, X, LogOut, Plus, MoreHorizontal, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccountSecurityDialog } from "@/components/AccountSecurityDialog";
 import { getWorkspaceRouteLabel, workspaceNav } from "./WorkspaceNav";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
   const current = getWorkspaceRouteLabel(pathname);
   const visibleNav = workspaceNav.filter((item) => !item.admin || user?.role === "TenantAdmin");
   const mobileHrefs = ["/dashboard", "/sales", "/customers", "/purchases"];
@@ -46,13 +48,33 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="border-t border-sidebar-border p-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">{user?.email?.slice(0, 1).toUpperCase() || "T"}</span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold">{user?.email}</p>
-              <p className="text-xs text-muted-foreground">{user?.googleLinked ? "Google account" : "Business account"}</p>
-            </div>
-            <button type="button" onClick={logout} aria-label="Sign out" className="friendly-focus inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><LogOut size={17} /></button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSecurityOpen(true)}
+              title="Account & Security Settings"
+              className="friendly-focus flex min-w-0 flex-1 items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-secondary"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-primary">
+                {user?.email?.slice(0, 1).toUpperCase() || "T"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{user?.email}</p>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Shield size={12} className="text-primary shrink-0" />
+                  <span className="truncate">{user?.googleLinked ? "Google account" : "Business account"}</span>
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              aria-label="Sign out"
+              title="Sign out"
+              className="friendly-focus inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
         </div>
       </aside>
@@ -65,6 +87,15 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/sales?create=1"><Plus />New sale</Link></Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSecurityOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5"
+            >
+              <Shield size={14} className="text-primary" />
+              <span>Security</span>
+            </Button>
             <ThemeToggle />
           </div>
         </header>
@@ -81,6 +112,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         })}
         <button type="button" onClick={() => setOpen(true)} className="friendly-focus flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold text-muted-foreground"><MoreHorizontal size={20} /><span>More</span></button>
       </nav>
+
+      <AccountSecurityDialog open={securityOpen} onOpenChange={setSecurityOpen} />
     </div>
   );
 }

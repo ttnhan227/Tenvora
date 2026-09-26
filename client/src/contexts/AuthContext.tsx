@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   googleLogin: (credential: string) => Promise<ApiResponse<AuthResponse>>;
   register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<ApiResponse<AuthResponse>>;
+  setPassword: (currentPassword: string | undefined, newPassword: string) => Promise<ApiResponse<void>>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -60,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked,
+          hasPassword: result.data.hasPassword ?? true,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked ?? true,
+          hasPassword: result.data.hasPassword ?? false,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -118,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           preferredCurrency: result.data.preferredCurrency,
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked,
+          hasPassword: result.data.hasPassword ?? true,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -130,6 +134,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         success: false,
         message: "Unable to create your account right now.",
         errors: ["Unable to create your account right now. Please try again."],
+      };
+    }
+  };
+
+  const setPassword = async (currentPassword: string | undefined, newPassword: string): Promise<ApiResponse<void>> => {
+    try {
+      const result = await authService.setPassword({ currentPassword, newPassword });
+      if (result.success) {
+        await refreshProfile();
+      }
+      return result;
+    } catch (error) {
+      console.error("Set password error:", error);
+      return {
+        success: false,
+        message: "Failed to update password.",
+        errors: ["Failed to update password."],
       };
     }
   };
@@ -154,6 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     googleLogin,
     register,
+    setPassword,
     logout,
     refreshProfile,
   };
