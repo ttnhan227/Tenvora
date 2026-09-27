@@ -51,6 +51,16 @@ public sealed class PasswordManagementTests
     }
 
     [Fact]
+    public void HasPassword_DatabaseDefault_IsFalse_ForGoogleOnlyAccounts()
+    {
+        using var db = Db();
+        var property = db.Model.FindEntityType(typeof(User))!
+            .FindProperty(nameof(User.HasPassword))!;
+
+        Assert.Equal(false, property.GetDefaultValue());
+    }
+
+    [Fact]
     public async Task GoogleUser_HasPasswordIsFalse_CannotLoginWithPasswordInitially()
     {
         using var db = Db();

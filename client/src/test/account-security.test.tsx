@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AccountSecurityDialog } from "@/components/AccountSecurityDialog";
 import apiClient from "@/services/apiClient";
 import * as AuthContextModule from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 vi.mock("@/services/apiClient", () => ({
   default: {
@@ -16,7 +17,10 @@ describe("AccountSecurityDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
+
+  const renderDialog = () => render(<LanguageProvider defaultLanguage="en"><AccountSecurityDialog open={true} onOpenChange={vi.fn()} /></LanguageProvider>);
 
   it("renders 'Set a Password' form when user does not have a password (Google sign-up)", () => {
     vi.spyOn(AuthContextModule, "useAuth").mockReturnValue({
@@ -37,11 +41,13 @@ describe("AccountSecurityDialog", () => {
       googleLogin: vi.fn(),
       register: vi.fn(),
       setPassword: mockSetPassword,
+      completeOnboarding: vi.fn(),
+      updateSettings: vi.fn(),
       logout: vi.fn(),
       refreshProfile: vi.fn(),
     });
 
-    render(<AccountSecurityDialog open={true} onOpenChange={vi.fn()} />);
+    renderDialog();
 
     expect(screen.getByText("Security Credentials")).toBeInTheDocument();
     expect(screen.getByText("Set a Password")).toBeInTheDocument();
@@ -71,11 +77,13 @@ describe("AccountSecurityDialog", () => {
       googleLogin: vi.fn(),
       register: vi.fn(),
       setPassword: mockSetPassword,
+      completeOnboarding: vi.fn(),
+      updateSettings: vi.fn(),
       logout: vi.fn(),
       refreshProfile: vi.fn(),
     });
 
-    render(<AccountSecurityDialog open={true} onOpenChange={vi.fn()} />);
+    renderDialog();
 
     expect(screen.getByText("Change Password")).toBeInTheDocument();
     expect(screen.getByLabelText("Current password")).toBeInTheDocument();
@@ -103,11 +111,13 @@ describe("AccountSecurityDialog", () => {
       googleLogin: vi.fn(),
       register: vi.fn(),
       setPassword: mockSetPassword,
+      completeOnboarding: vi.fn(),
+      updateSettings: vi.fn(),
       logout: vi.fn(),
       refreshProfile: vi.fn(),
     });
 
-    render(<AccountSecurityDialog open={true} onOpenChange={vi.fn()} />);
+    renderDialog();
 
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "weak" } });
     fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "weak" } });
@@ -138,11 +148,13 @@ describe("AccountSecurityDialog", () => {
       googleLogin: vi.fn(),
       register: vi.fn(),
       setPassword: mockSetPassword,
+      completeOnboarding: vi.fn(),
+      updateSettings: vi.fn(),
       logout: vi.fn(),
       refreshProfile: vi.fn(),
     });
 
-    render(<AccountSecurityDialog open={true} onOpenChange={vi.fn()} />);
+    renderDialog();
 
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "ValidPassword123!" } });
     fireEvent.change(screen.getByLabelText("Confirm new password"), { target: { value: "ValidPassword123!" } });

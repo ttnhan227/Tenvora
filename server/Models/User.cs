@@ -19,6 +19,8 @@ public class User
     public string Role { get; set; } = "OperationsManager"; // TenantAdmin, OperationsManager, ReadOnly
     public bool IsActive { get; set; } = true;
     public string PreferredCurrency { get; set; } = "USD";
+    public string? FullName { get; set; }
+    public string? PhoneNumber { get; set; }
 
     /// <summary>Security: Never serialized in API responses</summary>
     [JsonIgnore]

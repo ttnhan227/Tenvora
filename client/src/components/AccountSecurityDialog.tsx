@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, CheckCircle2, KeyRound, Loader2, Shield } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AccountSecurityDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface AccountSecurityDialogProps {
 
 export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDialogProps) {
   const { user, setPassword } = useAuth();
+  const { isVietnamese, t } = useLanguage();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -54,24 +56,24 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
     const errs: typeof fieldErrors = {};
 
     if (hasPassword && !currentPassword) {
-      errs.currentPassword = "Enter your current password.";
+      errs.currentPassword = isVietnamese ? "Nhập mật khẩu hiện tại." : "Enter your current password.";
     }
 
     if (!newPassword) {
-      errs.newPassword = "Enter a new password.";
+      errs.newPassword = isVietnamese ? "Nhập mật khẩu mới." : "Enter a new password.";
     } else if (
       newPassword.length < 12 ||
       !/[A-Z]/.test(newPassword) ||
       !/[a-z]/.test(newPassword) ||
       !/\d/.test(newPassword)
     ) {
-      errs.newPassword = "Use 12 or more characters with uppercase, lowercase, and a number.";
+      errs.newPassword = isVietnamese ? "Dùng ít nhất 12 ký tự, gồm chữ hoa, chữ thường và số." : "Use 12 or more characters with uppercase, lowercase, and a number.";
     }
 
     if (!confirmPassword) {
-      errs.confirmPassword = "Confirm your new password.";
+      errs.confirmPassword = isVietnamese ? "Nhập lại mật khẩu mới." : "Confirm your new password.";
     } else if (confirmPassword !== newPassword) {
-      errs.confirmPassword = "Passwords do not match.";
+      errs.confirmPassword = isVietnamese ? "Mật khẩu không khớp." : "Passwords do not match.";
     }
 
     setFieldErrors(errs);
@@ -95,18 +97,18 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
       if (result.success) {
         setSuccessMessage(
           hasPassword
-            ? "Your password has been changed successfully."
-            : "Your password has been created! You can now log in using either Google or your email and password."
+            ? (isVietnamese ? "Đã đổi mật khẩu thành công." : "Your password has been changed successfully.")
+            : (isVietnamese ? "Đã tạo mật khẩu. Bạn có thể đăng nhập bằng Google hoặc email và mật khẩu." : "Your password has been created! You can now log in using either Google or your email and password.")
         );
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setFieldErrors({});
       } else {
-        setError(result.message || "Unable to update password. Please check your details.");
+        setError(result.message || (isVietnamese ? "Không thể cập nhật mật khẩu. Vui lòng kiểm tra lại." : "Unable to update password. Please check your details."));
       }
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError(isVietnamese ? "Đã xảy ra lỗi. Vui lòng thử lại." : "An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -118,17 +120,17 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
         <DialogHeader>
           <div className="flex items-center gap-2 text-primary mb-1">
             <Shield className="h-5 w-5" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Account & Security</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{isVietnamese ? "Tài khoản & Bảo mật" : "Account & Security"}</span>
           </div>
-          <DialogTitle>Security Credentials</DialogTitle>
+          <DialogTitle>{isVietnamese ? "Thông tin bảo mật" : "Security Credentials"}</DialogTitle>
           <DialogDescription>
-            Manage sign-in options, connected accounts, and password access for your business profile.
+            {isVietnamese ? "Quản lý cách đăng nhập, tài khoản liên kết và mật khẩu của bạn." : "Manage sign-in options, connected accounts, and password access for your business profile."}
           </DialogDescription>
         </DialogHeader>
 
         {/* Connected Authentication Methods */}
         <div className="space-y-3 pt-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sign-in methods</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{isVietnamese ? "Phương thức đăng nhập" : "Sign-in methods"}</p>
 
           <div className="grid gap-2 sm:grid-cols-2">
             {/* Google provider status */}
@@ -141,12 +143,12 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold">Google Account</p>
+                  <p className="text-xs font-semibold">{isVietnamese ? "Tài khoản Google" : "Google account"}</p>
                   <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${isGoogleLinked ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
-                {isGoogleLinked ? "Connected" : "Not connected"}
+                {isGoogleLinked ? (isVietnamese ? "Đã liên kết" : "Connected") : (isVietnamese ? "Chưa liên kết" : "Not connected")}
               </span>
             </div>
 
@@ -155,14 +157,14 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
               <div className="flex items-center gap-2.5">
                 <KeyRound className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold">Password</p>
+                  <p className="text-xs font-semibold">{isVietnamese ? "Mật khẩu" : "Password"}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {hasPassword ? "Standard email sign-in" : "Password not configured"}
+                    {hasPassword ? (isVietnamese ? "Đăng nhập bằng email" : "Standard email sign-in") : (isVietnamese ? "Chưa thiết lập mật khẩu" : "Password not configured")}
                   </p>
                 </div>
               </div>
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${hasPassword ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}>
-                {hasPassword ? "Active" : "Not set"}
+                {hasPassword ? (isVietnamese ? "Đang dùng" : "Active") : (isVietnamese ? "Chưa đặt" : "Not set")}
               </span>
             </div>
           </div>
@@ -172,12 +174,12 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
         <form onSubmit={handleSubmit} className="space-y-4 border-t pt-4">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-foreground">
-              {hasPassword ? "Change Password" : "Set a Password"}
+              {hasPassword ? (isVietnamese ? "Đổi mật khẩu" : "Change Password") : (isVietnamese ? "Đặt mật khẩu" : "Set a Password")}
             </h4>
             <p className="text-xs text-muted-foreground">
               {hasPassword
-                ? "Update your existing password. Must be at least 12 characters."
-                : "You signed up via Google. Create a password so you can also log in directly with your email and password."}
+                ? (isVietnamese ? "Cập nhật mật khẩu hiện tại. Mật khẩu mới phải có ít nhất 12 ký tự." : "Update your existing password. Must be at least 12 characters.")
+                : (isVietnamese ? "Bạn đã đăng ký bằng Google. Hãy tạo mật khẩu nếu muốn đăng nhập trực tiếp bằng email." : "You signed up via Google. Create a password so you can also log in directly with your email and password.")}
             </p>
           </div>
 
@@ -198,11 +200,11 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
           {/* Current password (only for users who already have a password) */}
           {hasPassword && (
             <div className="space-y-1.5">
-              <Label htmlFor="current-password" className="text-xs font-medium">Current password</Label>
+              <Label htmlFor="current-password" className="text-xs font-medium">{isVietnamese ? "Mật khẩu hiện tại" : "Current password"}</Label>
               <Input
                 id="current-password"
                 type="password"
-                placeholder="Enter current password"
+                placeholder={isVietnamese ? "Nhập mật khẩu hiện tại" : "Enter current password"}
                 value={currentPassword}
                 onChange={(e) => {
                   setCurrentPassword(e.target.value);
@@ -220,11 +222,11 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
 
           {/* New password */}
           <div className="space-y-1.5">
-            <Label htmlFor="new-password" className="text-xs font-medium">New password</Label>
+            <Label htmlFor="new-password" className="text-xs font-medium">{isVietnamese ? "Mật khẩu mới" : "New password"}</Label>
             <Input
               id="new-password"
               type="password"
-              placeholder="12+ characters (upper, lower, number)"
+              placeholder={isVietnamese ? "Ít nhất 12 ký tự (hoa, thường, số)" : "12+ characters (upper, lower, number)"}
               value={newPassword}
               onChange={(e) => {
                 setNewPassword(e.target.value);
@@ -241,11 +243,11 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
 
           {/* Confirm password */}
           <div className="space-y-1.5">
-            <Label htmlFor="confirm-password" className="text-xs font-medium">Confirm new password</Label>
+            <Label htmlFor="confirm-password" className="text-xs font-medium">{isVietnamese ? "Nhập lại mật khẩu mới" : "Confirm new password"}</Label>
             <Input
               id="confirm-password"
               type="password"
-              placeholder="Re-enter new password"
+              placeholder={isVietnamese ? "Nhập lại mật khẩu mới" : "Re-enter new password"}
               value={confirmPassword}
               onChange={(e) => {
                 setConfirmPassword(e.target.value);
@@ -268,7 +270,7 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
               onClick={() => handleOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
@@ -278,12 +280,12 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving…
+                  {t("common.saving")}
                 </>
               ) : hasPassword ? (
-                "Change password"
+                (isVietnamese ? "Đổi mật khẩu" : "Change password")
               ) : (
-                "Set password"
+                (isVietnamese ? "Đặt mật khẩu" : "Set password")
               )}
             </Button>
           </div>

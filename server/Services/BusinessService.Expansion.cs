@@ -76,6 +76,14 @@ public sealed partial class BusinessService
         return ApiResult<List<PurchaseDto>>.Ok((await query.OrderByDescending(p => p.PurchasedAt).ToListAsync()).Select(MapPurchase).ToList());
     }
 
+    public async Task<ApiResult<PurchaseDto>> GetPurchaseAsync(Guid tenantId, Guid purchaseId)
+    {
+        var purchase = await FindPurchase(tenantId, purchaseId, true);
+        return purchase == null
+            ? ApiResult<PurchaseDto>.Fail("Purchase not found.")
+            : ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
+    }
+
     public async Task<ApiResult<PurchaseDto>> CreatePurchaseAsync(Guid tenantId, string idempotencyKey, CreatePurchaseRequest request)
     {
         var keyError = ValidateKey(idempotencyKey);
@@ -109,6 +117,15 @@ public sealed partial class BusinessService
                 return ApiResult<PurchaseDto>.Fail("Every purchase line needs a description and unit.");
             if (requested.Quantity <= 0 || requested.UnitCost < 0 || Scale(requested.Quantity) > 4 || Scale(requested.UnitCost) > 4)
                 return ApiResult<PurchaseDto>.Fail("Purchase quantities must be positive and costs non-negative, with at most four decimal places.");
+            if (requested.ProductId.HasValue && products.TryGetValue(requested.ProductId.Value, out var prod))
+            {
+                prod.StockQuantity = Money(prod.StockQuantity + requested.Quantity);
+                if (requested.UnitCost > 0)
+                {
+                    prod.CostPrice = Money(requested.UnitCost);
+                }
+                prod.UpdatedAt = DateTime.UtcNow;
+            }
             purchase.Items.Add(new PurchaseItem { Id = Guid.NewGuid(), TenantId = tenantId, PurchaseId = purchase.Id,
                 ProductId = requested.ProductId, Product = requested.ProductId.HasValue ? products[requested.ProductId.Value] : null,
                 Description = requested.Description.Trim(), Unit = requested.Unit.Trim(), Quantity = requested.Quantity,
@@ -160,6 +177,37 @@ public sealed partial class BusinessService
         return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
     }
 
+    public async Task<ApiResult<PurchaseDto>> VoidPurchaseAsync(Guid tenantId, Guid purchaseId)
+    {
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        var purchase = await FindPurchase(tenantId, purchaseId, false);
+        if (purchase == null) return ApiResult<PurchaseDto>.Fail("Purchase not found.");
+        if (purchase.Status == "Voided") return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
+        if (purchase.Payments.Count > 0)
+            return ApiResult<PurchaseDto>.Fail("A purchase with payments cannot be voided. Reverse or correct the payments first.");
+
+        var productIds = purchase.Items.Where(i => i.ProductId.HasValue).Select(i => i.ProductId!.Value).Distinct().ToList();
+        var products = await db.Products.Where(p => p.TenantId == tenantId && productIds.Contains(p.Id)).ToListAsync();
+        foreach (var item in purchase.Items)
+        {
+            if (item.ProductId.HasValue)
+            {
+                var prod = products.FirstOrDefault(p => p.Id == item.ProductId.Value);
+                if (prod != null)
+                {
+                    prod.StockQuantity = Money(prod.StockQuantity - item.Quantity);
+                    prod.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        purchase.Status = "Voided";
+        purchase.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
+        return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
+    }
+
     public async Task<ApiResult<List<BusinessExpenseDto>>> GetBusinessExpensesAsync(Guid tenantId, string? search, string? category, DateTime? from, DateTime? to)
     {
         var query = db.BusinessExpenses.AsNoTracking().Where(e => e.TenantId == tenantId);
@@ -196,34 +244,140 @@ public sealed partial class BusinessService
         return ApiResult<BusinessExpenseDto>.Ok(MapExpense(expense));
     }
 
-    public async Task<ApiResult<BusinessDashboardDto>> GetDashboardAsync(Guid tenantId)
+    public async Task<ApiResult<BusinessExpenseDto>> UpdateBusinessExpenseAsync(Guid tenantId, Guid expenseId, UpdateBusinessExpenseRequest request)
     {
-        var start = DateTime.UtcNow.Date; var end = start.AddDays(1); var currency = await Currency(tenantId);
+        var expense = await db.BusinessExpenses.FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == expenseId);
+        if (expense == null) return ApiResult<BusinessExpenseDto>.Fail("Expense not found.");
+        var category = request.Category?.Trim();
+        if (string.IsNullOrWhiteSpace(category)) return ApiResult<BusinessExpenseDto>.Fail("Expense category is required.");
+        if (request.Amount <= 0 || Scale(request.Amount) > 4) return ApiResult<BusinessExpenseDto>.Fail("Expense amount must be positive with at most four decimal places.");
+
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        var date = Utc(request.ExpenseDate ?? expense.ExpenseDate);
+        if (date > DateTime.UtcNow.AddDays(1)) return ApiResult<BusinessExpenseDto>.Fail("Expense date cannot be in the future.");
+
+        expense.Category = category;
+        expense.Amount = Money(request.Amount);
+        expense.Description = Clean(request.Description);
+        expense.ExpenseDate = date;
+        await db.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
+
+        return ApiResult<BusinessExpenseDto>.Ok(MapExpense(expense));
+    }
+
+    public async Task<ApiResult> DeleteBusinessExpenseAsync(Guid tenantId, Guid expenseId)
+    {
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        var expense = await db.BusinessExpenses.FirstOrDefaultAsync(e => e.TenantId == tenantId && e.Id == expenseId);
+        if (expense == null) return ApiResult.Fail("Expense not found.");
+
+        db.BusinessExpenses.Remove(expense);
+        await db.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
+
+        return ApiResult.Ok();
+    }
+
+    public async Task<ApiResult<BusinessDashboardDto>> GetDashboardAsync(Guid tenantId, string? period = "today", DateTime? from = null, DateTime? to = null)
+    {
+        var now = DateTime.UtcNow;
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var normalizedPeriod = (period ?? "today").Trim().ToLowerInvariant();
+
+        DateTime periodStart;
+        DateTime periodEnd = now;
+
+        if (from.HasValue)
+        {
+            periodStart = Utc(from.Value);
+            periodEnd = to.HasValue ? Utc(to.Value.Date.AddDays(1)) : now;
+            normalizedPeriod = "custom";
+        }
+        else
+        {
+            switch (normalizedPeriod)
+            {
+                case "week":
+                    var diff = (7 + (int)now.DayOfWeek - (int)DayOfWeek.Monday) % 7;
+                    periodStart = todayStart.AddDays(-diff);
+                    break;
+                case "month":
+                    periodStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                    break;
+                case "year":
+                    periodStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    break;
+                case "all":
+                    periodStart = DateTime.MinValue;
+                    break;
+                case "today":
+                default:
+                    normalizedPeriod = "today";
+                    periodStart = todayStart;
+                    periodEnd = todayEnd;
+                    break;
+            }
+        }
+
+        var currency = await Currency(tenantId);
         var sales = await db.Sales.AsNoTracking().Where(s => s.TenantId == tenantId && s.Status == SaleStatuses.Posted)
             .Include(s => s.Customer).Include(s => s.Payments).ToListAsync();
         var purchases = await db.Purchases.AsNoTracking().Where(p => p.TenantId == tenantId && p.Status == "Posted")
             .Include(p => p.Supplier).Include(p => p.Payments).ToListAsync();
         var expenses = await db.BusinessExpenses.AsNoTracking().Where(e => e.TenantId == tenantId).ToListAsync();
+
         var customers = sales.GroupBy(s => s.CustomerId).Select(g => new { Customer = g.First().Customer!, Sales = g.ToList() })
             .Select(x => MapDashboardCustomer(x.Customer, x.Sales, currency)).Where(c => c.OutstandingBalance > 0)
             .OrderByDescending(c => c.OutstandingBalance).Take(5).ToList();
         var suppliers = purchases.GroupBy(p => p.SupplierId).Select(g => new { Supplier = g.First().Supplier!, Purchases = g.ToList() })
             .Select(x => MapDashboardSupplier(x.Supplier, x.Purchases, currency)).Where(s => s.OutstandingBalance > 0)
             .OrderByDescending(s => s.OutstandingBalance).Take(5).ToList();
+
         var activity = sales.Select(s => new BusinessActivityDto("Sale", s.Id, s.Customer?.Name ?? "Customer", s.SaleNumber, s.TotalAmount, s.SoldAt))
             .Concat(sales.SelectMany(s => s.Payments.Select(p => new BusinessActivityDto("Customer payment", p.Id, s.Customer?.Name ?? "Customer", s.SaleNumber, p.Amount, p.PaidAt))))
             .Concat(purchases.Select(p => new BusinessActivityDto("Purchase", p.Id, p.Supplier?.Name ?? "Supplier", p.PurchaseNumber, p.TotalAmount, p.PurchasedAt)))
             .Concat(purchases.SelectMany(p => p.Payments.Select(x => new BusinessActivityDto("Supplier payment", x.Id, p.Supplier?.Name ?? "Supplier", p.PurchaseNumber, x.Amount, x.PaidAt))))
             .Concat(expenses.Select(e => new BusinessActivityDto("Expense", e.Id, e.Category, e.Description ?? "Expense", e.Amount, e.ExpenseDate)))
             .OrderByDescending(a => a.OccurredAt).Take(10).ToList();
-        return ApiResult<BusinessDashboardDto>.Ok(new(currency,
-            Money(sales.Where(s => s.SoldAt >= start && s.SoldAt < end).Sum(s => s.TotalAmount)),
-            Money(sales.SelectMany(s => s.Payments).Where(p => p.PaidAt >= start && p.PaidAt < end).Sum(p => p.Amount)),
-            Money(purchases.Where(p => p.PurchasedAt >= start && p.PurchasedAt < end).Sum(p => p.TotalAmount)),
-            Money(purchases.SelectMany(p => p.Payments).Where(p => p.PaidAt >= start && p.PaidAt < end).Sum(p => p.Amount)),
-            Money(expenses.Where(e => e.ExpenseDate >= start && e.ExpenseDate < end).Sum(e => e.Amount)),
-            Money(sales.Sum(s => s.TotalAmount - s.Payments.Sum(p => p.Amount))),
-            Money(purchases.Sum(p => p.TotalAmount - p.Payments.Sum(x => x.Amount))), customers, suppliers, activity));
+
+        var todaySalesAmount = Money(sales.Where(s => s.SoldAt >= todayStart && s.SoldAt < todayEnd).Sum(s => s.TotalAmount));
+        var todayPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
+        var todayPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= todayStart && p.PurchasedAt < todayEnd).Sum(p => p.TotalAmount));
+        var todaySupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
+        var todayExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= todayStart && e.ExpenseDate < todayEnd).Sum(e => e.Amount));
+
+        var periodSalesAmount = Money(sales.Where(s => s.SoldAt >= periodStart && s.SoldAt <= periodEnd).Sum(s => s.TotalAmount));
+        var periodPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
+        var periodPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= periodStart && p.PurchasedAt <= periodEnd).Sum(p => p.TotalAmount));
+        var periodSupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
+        var periodExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= periodStart && e.ExpenseDate <= periodEnd).Sum(e => e.Amount));
+        var periodNetProfit = Money(periodSalesAmount - (periodExpensesAmount + periodPurchasesAmount));
+
+        var totalOutstandingCustomers = Money(sales.Sum(s => s.TotalAmount - s.Payments.Sum(p => p.Amount)));
+        var totalOutstandingSuppliers = Money(purchases.Sum(p => p.TotalAmount - p.Payments.Sum(x => x.Amount)));
+
+        return ApiResult<BusinessDashboardDto>.Ok(new(
+            currency,
+            todaySalesAmount,
+            todayPaymentsAmount,
+            todayPurchasesAmount,
+            todaySupplierPaymentsAmount,
+            todayExpensesAmount,
+            totalOutstandingCustomers,
+            totalOutstandingSuppliers,
+            customers,
+            suppliers,
+            activity,
+            normalizedPeriod,
+            periodSalesAmount,
+            periodPaymentsAmount,
+            periodPurchasesAmount,
+            periodSupplierPaymentsAmount,
+            periodExpensesAmount,
+            periodNetProfit
+        ));
     }
 
     private async Task<Purchase?> FindPurchase(Guid tenantId, Guid id, bool noTracking)

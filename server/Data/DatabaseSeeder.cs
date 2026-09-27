@@ -23,7 +23,7 @@ public static class DatabaseSeeder
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), TenantId = tenant.Id,
             Email = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL")?.Trim().ToLowerInvariant() ?? "owner@tenvora.internal",
-            PasswordHash = PasswordHasher.Hash(password), Role = "TenantAdmin", PreferredCurrency = tenant.BaseCurrency
+            PasswordHash = PasswordHasher.Hash(password), HasPassword = true, Role = "TenantAdmin", PreferredCurrency = tenant.BaseCurrency
         });
         context.Tenants.Add(tenant);
         await context.SaveChangesAsync();

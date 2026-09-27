@@ -52,6 +52,12 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
             ?? "System / Auto-Auditor";
             
         var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
+        var aiActionId = httpContext?.Items["Tenvora.AiActionId"] is Guid actionId ? actionId : (Guid?)null;
+        var userId = httpContext?.Items["Tenvora.AiActorId"] is Guid aiActorId
+            ? aiActorId
+            : Guid.TryParse(httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var actorId)
+                ? actorId
+                : (Guid?)null;
 
         // Process business records while excluding authentication and audit infrastructure.
         foreach (var entry in context.ChangeTracker.Entries())
@@ -64,6 +70,9 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
             var entityType = entry.Entity.GetType().Name;
             var primaryKey = entry.Property("Id").CurrentValue?.ToString() ?? Guid.NewGuid().ToString();
+            var proposal = entry.Entity as AiAction;
+            var effectiveAiActionId = aiActionId ?? proposal?.Id;
+            var isAiAction = effectiveAiActionId.HasValue;
             
             // Extract TenantId if available
             var tenantIdProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "TenantId");
@@ -129,6 +138,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
+                UserId = userId,
                 EntityType = entityType,
                 EntityId = primaryKey,
                 Action = action,
@@ -137,7 +147,11 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 OldValue = oldValue,
                 NewValue = newValue,
                 Notes = string.Join(" | ", changesList),
-                IpAddress = ipAddress
+                IpAddress = ipAddress,
+                Origin = isAiAction ? "AI" : "Manual",
+                AiActionId = effectiveAiActionId,
+                ConfirmationRequired = isAiAction ? proposal?.RequiresConfirmation ?? true : null,
+                ConfirmationGiven = isAiAction ? proposal?.ConfirmedAt.HasValue ?? aiActionId.HasValue : null
             };
 
             auditLogs.Add(auditLog);

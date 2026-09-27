@@ -18,6 +18,10 @@ public record RefreshTokenRequest(
     [Required] string RefreshToken
 );
 
+public record LogoutRequest(
+    string? RefreshToken = null
+);
+
 public record GoogleLoginRequest(
     [Required] string Credential
 );
@@ -26,6 +30,23 @@ public record SetPasswordRequest(
     string? CurrentPassword,
     [Required, MinLength(12)] string NewPassword
 );
+
+public record CompleteOnboardingRequest(
+    [Required] string CompanyName,
+    [Required, StringLength(3, MinimumLength = 3)] string PreferredCurrency,
+    [Required] string BusinessType,
+    string? FullName = null,
+    string? PhoneNumber = null
+);
+
+public record UpdateSettingsRequest(
+    [Required] string CompanyName,
+    [Required, StringLength(3, MinimumLength = 3)] string PreferredCurrency,
+    [Required] string BusinessType,
+    string? FullName = null,
+    string? PhoneNumber = null
+);
+
 
 public record AuthResponse(
     string AccessToken,
@@ -37,7 +58,11 @@ public record AuthResponse(
     string CompanyName,
     string PreferredCurrency,
     bool GoogleLinked = false,
-    bool HasPassword = true
+    bool HasPassword = true,
+    string? BusinessType = null,
+    bool OnboardingCompleted = false,
+    string? FullName = null,
+    string? PhoneNumber = null
 );
 
 public record UserProfileResponse(
@@ -49,5 +74,9 @@ public record UserProfileResponse(
     string PreferredCurrency,
     string CompanyName,
     bool GoogleLinked = false,
-    bool HasPassword = true
+    bool HasPassword = true,
+    string? BusinessType = null,
+    bool OnboardingCompleted = false,
+    string? FullName = null,
+    string? PhoneNumber = null
 );

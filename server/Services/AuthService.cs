@@ -205,6 +205,7 @@ public sealed class AuthService : IAuthService
                     TenantId = tenant.Id,
                     Tenant = tenant,
                     Email = email,
+                    FullName = name,
                     GoogleSub = googleSub,
                     PasswordHash = PasswordHasher.Hash(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")),
                     HasPassword = false,
@@ -261,11 +262,34 @@ public sealed class AuthService : IAuthService
             token.User.Tenant?.CompanyName ?? string.Empty,
             token.User.PreferredCurrency,
             token.User.GoogleLinked,
-            token.User.HasPassword
+            token.User.HasPassword,
+            token.User.Tenant?.BusinessType,
+            token.User.Tenant?.OnboardingCompleted ?? false,
+            token.User.FullName,
+            token.User.PhoneNumber
         );
 
         if (write != null) await write.CommitAsync();
         return ApiResult<AuthResponse>.Ok(response);
+    }
+
+    public async Task<ApiResult> LogoutAsync(Guid userId, string? refreshToken = null)
+    {
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            var token = await _refreshTokenRepository.GetByTokenAsync(refreshToken.Trim());
+            if (token != null)
+            {
+                token.Revoked = true;
+                await _context.SaveChangesAsync();
+            }
+        }
+        else if (userId != Guid.Empty)
+        {
+            await _refreshTokenRepository.RevokeUserTokensAsync(userId);
+        }
+
+        return ApiResult.Ok();
     }
 
     public async Task<ApiResult<UserProfileResponse>> GetProfileAsync(Guid userId)
@@ -285,7 +309,11 @@ public sealed class AuthService : IAuthService
             user.PreferredCurrency,
             user.Tenant?.CompanyName ?? string.Empty,
             user.GoogleLinked,
-            user.HasPassword
+            user.HasPassword,
+            user.Tenant?.BusinessType,
+            user.Tenant?.OnboardingCompleted ?? false,
+            user.FullName,
+            user.PhoneNumber
         );
 
         return ApiResult<UserProfileResponse>.Ok(profile);
@@ -330,6 +358,138 @@ public sealed class AuthService : IAuthService
         return ApiResult.Ok("Password updated successfully.");
     }
 
+    public async Task<ApiResult<UserProfileResponse>> CompleteOnboardingAsync(Guid userId, Guid tenantId, CompleteOnboardingRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.CompanyName))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Business name is required.");
+        }
+        if (string.IsNullOrWhiteSpace(request.PreferredCurrency) || request.PreferredCurrency.Trim().Length != 3)
+        {
+            return ApiResult<UserProfileResponse>.Fail("A valid 3-letter currency code is required.");
+        }
+        if (string.IsNullOrWhiteSpace(request.BusinessType))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Business type is required.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null || !user.IsActive)
+        {
+            return ApiResult<UserProfileResponse>.Fail("User not found.");
+        }
+
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        if (tenant is null)
+        {
+            return ApiResult<UserProfileResponse>.Fail("Tenant not found.");
+        }
+
+        var currency = request.PreferredCurrency.Trim().ToUpperInvariant();
+        tenant.CompanyName = request.CompanyName.Trim();
+        tenant.BaseCurrency = currency;
+        tenant.BusinessType = request.BusinessType.Trim().ToLowerInvariant();
+        tenant.OnboardingCompleted = true;
+        tenant.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+        {
+            user.FullName = request.FullName.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+        {
+            user.PhoneNumber = request.PhoneNumber.Trim();
+        }
+
+        user.PreferredCurrency = currency;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+        await _tenantRepository.UpdateAsync(tenant);
+        await _userRepository.UpdateAsync(user);
+        if (write != null) await write.CommitAsync();
+
+        var profile = new UserProfileResponse(
+            user.Id,
+            user.TenantId,
+            user.Email,
+            user.Role,
+            user.IsActive,
+            user.PreferredCurrency,
+            tenant.CompanyName,
+            user.GoogleLinked,
+            user.HasPassword,
+            tenant.BusinessType,
+            tenant.OnboardingCompleted,
+            user.FullName,
+            user.PhoneNumber
+        );
+
+        return ApiResult<UserProfileResponse>.Ok(profile);
+    }
+
+    public async Task<ApiResult<UserProfileResponse>> UpdateSettingsAsync(Guid userId, Guid tenantId, UpdateSettingsRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.CompanyName))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Business name is required.");
+        }
+        if (string.IsNullOrWhiteSpace(request.PreferredCurrency) || request.PreferredCurrency.Trim().Length != 3)
+        {
+            return ApiResult<UserProfileResponse>.Fail("A valid 3-letter currency code is required.");
+        }
+        if (string.IsNullOrWhiteSpace(request.BusinessType))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Business type is required.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null || !user.IsActive)
+        {
+            return ApiResult<UserProfileResponse>.Fail("User not found.");
+        }
+
+        var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+        if (tenant is null)
+        {
+            return ApiResult<UserProfileResponse>.Fail("Tenant not found.");
+        }
+
+        var currency = request.PreferredCurrency.Trim().ToUpperInvariant();
+        tenant.CompanyName = request.CompanyName.Trim();
+        tenant.BusinessType = request.BusinessType.Trim();
+        tenant.BaseCurrency = currency;
+        tenant.UpdatedAt = DateTime.UtcNow;
+
+        user.PreferredCurrency = currency;
+        user.FullName = string.IsNullOrWhiteSpace(request.FullName) ? user.FullName : request.FullName.Trim();
+        user.PhoneNumber = request.PhoneNumber != null ? (string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim()) : user.PhoneNumber;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+        await _tenantRepository.UpdateAsync(tenant);
+        await _userRepository.UpdateAsync(user);
+        if (write != null) await write.CommitAsync();
+
+        var profile = new UserProfileResponse(
+            user.Id,
+            user.TenantId,
+            user.Email,
+            user.Role,
+            user.IsActive,
+            user.PreferredCurrency,
+            tenant.CompanyName,
+            user.GoogleLinked,
+            user.HasPassword,
+            tenant.BusinessType,
+            tenant.OnboardingCompleted,
+            user.FullName,
+            user.PhoneNumber
+        );
+
+        return ApiResult<UserProfileResponse>.Ok(profile);
+    }
+
     private async Task<ApiResult<AuthResponse>> BuildAuthResponseAsync(User user, string companyName)
     {
         var accessToken = _tokenService.CreateAccessToken(user);
@@ -348,7 +508,11 @@ public sealed class AuthService : IAuthService
             companyName,
             user.PreferredCurrency,
             user.GoogleLinked,
-            user.HasPassword
+            user.HasPassword,
+            user.Tenant?.BusinessType,
+            user.Tenant?.OnboardingCompleted ?? false,
+            user.FullName,
+            user.PhoneNumber
         );
 
         return ApiResult<AuthResponse>.Ok(response);

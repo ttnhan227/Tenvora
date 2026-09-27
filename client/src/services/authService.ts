@@ -21,6 +21,23 @@ export interface SetPasswordRequest {
   newPassword: string;
 }
 
+export interface CompleteOnboardingRequest {
+  companyName: string;
+  preferredCurrency: string;
+  businessType: string;
+  fullName?: string;
+  phoneNumber?: string;
+}
+
+export interface UpdateSettingsRequest {
+  companyName: string;
+  preferredCurrency: string;
+  businessType: string;
+  fullName?: string;
+  phoneNumber?: string;
+}
+
+
 export interface UserProfile {
   id: string;
   tenantId: string;
@@ -31,6 +48,10 @@ export interface UserProfile {
   companyName: string;
   googleLinked?: boolean;
   hasPassword?: boolean;
+  businessType?: string | null;
+  onboardingCompleted?: boolean;
+  fullName?: string | null;
+  phoneNumber?: string | null;
 }
 
 export interface AuthResponse {
@@ -44,6 +65,10 @@ export interface AuthResponse {
   preferredCurrency: string;
   googleLinked?: boolean;
   hasPassword?: boolean;
+  businessType?: string | null;
+  onboardingCompleted?: boolean;
+  fullName?: string | null;
+  phoneNumber?: string | null;
 }
 
 export interface ApiResponse<T> {
@@ -140,9 +165,37 @@ export const authService = {
     }
   },
 
-  logout: () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+  completeOnboarding: async (request: CompleteOnboardingRequest): Promise<ApiResponse<UserProfile>> => {
+    try {
+      const response = await apiClient.post("/auth/onboarding", request);
+      return response.data;
+    } catch (error: unknown) {
+      return apiFailure(error, "Failed to complete workspace setup");
+    }
+  },
+
+  updateSettings: async (request: UpdateSettingsRequest): Promise<ApiResponse<UserProfile>> => {
+    try {
+      const response = await apiClient.put("/auth/settings", request);
+      return response.data;
+    } catch (error: unknown) {
+      return apiFailure(error, "Failed to update settings");
+    }
+  },
+
+
+  logout: async () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    try {
+      if (refreshToken) {
+        await apiClient.post("/auth/logout", { refreshToken });
+      }
+    } catch {
+      // Ignore network errors on logout
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    }
   },
 };

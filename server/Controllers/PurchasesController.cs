@@ -13,10 +13,15 @@ public sealed class PurchasesController(IBusinessService service) : ControllerBa
     [HttpGet] public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] Guid? supplierId,
         [FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
         (await service.GetPurchasesAsync(User.GetTenantId(), search, supplierId, from, to)).ToActionResult();
+    [HttpGet("{id:guid}")] public async Task<IActionResult> GetById(Guid id) =>
+        (await service.GetPurchaseAsync(User.GetTenantId(), id)).ToActionResult();
     [HttpPost, Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
     public async Task<IActionResult> Create([FromHeader(Name = "Idempotency-Key")] string? key, CreatePurchaseRequest request) =>
         (await service.CreatePurchaseAsync(User.GetTenantId(), key?.Trim() ?? string.Empty, request)).ToActionResult();
     [HttpPost("{id:guid}/payments"), Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
     public async Task<IActionResult> Pay(Guid id, [FromHeader(Name = "Idempotency-Key")] string? key, RecordPurchasePaymentRequest request) =>
         (await service.RecordPurchasePaymentAsync(User.GetTenantId(), id, key?.Trim() ?? string.Empty, request)).ToActionResult();
+    [HttpPost("{id:guid}/void"), Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
+    public async Task<IActionResult> Void(Guid id) =>
+        (await service.VoidPurchaseAsync(User.GetTenantId(), id)).ToActionResult();
 }

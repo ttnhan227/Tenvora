@@ -14,4 +14,8 @@ public class AuditLog
     public string? NewValue { get; set; } // JSON
     public string? Notes { get; set; }
     public string? IpAddress { get; set; }
+    public string Origin { get; set; } = "Manual";
+    public Guid? AiActionId { get; set; }
+    public bool? ConfirmationRequired { get; set; }
+    public bool? ConfirmationGiven { get; set; }
 }

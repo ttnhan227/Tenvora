@@ -1,10 +1,12 @@
 import { FormEvent, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search, Truck } from "lucide-react";
+import { Download, Pencil, Plus, Search, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { Button } from "@/components/ui/button";
+import { exportToCsv } from "@/lib/csvExport";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   apiError,
   businessMoney,
@@ -33,9 +36,13 @@ const empty = {
 };
 
 export default function SuppliersPage() {
+  const { isVietnamese, t } = useLanguage();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const returnTo = params.get("returnTo");
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [form, setForm] = useState(empty);
   const suppliers = useQuery({
@@ -51,9 +58,10 @@ export default function SuppliersPage() {
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setOpen(false);
-      toast.success(editing ? "Supplier updated" : "Supplier added");
+      toast.success(editing ? (isVietnamese ? "Đã cập nhật nhà cung cấp" : "Supplier updated") : (isVietnamese ? "Đã thêm nhà cung cấp" : "Supplier added"));
+      if (!editing && returnTo?.startsWith("/") && !returnTo.startsWith("//")) navigate(returnTo);
     },
-    onError: (e) => toast.error(apiError(e, "Could not save the supplier.")),
+    onError: (e) => toast.error(apiError(e, isVietnamese ? "Không thể lưu nhà cung cấp." : "Could not save the supplier.")),
   });
   const edit = (s: Supplier) => {
     setEditing(s);
@@ -72,23 +80,64 @@ export default function SuppliersPage() {
     setForm(empty);
     setOpen(true);
   };
+
+  const handleExportCsv = () => {
+    const list = suppliers.data ?? [];
+    if (list.length === 0) return;
+    exportToCsv(
+      `suppliers-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: isVietnamese ? "Tên nhà cung cấp" : "Supplier Name", accessor: (s) => s.name },
+        { header: isVietnamese ? "Số điện thoại" : "Phone", accessor: (s) => s.phone ?? "" },
+        { header: "Email", accessor: (s) => s.email ?? "" },
+        { header: isVietnamese ? "Địa chỉ" : "Address", accessor: (s) => s.address ?? "" },
+        { header: isVietnamese ? "Tổng tiền mua" : "Total Purchases", accessor: (s) => s.totalPurchases },
+        { header: isVietnamese ? "Đã thanh toán" : "Total Paid", accessor: (s) => s.totalPaid },
+        { header: isVietnamese ? "Còn nợ" : "Outstanding Balance", accessor: (s) => s.outstandingBalance },
+      ],
+      list
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <PageHeader eyebrow="People you buy from" title="Suppliers" description="Keep contact details, purchases, payments, and what you still owe in one place." actions={<Button onClick={create}><Plus />Add supplier</Button>} />
+        <PageHeader
+          eyebrow={isVietnamese ? "Người bạn nhập hàng" : "People you buy from"}
+          title={t("nav.suppliers")}
+          description={
+            isVietnamese
+              ? "Quản lý thông tin liên hệ, lần nhập hàng, thanh toán và số tiền còn nợ."
+              : "Keep contact details, purchases, payments, and what you still owe in one place."
+          }
+          actions={
+            <div className="flex gap-2">
+              {(suppliers.data ?? []).length > 0 && (
+                <Button variant="outline" onClick={handleExportCsv} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {isVietnamese ? "Xuất CSV" : "Export CSV"}
+                </Button>
+              )}
+              <Button onClick={create} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {isVietnamese ? "Thêm nhà cung cấp" : "Add supplier"}
+              </Button>
+            </div>
+          }
+        />
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, phone, or email"
+            placeholder={isVietnamese ? "Tìm tên, điện thoại hoặc email" : "Search name, phone, or email"}
           />
         </div>
         {suppliers.isLoading ? (
-          <LoadingState label="Opening your supplier list…" />
+          <LoadingState label={isVietnamese ? "Đang mở danh sách nhà cung cấp…" : "Opening your supplier list…"} />
         ) : (suppliers.data ?? []).length === 0 ? (
-          <EmptyState icon={Truck} title={search ? "No suppliers match that search" : "No suppliers yet"} description={search ? "Try a name, phone number, or email address." : "Add the people and businesses you buy from. Their balance will update automatically when you record purchases and payments."} action={!search && <Button onClick={create}>Add first supplier</Button>} />
+          <EmptyState icon={Truck} title={search ? (isVietnamese ? "Không tìm thấy nhà cung cấp phù hợp" : "No suppliers match that search") : (isVietnamese ? "Chưa có nhà cung cấp" : "No suppliers yet")} description={search ? (isVietnamese ? "Hãy thử tên, số điện thoại hoặc email khác." : "Try a name, phone number, or email address.") : (isVietnamese ? "Thêm người hoặc doanh nghiệp bạn nhập hàng. Số dư sẽ tự cập nhật theo các lần nhập hàng và thanh toán." : "Add the people and businesses you buy from. Their balance will update automatically when you record purchases and payments.")} action={!search && <Button onClick={create}>{isVietnamese ? "Thêm nhà cung cấp đầu tiên" : "Add first supplier"}</Button>} />
         ) : (
           <div className="paper-card overflow-hidden">
             <div className="divide-y">
@@ -101,7 +150,7 @@ export default function SuppliersPage() {
                     <p className="font-semibold">{s.name}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {[s.phone, s.email].filter(Boolean).join(" · ") ||
-                        "No contact details"}
+                        (isVietnamese ? "Chưa có thông tin liên hệ" : "No contact details")}
                     </p>
                   </div>
                   <div className="sm:text-right">
@@ -115,13 +164,13 @@ export default function SuppliersPage() {
                       {businessMoney(s.outstandingBalance, s.currency)}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      owed · {s.purchaseCount} purchases
+                      {isVietnamese ? `còn nợ · ${s.purchaseCount} lần nhập` : `owed · ${s.purchaseCount} purchases`}
                     </p>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${s.name}`}
+                    aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${s.name}`}
                     onClick={() => edit(s)}
                   >
                     <Pencil size={16} />
@@ -136,9 +185,9 @@ export default function SuppliersPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Edit supplier" : "Add supplier"}
+              {editing ? (isVietnamese ? "Sửa nhà cung cấp" : "Edit supplier") : (isVietnamese ? "Thêm nhà cung cấp" : "Add supplier")}
             </DialogTitle>
-            <DialogDescription>Keep supplier contact details and purchase balances together.</DialogDescription>
+            <DialogDescription>{isVietnamese ? "Lưu thông tin liên hệ và số dư nhập hàng của nhà cung cấp." : "Keep supplier contact details and purchase balances together."}</DialogDescription>
           </DialogHeader>
           <form
             className="space-y-4"
@@ -148,7 +197,7 @@ export default function SuppliersPage() {
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="supplier-name">Name *</Label>
+              <Label htmlFor="supplier-name">{isVietnamese ? "Tên" : "Name"} *</Label>
               <Input
                 id="supplier-name"
                 required
@@ -159,7 +208,7 @@ export default function SuppliersPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="supplier-phone">Phone</Label>
+                <Label htmlFor="supplier-phone">{isVietnamese ? "Điện thoại" : "Phone"}</Label>
                 <Input
                   id="supplier-phone"
                   value={form.phone}
@@ -177,7 +226,7 @@ export default function SuppliersPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="supplier-address">Address</Label>
+              <Label htmlFor="supplier-address">{isVietnamese ? "Địa chỉ" : "Address"}</Label>
               <Input
                 id="supplier-address"
                 value={form.address}
@@ -185,7 +234,7 @@ export default function SuppliersPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="supplier-notes">Notes</Label>
+              <Label htmlFor="supplier-notes">{isVietnamese ? "Ghi chú" : "Notes"}</Label>
               <Textarea
                 id="supplier-notes"
                 value={form.notes}
@@ -198,10 +247,10 @@ export default function SuppliersPage() {
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button disabled={save.isPending}>
-                {save.isPending ? "Saving…" : "Save supplier"}
+                {save.isPending ? t("common.saving") : (isVietnamese ? "Lưu nhà cung cấp" : "Save supplier")}
               </Button>
             </DialogFooter>
           </form>

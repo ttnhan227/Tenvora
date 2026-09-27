@@ -1,44 +1,400 @@
 import { FormEvent, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, Pencil, Plus, Search } from "lucide-react";
+import { AlertTriangle, Download, Package, Pencil, Plus, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
+import { ProductCsvImportDialog } from "@/components/business/ProductCsvImportDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { exportToCsv } from "@/lib/csvExport";
 import { apiError, businessMoney, businessService, Product, ProductInput } from "@/services/businessService";
 
-const emptyProduct: ProductInput = { name: "", sku: "", unit: "item", defaultPrice: 0, notes: "", isActive: true };
+const emptyProduct: ProductInput = {
+  name: "",
+  sku: "",
+  unit: "item",
+  defaultPrice: 0,
+  costPrice: 0,
+  stockQuantity: 0,
+  minStockLevel: 0,
+  notes: "",
+  isActive: true,
+};
 
 export default function ProductsPage() {
+  const { isVietnamese, t } = useLanguage();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const returnTo = params.get("returnTo");
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(params.get("create") === "1");
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductInput>(emptyProduct);
-  const { data = [], isLoading } = useQuery({ queryKey: ["products", search], queryFn: () => businessService.getProducts(search, undefined) });
-  const save = useMutation({
-    mutationFn: () => editing ? businessService.updateProduct(editing.id, form) : businessService.createProduct(form),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["products"] }); setDialogOpen(false); toast.success(editing ? "Product updated" : "Product added"); },
-    onError: (error) => toast.error(apiError(error, "Could not save the product.")),
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["products", search],
+    queryFn: () => businessService.getProducts(search, undefined),
   });
-  const openCreate = () => { setEditing(null); setForm(emptyProduct); setDialogOpen(true); };
-  const openEdit = (product: Product) => { setEditing(product); setForm({ name: product.name, sku: product.sku ?? "", unit: product.unit, defaultPrice: product.defaultPrice, notes: product.notes ?? "", isActive: product.isActive }); setDialogOpen(true); };
-  const submit = (event: FormEvent) => { event.preventDefault(); save.mutate(); };
+
+  const save = useMutation({
+    mutationFn: () =>
+      editing ? businessService.updateProduct(editing.id, form) : businessService.createProduct(form),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setDialogOpen(false);
+      toast.success(
+        editing
+          ? isVietnamese
+            ? "Đã cập nhật hàng hoá"
+            : "Product updated"
+          : isVietnamese
+          ? "Đã thêm hàng hoá"
+          : "Product added"
+      );
+      if (!editing && returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
+        navigate(returnTo);
+      }
+    },
+    onError: (error) =>
+      toast.error(apiError(error, isVietnamese ? "Không thể lưu hàng hoá." : "Could not save the product.")),
+  });
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyProduct);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (product: Product) => {
+    setEditing(product);
+    setForm({
+      name: product.name,
+      sku: product.sku ?? "",
+      unit: product.unit,
+      defaultPrice: product.defaultPrice,
+      costPrice: product.costPrice ?? 0,
+      stockQuantity: product.stockQuantity ?? 0,
+      minStockLevel: product.minStockLevel ?? 0,
+      notes: product.notes ?? "",
+      isActive: product.isActive,
+    });
+    setDialogOpen(true);
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    save.mutate();
+  };
+
+  const handleExportCsv = () => {
+    if (data.length === 0) return;
+    exportToCsv(
+      `products-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: isVietnamese ? "Tên hàng hoá" : "Product Name", accessor: (p) => p.name },
+        { header: isVietnamese ? "Mã SKU" : "SKU", accessor: (p) => p.sku ?? "" },
+        { header: isVietnamese ? "Đơn vị" : "Unit", accessor: (p) => p.unit },
+        { header: isVietnamese ? "Giá bán" : "Selling Price", accessor: (p) => p.defaultPrice },
+        { header: isVietnamese ? "Giá vốn" : "Cost Price", accessor: (p) => p.costPrice ?? 0 },
+        { header: isVietnamese ? "Tồn kho" : "Stock Quantity", accessor: (p) => p.stockQuantity ?? 0 },
+        { header: isVietnamese ? "Định mức tối thiểu" : "Min Stock Alert", accessor: (p) => p.minStockLevel ?? "" },
+        { header: isVietnamese ? "Trạng thái" : "Status", accessor: (p) => (p.isActive ? "Active" : "Inactive") },
+        { header: isVietnamese ? "Ghi chú" : "Notes", accessor: (p) => p.notes ?? "" },
+      ],
+      data
+    );
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <PageHeader eyebrow="What you sell" title="Products & services" description="Save the usual unit and price once, then reuse it whenever you record a sale." actions={<Button onClick={openCreate}><Plus />Add product</Button>} />
-        <div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products, services, or SKU" className="pl-9" /></div>
-        {isLoading ? <LoadingState label="Opening your product list…" /> : data.length === 0 ? <EmptyState icon={Package} title={search ? "No products match that search" : "What does your business sell?"} description={search ? "Try the product name or code." : "Add your products or services with their usual unit and price. You can still change the price during a sale."} action={!search && <Button onClick={openCreate}>Add first product</Button>} /> : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{data.map((product) => <article key={product.id} className={`paper-card p-5 transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold">{product.name}</h2><p className="mt-1 text-xs text-muted-foreground">{product.sku || "No product code"} · per {product.unit}</p></div><Button variant="ghost" size="icon" onClick={() => openEdit(product)} aria-label={`Edit ${product.name}`}><Pencil size={16} /></Button></div><p className="tabular-nums mt-6 text-2xl font-bold">{businessMoney(product.defaultPrice, product.currency)}</p><p className="mt-1 text-xs text-muted-foreground">usual price per {product.unit}</p>{!product.isActive && <p className="mt-4 text-xs font-bold text-amber-700">Not currently available</p>}</article>)}</div>
+        <PageHeader
+          eyebrow={isVietnamese ? "Hàng hoá bạn bán" : "What you sell"}
+          title={isVietnamese ? "Hàng hoá & Tồn kho" : "Products & Inventory"}
+          description={
+            isVietnamese
+              ? "Quản lý danh mục hàng hoá, giá vốn, giá bán và theo dõi mức tồn kho tự động."
+              : "Manage product catalog, cost price, selling price, and track automated stock inventory."
+          }
+          actions={
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
+                <Upload className="h-4 w-4" />
+                {isVietnamese ? "Nhập CSV" : "Import CSV"}
+              </Button>
+              {data.length > 0 && (
+                <Button variant="outline" onClick={handleExportCsv} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {isVietnamese ? "Xuất CSV" : "Export CSV"}
+                </Button>
+              )}
+              <Button onClick={openCreate} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {isVietnamese ? "Thêm hàng hoá" : "Add product"}
+              </Button>
+            </div>
+          }
+        />
+
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={isVietnamese ? "Tìm hàng hoá, dịch vụ hoặc mã SKU" : "Search products, services, or SKU"}
+            className="pl-9"
+          />
+        </div>
+
+        {isLoading ? (
+          <LoadingState label={isVietnamese ? "Đang mở danh sách hàng hoá…" : "Opening your product list…"} />
+        ) : data.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            title={
+              search
+                ? isVietnamese
+                  ? "Không tìm thấy hàng hoá phù hợp"
+                  : "No products match that search"
+                : isVietnamese
+                ? "Doanh nghiệp của bạn bán gì?"
+                : "What does your business sell?"
+            }
+            description={
+              search
+                ? isVietnamese
+                  ? "Hãy thử tên hoặc mã hàng hoá khác."
+                  : "Try the product name or code."
+                : isVietnamese
+                ? "Thêm hàng hoá hoặc dịch vụ cùng giá bán, giá vốn và số lượng tồn kho khởi tạo."
+                : "Add your products or services with their selling price, cost price, and initial stock."
+            }
+            action={!search && <Button onClick={openCreate}>{isVietnamese ? "Thêm hàng hoá đầu tiên" : "Add first product"}</Button>}
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {data.map((product) => {
+              const stock = product.stockQuantity ?? 0;
+              const minLevel = product.minStockLevel ?? 0;
+              const isOutOfStock = stock <= 0;
+              const isLowStock = !isOutOfStock && minLevel > 0 && stock <= minLevel;
+
+              return (
+                <article
+                  key={product.id}
+                  className={`paper-card p-5 transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-bold text-base">{product.name}</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {product.sku || (isVietnamese ? "Chưa có mã hàng" : "No SKU")} · {isVietnamese ? "mỗi" : "per"} {product.unit}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openEdit(product)}
+                      aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${product.name}`}
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                  </div>
+
+                  <div className="mt-5 space-y-1">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs text-muted-foreground">{isVietnamese ? "Giá bán" : "Selling Price"}</span>
+                      <span className="tabular-nums text-xl font-bold text-foreground">
+                        {businessMoney(product.defaultPrice, product.currency)}
+                      </span>
+                    </div>
+                    <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+                      <span>{isVietnamese ? "Giá vốn" : "Cost Price"}</span>
+                      <span className="tabular-nums font-medium">
+                        {businessMoney(product.costPrice ?? 0, product.currency)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stock inventory badge */}
+                  <div className="mt-4 pt-3 border-t border-dashed flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {isOutOfStock ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive px-2 py-0.5 font-bold">
+                          <AlertTriangle className="h-3 w-3" />
+                          {isVietnamese ? "Hết hàng" : "Out of stock"}
+                        </span>
+                      ) : isLowStock ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-0.5 font-bold">
+                          <AlertTriangle className="h-3 w-3" />
+                          {isVietnamese ? `Sắp hết: ${stock} ${product.unit}` : `Low stock: ${stock} ${product.unit}`}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground font-medium">
+                          {isVietnamese ? `Tồn kho: ${stock} ${product.unit}` : `Stock: ${stock} ${product.unit}`}
+                        </span>
+                      )}
+                    </div>
+                    {!product.isActive && (
+                      <span className="text-xs font-bold text-amber-700">
+                        {isVietnamese ? "Không hoạt động" : "Inactive"}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>{editing ? "Edit product or service" : "Add product or service"}</DialogTitle></DialogHeader><form onSubmit={submit} className="space-y-4"><div className="space-y-2"><Label htmlFor="product-name">Name *</Label><Input id="product-name" required autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Delivery service" /></div><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="product-unit">Unit *</Label><Input id="product-unit" required value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="kg, item, hour…" /></div><div className="space-y-2"><Label htmlFor="product-price">Default price *</Label><Input id="product-price" required type="number" min="0" step="0.0001" value={form.defaultPrice} onChange={(e) => setForm({ ...form, defaultPrice: Number(e.target.value) })} /></div></div><div className="space-y-2"><Label htmlFor="product-sku">SKU or code</Label><Input id="product-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="product-notes">Notes</Label><Textarea id="product-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>{editing && <label className="flex items-center gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />Available for new sales</label>}<DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button disabled={save.isPending}>{save.isPending ? "Saving…" : "Save product"}</Button></DialogFooter></form></DialogContent></Dialog>
+
+      {/* Create / Edit Modal */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editing
+                ? isVietnamese
+                  ? "Sửa hàng hoá hoặc dịch vụ"
+                  : "Edit product or service"
+                : isVietnamese
+                ? "Thêm hàng hoá hoặc dịch vụ"
+                : "Add product or service"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="product-name">{isVietnamese ? "Tên hàng hoá" : "Name"} *</Label>
+              <Input
+                id="product-name"
+                required
+                autoFocus
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder={isVietnamese ? "Ví dụ: Cà phê Robusta rang mộc" : "e.g. Roasted Coffee Beans"}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="product-sku">{isVietnamese ? "Mã SKU / Mã vạch" : "SKU or barcode"}</Label>
+                <Input
+                  id="product-sku"
+                  value={form.sku}
+                  onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                  placeholder="SKU-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-unit">{isVietnamese ? "Đơn vị tính" : "Unit"} *</Label>
+                <Input
+                  id="product-unit"
+                  required
+                  value={form.unit}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  placeholder={isVietnamese ? "kg, gói, chai, giờ…" : "kg, box, hour…"}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="product-price">{isVietnamese ? "Giá bán" : "Selling price"} *</Label>
+                <Input
+                  id="product-price"
+                  required
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.defaultPrice === 0 ? "" : form.defaultPrice}
+                  onChange={(e) => setForm({ ...form, defaultPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-cost">{isVietnamese ? "Giá vốn nhập" : "Cost price"}</Label>
+                <Input
+                  id="product-cost"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.costPrice === 0 ? "" : form.costPrice}
+                  onChange={(e) => setForm({ ...form, costPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="product-stock">{isVietnamese ? "Số lượng tồn kho" : "Stock quantity"}</Label>
+                <Input
+                  id="product-stock"
+                  type="number"
+                  step="any"
+                  value={form.stockQuantity === 0 ? "" : form.stockQuantity}
+                  onChange={(e) => setForm({ ...form, stockQuantity: e.target.value === "" ? 0 : Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-min-stock">{isVietnamese ? "Cảnh báo khi dưới mức" : "Min stock alert level"}</Label>
+                <Input
+                  id="product-min-stock"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.minStockLevel === 0 ? "" : form.minStockLevel}
+                  onChange={(e) => setForm({ ...form, minStockLevel: e.target.value === "" ? 0 : Number(e.target.value) })}
+                  placeholder="e.g. 5"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="product-notes">{isVietnamese ? "Ghi chú" : "Notes"}</Label>
+              <Textarea
+                id="product-notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder={isVietnamese ? "Thông số, xuất xứ, nhà cung cấp gợi ý…" : "Specs, origin, notes…"}
+              />
+            </div>
+
+            {editing && (
+              <label className="flex items-center gap-3 rounded-xl border p-3 text-sm cursor-pointer hover:bg-muted/40">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+                {isVietnamese ? "Đang kinh doanh (có sẵn cho đơn bán mới)" : "Available for new sales"}
+              </label>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button disabled={save.isPending}>
+                {save.isPending ? t("common.saving") : isVietnamese ? "Lưu hàng hoá" : "Save product"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ProductCsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        currency={data[0]?.currency || "VND"}
+      />
     </DashboardLayout>
   );
 }

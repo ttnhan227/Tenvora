@@ -1,9 +1,11 @@
 import { FormEvent, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, PackageOpen, Plus, Search, WalletCards } from "lucide-react";
+import { Download, Minus, PackageOpen, PackagePlus, Plus, Search, Truck, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { EmptyState, LoadingState, PageHeader, StatusPill } from "@/components/business/BusinessUI";
+import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
+import { exportToCsv } from "@/lib/csvExport";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +31,7 @@ import {
   businessService,
   Purchase,
 } from "@/services/businessService";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Line = {
   description: string;
@@ -44,9 +47,12 @@ const line = (): Line => ({
   unitCost: 0,
 });
 export default function PurchasesPage() {
+  const { isVietnamese, t } = useLanguage();
+  const methodLabel = (value: string) => isVietnamese ? ({ Cash: "Tiền mặt", "Bank transfer": "Chuyển khoản", Card: "Thẻ", Other: "Khác" }[value] ?? value) : value;
   const qc = useQueryClient();
+  const [params] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(params.get("create") === "1");
   const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<Line[]>([line()]);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -93,9 +99,9 @@ export default function PurchasesPage() {
       setItems([line()]);
       setPaymentAmount(0);
       setNotes("");
-      toast.success(`${p.purchaseNumber} recorded`);
+      toast.success(isVietnamese ? `Đã ghi ${p.purchaseNumber}` : `${p.purchaseNumber} recorded`);
     },
-    onError: (e) => toast.error(apiError(e, "Could not record the purchase.")),
+    onError: (e) => toast.error(apiError(e, isVietnamese ? "Không thể ghi lần nhập hàng." : "Could not record the purchase.")),
   });
   const pay = useMutation({
     mutationFn: () =>
@@ -106,29 +112,66 @@ export default function PurchasesPage() {
     onSuccess: async () => {
       await refresh();
       setPaying(null);
-      toast.success("Supplier payment recorded");
+      toast.success(isVietnamese ? "Đã ghi thanh toán cho nhà cung cấp" : "Supplier payment recorded");
     },
-    onError: (e) => toast.error(apiError(e, "Could not record the payment.")),
+    onError: (e) => toast.error(apiError(e, isVietnamese ? "Không thể ghi khoản thanh toán." : "Could not record the payment.")),
   });
   const patchLine = (i: number, p: Partial<Line>) =>
     setItems(items.map((v, x) => (x === i ? { ...v, ...p } : v)));
+
+  const handleExportCsv = () => {
+    if (!purchases.data || purchases.data.length === 0) return;
+    exportToCsv(
+      `purchases-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: isVietnamese ? "Mã nhập hàng" : "Purchase Number", accessor: (p) => p.purchaseNumber },
+        { header: isVietnamese ? "Nhà cung cấp" : "Supplier", accessor: (p) => p.supplierName },
+        { header: isVietnamese ? "Thời gian" : "Purchased At", accessor: (p) => new Date(p.purchasedAt).toLocaleString() },
+        { header: isVietnamese ? "Mặt hàng" : "Items", accessor: (p) => p.items.map((i) => `${i.description} (${i.quantity} ${i.unit})`).join("; ") },
+        { header: isVietnamese ? "Tổng tiền" : "Total Amount", accessor: (p) => p.totalAmount },
+        { header: isVietnamese ? "Đã trả" : "Paid Amount", accessor: (p) => p.paidAmount },
+        { header: isVietnamese ? "Còn nợ" : "Outstanding Balance", accessor: (p) => p.outstandingBalance },
+        { header: isVietnamese ? "Trạng thái thanh toán" : "Payment Status", accessor: (p) => p.paymentStatus },
+      ],
+      purchases.data
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <PageHeader eyebrow="What the business bought" title="Purchases" description="Record goods or services bought from suppliers and keep every payment with the purchase." actions={<Button onClick={() => setOpen(true)}><Plus />New purchase</Button>} />
+        <PageHeader
+          eyebrow={isVietnamese ? "Hàng doanh nghiệp đã mua" : "What the business bought"}
+          title={t("nav.purchases")}
+          description={isVietnamese ? "Ghi hàng hoá hoặc dịch vụ mua từ nhà cung cấp và các khoản thanh toán đi kèm." : "Record goods or services bought from suppliers and keep every payment with the purchase."}
+          actions={
+            <div className="flex gap-2">
+              {(purchases.data ?? []).length > 0 && (
+                <Button variant="outline" onClick={handleExportCsv} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {isVietnamese ? "Xuất CSV" : "Export CSV"}
+                </Button>
+              )}
+              <Button onClick={() => setOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {isVietnamese ? "Nhập hàng mới" : "New purchase"}
+              </Button>
+            </div>
+          }
+        />
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search supplier, item, or purchase number"
+            placeholder={isVietnamese ? "Tìm nhà cung cấp, mặt hàng hoặc mã nhập" : "Search supplier, item, or purchase number"}
           />
         </div>
         {purchases.isLoading ? (
-          <LoadingState label="Opening your purchase records…" />
+          <LoadingState label={isVietnamese ? "Đang mở sổ nhập hàng…" : "Opening your purchase records…"} />
         ) : (purchases.data ?? []).length === 0 ? (
-          <EmptyState icon={PackageOpen} title={search ? "No purchases match that search" : "No purchases yet"} description={search ? "Try a supplier, item, or purchase number." : "Add a supplier first, then record what the business bought and whether it was paid."} action={!search && <Button onClick={() => setOpen(true)}>Record first purchase</Button>} />
+          <EmptyState icon={PackageOpen} title={search ? (isVietnamese ? "Không tìm thấy lần nhập phù hợp" : "No purchases match that search") : (isVietnamese ? "Chưa có lần nhập hàng" : "No purchases yet")} description={search ? (isVietnamese ? "Hãy thử nhà cung cấp, mặt hàng hoặc mã nhập khác." : "Try a supplier, item, or purchase number.") : (isVietnamese ? "Thêm nhà cung cấp, sau đó ghi hàng đã mua và tình trạng thanh toán." : "Add a supplier first, then record what the business bought and whether it was paid.")} action={!search && <Button onClick={() => setOpen(true)}>{isVietnamese ? "Ghi lần nhập đầu tiên" : "Record first purchase"}</Button>} />
         ) : (
           <div className="space-y-3">
             {purchases.data!.map((p) => (
@@ -153,12 +196,12 @@ export default function PurchasesPage() {
                       {businessMoney(p.totalAmount, p.currency)}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Paid {businessMoney(p.paidAmount, p.currency)}
+                      {isVietnamese ? "Đã trả" : "Paid"} {businessMoney(p.paidAmount, p.currency)}
                     </p>
                     {p.outstandingBalance > 0 && (
                       <>
                         <p className="mt-1 font-semibold text-amber-600">
-                          Owed {businessMoney(p.outstandingBalance, p.currency)}
+                          {isVietnamese ? "Còn nợ" : "Owed"} {businessMoney(p.outstandingBalance, p.currency)}
                         </p>
                         <Button
                           className="mt-3"
@@ -170,7 +213,7 @@ export default function PurchasesPage() {
                           }}
                         >
                           <WalletCards className="mr-2 h-4 w-4" />
-                          Pay supplier
+                          {isVietnamese ? "Trả nhà cung cấp" : "Pay supplier"}
                         </Button>
                       </>
                     )}
@@ -184,85 +227,90 @@ export default function PurchasesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New purchase</DialogTitle>
-            <DialogDescription>Record what was bought, its cost, and any payment made now.</DialogDescription>
+            <DialogTitle>{isVietnamese ? "Nhập hàng mới" : "New purchase"}</DialogTitle>
+            <DialogDescription>{isVietnamese ? "Ghi mặt hàng đã mua, chi phí và số tiền thanh toán ngay." : "Record what was bought, its cost, and any payment made now."}</DialogDescription>
           </DialogHeader>
           <form
             className="space-y-5"
             onSubmit={(e: FormEvent) => {
               e.preventDefault();
               if (!supplierId || items.some((i) => !i.description || !i.unit)) {
-                toast.error("Choose a supplier and complete each line.");
+                toast.error(isVietnamese ? "Hãy chọn nhà cung cấp và điền đủ từng dòng." : "Choose a supplier and complete each line.");
                 return;
               }
               create.mutate();
             }}
           >
             <div className="space-y-2">
-              <Label>Supplier *</Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.data?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>{isVietnamese ? "Nhà cung cấp" : "Supplier"} *</Label>
+              {(suppliers.data?.length ?? 0) === 0 ? (
+                <PrerequisiteNotice
+                  icon={Truck}
+                  title={isVietnamese ? "Chưa có nhà cung cấp để chọn" : "No suppliers available"}
+                  description={isVietnamese ? "Thêm nhà cung cấp đầu tiên, sau đó bạn sẽ quay lại lần nhập hàng này." : "Create your first supplier, then return directly to this purchase."}
+                  action={<Button type="button" asChild><Link to="/suppliers?create=1&returnTo=%2Fpurchases%3Fcreate%3D1"><Plus />{isVietnamese ? "Thêm nhà cung cấp" : "Create supplier"}</Link></Button>}
+                />
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Select value={supplierId} onValueChange={setSupplierId}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder={isVietnamese ? "Chọn nhà cung cấp" : "Choose a supplier"} /></SelectTrigger>
+                    <SelectContent>{suppliers.data?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" asChild><Link to="/suppliers?create=1&returnTo=%2Fpurchases%3Fcreate%3D1"><Plus />{isVietnamese ? "NCC mới" : "New supplier"}</Link></Button>
+                </div>
+              )}
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Items *</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setItems([...items, line()])}
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add line
-                </Button>
+                <Label>{isVietnamese ? "Mặt hàng" : "Items"} *</Label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="ghost" asChild><Link to="/products?create=1&returnTo=%2Fpurchases%3Fcreate%3D1"><Plus className="mr-1 h-3 w-3" />{isVietnamese ? "Hàng mới" : "New product"}</Link></Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setItems([...items, line()])}><Plus className="mr-1 h-3 w-3" />{isVietnamese ? "Thêm dòng" : "Add line"}</Button>
+                </div>
               </div>
+              {(products.data?.length ?? 0) === 0 && <PrerequisiteNotice
+                icon={PackagePlus}
+                title={isVietnamese ? "Chưa có hàng hoá để liên kết" : "No products to link yet"}
+                description={isVietnamese ? "Bạn vẫn có thể nhập mô tả thủ công, hoặc tạo hàng hoá để tái sử dụng sau này." : "You can enter an item manually, or create a reusable product now."}
+                action={<Button type="button" variant="outline" asChild><Link to="/products?create=1&returnTo=%2Fpurchases%3Fcreate%3D1"><Plus />{isVietnamese ? "Thêm hàng hoá" : "Create product"}</Link></Button>}
+              />}
               {items.map((it, i) => (
                 <div
                   key={i}
                   className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[1fr_90px_100px_130px_auto]"
                 >
                   <Input
-                    aria-label="Item description"
-                    placeholder="Item"
+                    aria-label={isVietnamese ? "Mô tả mặt hàng" : "Item description"}
+                    placeholder={isVietnamese ? "Mặt hàng" : "Item"}
                     value={it.description}
                     onChange={(e) =>
                       patchLine(i, { description: e.target.value })
                     }
                   />
                   <Input
-                    aria-label="Unit"
-                    placeholder="Unit"
+                    aria-label={isVietnamese ? "Đơn vị" : "Unit"}
+                    placeholder={isVietnamese ? "Đơn vị" : "Unit"}
                     value={it.unit}
                     onChange={(e) => patchLine(i, { unit: e.target.value })}
                   />
                   <Input
-                    aria-label="Quantity"
+                    aria-label={isVietnamese ? "Số lượng" : "Quantity"}
                     type="number"
                     min=".0001"
-                    step=".0001"
-                    value={it.quantity}
+                    step="any"
+                    value={it.quantity === 0 ? "" : it.quantity}
                     onChange={(e) =>
-                      patchLine(i, { quantity: Number(e.target.value) })
+                      patchLine(i, { quantity: e.target.value === "" ? 0 : Number(e.target.value) })
                     }
                   />
                   <Input
-                    aria-label="Unit cost"
+                    aria-label={isVietnamese ? "Đơn giá" : "Unit cost"}
                     type="number"
                     min="0"
-                    step=".0001"
-                    value={it.unitCost}
+                    step="any"
+                    value={it.unitCost === 0 ? "" : it.unitCost}
                     onChange={(e) =>
-                      patchLine(i, { unitCost: Number(e.target.value) })
+                      patchLine(i, { unitCost: e.target.value === "" ? 0 : Number(e.target.value) })
                     }
                   />
                   <Button
@@ -274,7 +322,7 @@ export default function PurchasesPage() {
                   >
                     <Minus size={16} />
                   </Button>
-                  <div className="sm:col-span-5">
+                  {(products.data?.length ?? 0) > 0 && <div className="sm:col-span-5">
                     <Select
                       value={it.productId ?? "none"}
                       onValueChange={(v) => {
@@ -292,10 +340,10 @@ export default function PurchasesPage() {
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Link product (optional)" />
+                        <SelectValue placeholder={isVietnamese ? "Liên kết hàng hoá (không bắt buộc)" : "Link product (optional)"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">No linked product</SelectItem>
+                        <SelectItem value="none">{isVietnamese ? "Không liên kết hàng hoá" : "No linked product"}</SelectItem>
                         {products.data?.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.name}
@@ -303,29 +351,29 @@ export default function PurchasesPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div>}
                 </div>
               ))}
             </div>
             <div className="rounded-xl bg-secondary/60 p-4 flex justify-between">
-              <span>Purchase total</span>
+              <span>{isVietnamese ? "Tổng tiền nhập" : "Purchase total"}</span>
               <strong>{businessMoney(total, currency)}</strong>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="purchase-paid">Paid now</Label>
+                <Label htmlFor="purchase-paid">{isVietnamese ? "Trả ngay" : "Paid now"}</Label>
                 <Input
                   id="purchase-paid"
                   type="number"
                   min="0"
                   max={total}
-                  step=".0001"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                  step="any"
+                  value={paymentAmount === 0 ? "" : paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value === "" ? 0 : Number(e.target.value))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Method</Label>
+                <Label>{isVietnamese ? "Phương thức" : "Method"}</Label>
                 <Select value={method} onValueChange={setMethod}>
                   <SelectTrigger>
                     <SelectValue />
@@ -333,7 +381,7 @@ export default function PurchasesPage() {
                   <SelectContent>
                     {["Cash", "Bank transfer", "Card", "Other"].map((x) => (
                       <SelectItem key={x} value={x}>
-                        {x}
+                        {methodLabel(x)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -341,7 +389,7 @@ export default function PurchasesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="purchase-notes">Notes</Label>
+              <Label htmlFor="purchase-notes">{isVietnamese ? "Ghi chú" : "Notes"}</Label>
               <Textarea
                 id="purchase-notes"
                 value={notes}
@@ -354,10 +402,10 @@ export default function PurchasesPage() {
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button disabled={create.isPending || !suppliers.data?.length}>
-                {create.isPending ? "Recording…" : "Record purchase"}
+                {create.isPending ? (isVietnamese ? "Đang ghi…" : "Recording…") : (isVietnamese ? "Ghi lần nhập" : "Record purchase")}
               </Button>
             </DialogFooter>
           </form>
@@ -366,8 +414,8 @@ export default function PurchasesPage() {
       <Dialog open={!!paying} onOpenChange={(v) => !v && setPaying(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Pay supplier</DialogTitle>
-            <DialogDescription>Add a payment against this purchase balance.</DialogDescription>
+            <DialogTitle>{isVietnamese ? "Trả nhà cung cấp" : "Pay supplier"}</DialogTitle>
+            <DialogDescription>{isVietnamese ? "Thêm khoản thanh toán vào số dư của lần nhập này." : "Add a payment against this purchase balance."}</DialogDescription>
           </DialogHeader>
           {paying && (
             <form
@@ -380,21 +428,21 @@ export default function PurchasesPage() {
               <div className="rounded-xl bg-secondary/60 p-4">
                 <p className="font-semibold">{paying.supplierName}</p>
                 <p className="text-sm text-muted-foreground">
-                  Outstanding{" "}
+                  {isVietnamese ? "Còn nợ" : "Outstanding"}{" "}
                   {businessMoney(paying.outstandingBalance, paying.currency)}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="supplier-payment">Amount *</Label>
+                <Label htmlFor="supplier-payment">{isVietnamese ? "Số tiền" : "Amount"} *</Label>
                 <Input
                   id="supplier-payment"
                   type="number"
                   required
                   min=".0001"
                   max={paying.outstandingBalance}
-                  step=".0001"
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(Number(e.target.value))}
+                  step="any"
+                  value={payAmount === 0 ? "" : payAmount}
+                  onChange={(e) => setPayAmount(e.target.value === "" ? 0 : Number(e.target.value))}
                 />
               </div>
               <DialogFooter>
@@ -403,9 +451,9 @@ export default function PurchasesPage() {
                   variant="outline"
                   onClick={() => setPaying(null)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
-                <Button disabled={pay.isPending}>Record payment</Button>
+                <Button disabled={pay.isPending}>{isVietnamese ? "Ghi thanh toán" : "Record payment"}</Button>
               </DialogFooter>
             </form>
           )}

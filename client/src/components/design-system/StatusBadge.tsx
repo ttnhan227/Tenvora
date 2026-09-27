@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, Clock, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export type RecordStatus = "Active" | "Disabled" | "Added" | "Modified" | "Deleted";
 
@@ -17,6 +18,7 @@ export function StatusBadge({
   showIcon = true,
   className,
 }: StatusBadgeProps) {
+  const { isVietnamese } = useLanguage();
   const norm = (status || "").toLowerCase().replace(/[\s_-]/g, "");
 
   let badgeStyle = "bg-secondary text-foreground/75 border-border";
@@ -53,7 +55,7 @@ export function StatusBadge({
     >
       <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dotColor)} />
       {showIcon && <IconComponent className="h-3 w-3 shrink-0 opacity-90" />}
-      <span>{status}</span>
+      <span>{isVietnamese ? ({ active: "Đang hoạt động", disabled: "Đã vô hiệu hoá", added: "Đã thêm", created: "Đã tạo", modified: "Đã sửa", updated: "Đã cập nhật", deleted: "Đã xoá" }[norm] ?? status) : status}</span>
     </span>
   );
 }

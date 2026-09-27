@@ -3,6 +3,7 @@ import { Search, X, Filter, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FilterBarProps {
   searchQuery: string;
@@ -31,6 +32,7 @@ export function FilterBar({
   children,
   className,
 }: FilterBarProps) {
+  const { isVietnamese } = useLanguage();
   const hasActiveFilters = searchQuery !== "" || (statusFilter && statusFilter !== "ALL");
 
   const handleClear = () => {
@@ -54,7 +56,7 @@ export function FilterBar({
           {searchQuery && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label={isVietnamese ? "Xoá tìm kiếm" : "Clear search"}
               onClick={() => onSearchChange("")}
               className="absolute right-1 top-0.5 flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -74,7 +76,7 @@ export function FilterBar({
               className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
             >
               <X className="h-3 w-3" />
-              Reset Filters
+              {isVietnamese ? "Đặt lại bộ lọc" : "Reset filters"}
             </Button>
           )}
         </div>

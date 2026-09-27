@@ -20,6 +20,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<PurchasePayment> PurchasePayments => Set<PurchasePayment>();
     public DbSet<BusinessExpense> BusinessExpenses => Set<BusinessExpense>();
+    public DbSet<AiAction> AiActions => Set<AiAction>();
+    public DbSet<AiConversation> AiConversations => Set<AiConversation>();
+    public DbSet<AiConversationMessage> AiConversationMessages => Set<AiConversationMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +35,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.ApiKey).HasMaxLength(128).IsRequired();
             entity.Property(e => e.PlanType).HasMaxLength(50).IsRequired();
             entity.Property(e => e.BaseCurrency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.Property(e => e.BusinessType).HasMaxLength(50);
+            entity.Property(e => e.OnboardingCompleted).HasDefaultValue(false);
             entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("Active").IsRequired();
             entity.HasMany(e => e.Users).WithOne(u => u.Tenant).HasForeignKey(u => u.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Customers).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
@@ -50,11 +55,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Email).HasMaxLength(200).IsRequired();
             entity.Property(e => e.PasswordHash).IsRequired();
-            entity.Property(e => e.HasPassword).HasDefaultValue(true);
+            // Google-only accounts explicitly use false. Keeping the database default
+            // false prevents EF/PostgreSQL from replacing that value with true on insert.
+            // Password-created accounts set HasPassword=true in their creation flows.
+            entity.Property(e => e.HasPassword).HasDefaultValue(false);
             entity.Property(e => e.GoogleSub).HasMaxLength(255);
             entity.Property(e => e.Role).HasMaxLength(50).IsRequired();
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.PreferredCurrency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.Property(e => e.FullName).HasMaxLength(150);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
             entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
             entity.HasIndex(e => e.InviteToken).IsUnique();
             entity.HasIndex(e => e.GoogleSub).IsUnique();
@@ -82,8 +92,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.NewValue).HasColumnType("jsonb");
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.Origin).HasMaxLength(20).HasDefaultValue("Manual").IsRequired();
             entity.HasIndex(e => new { e.TenantId, e.EntityType, e.EntityId });
             entity.HasIndex(e => new { e.TenantId, e.Timestamp });
+        });
+
+        modelBuilder.Entity<AiAction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Intent).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RiskLevel).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.SourceText).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.UiContextJson).HasColumnType("jsonb");
+            entity.Property(e => e.PayloadJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(e => e.ResultJson).HasColumnType("jsonb");
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.AffectedEntityType).HasMaxLength(80);
+            entity.HasOne<Tenant>().WithMany(t => t.AiActions).HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
+            entity.ToTable(t => t.HasCheckConstraint("CK_AiActions_Status", "\"Status\" IN ('PendingConfirmation','Executing','Executed','Cancelled','Expired','Failed')"));
         });
 
         modelBuilder.Entity<Customer>(entity =>
@@ -109,12 +138,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Sku).HasMaxLength(100);
             entity.Property(e => e.Unit).HasMaxLength(40).IsRequired();
             entity.Property(e => e.DefaultPrice).HasPrecision(18, 4);
+            entity.Property(e => e.CostPrice).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.StockQuantity).HasPrecision(18, 4).HasDefaultValue(0m);
+            entity.Property(e => e.MinStockLevel).HasPrecision(18, 4);
             entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.HasIndex(e => new { e.TenantId, e.Name });
             entity.HasIndex(e => new { e.TenantId, e.Sku }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.IsActive });
-            entity.ToTable(t => t.HasCheckConstraint("CK_Products_DefaultPrice_NonNegative", "\"DefaultPrice\" >= 0"));
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Products_DefaultPrice_NonNegative", "\"DefaultPrice\" >= 0");
+                t.HasCheckConstraint("CK_Products_CostPrice_NonNegative", "\"CostPrice\" >= 0");
+            });
         });
 
         modelBuilder.Entity<Sale>(entity =>
@@ -258,6 +294,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(e => new { e.TenantId, e.ExpenseDate });
             entity.HasIndex(e => new { e.TenantId, e.Category });
             entity.ToTable(t => t.HasCheckConstraint("CK_BusinessExpenses_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        modelBuilder.Entity<AiConversation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
+            entity.HasMany(e => e.Messages).WithOne(m => m.Conversation).HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.UpdatedAt });
+        });
+
+        modelBuilder.Entity<AiConversationMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Role).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.Content).IsRequired();
+            entity.Property(e => e.ToolCallsJson).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.ConversationId, e.CreatedAt });
         });
     }
 }

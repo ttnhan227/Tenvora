@@ -30,6 +30,7 @@ public sealed class AdminUserService : IAdminUserService
             TenantId = tenantId,
             Email = request.Email.Trim().ToLowerInvariant(),
             PasswordHash = PasswordHasher.Hash(request.Password),
+            HasPassword = true,
             Role = request.Role,
             IsActive = true,
             PreferredCurrency = request.PreferredCurrency ?? "USD",
@@ -72,6 +73,16 @@ public sealed class AdminUserService : IAdminUserService
         if (user == null || user.TenantId != tenantId)
         {
             return ApiResult.Fail("User not found.");
+        }
+
+        if (user.IsActive && user.Role == "TenantAdmin")
+        {
+            var users = await _userRepository.GetAllByTenantAsync(tenantId);
+            var otherActiveAdmins = users.Count(u => u.Role == "TenantAdmin" && u.IsActive && u.Id != userId);
+            if (otherActiveAdmins == 0)
+            {
+                return ApiResult.Fail("Cannot deactivate the only active TenantAdmin.");
+            }
         }
 
         user.IsActive = !user.IsActive;

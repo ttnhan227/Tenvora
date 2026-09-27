@@ -10,6 +10,8 @@ public sealed class Tenant
     [JsonIgnore] public string ApiKey { get; set; } = default!;
     public string PlanType { get; set; } = "Business";
     public string BaseCurrency { get; set; } = "USD";
+    public string? BusinessType { get; set; }
+    public bool OnboardingCompleted { get; set; } = false;
     public string Status { get; set; } = "Active";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -23,4 +25,5 @@ public sealed class Tenant
     public ICollection<Purchase> Purchases { get; set; } = new List<Purchase>();
     public ICollection<PurchasePayment> PurchasePayments { get; set; } = new List<PurchasePayment>();
     public ICollection<BusinessExpense> BusinessExpenses { get; set; } = new List<BusinessExpense>();
+    public ICollection<AiAction> AiActions { get; set; } = new List<AiAction>();
 }

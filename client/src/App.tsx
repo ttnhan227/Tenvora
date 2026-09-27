@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RequestActivityIndicator } from "@/components/RequestActivityIndicator";
@@ -22,6 +23,8 @@ const PurchasesPage = lazy(() => import("./pages/business/PurchasesPage"));
 const BusinessExpensesPage = lazy(() => import("./pages/business/BusinessExpensesPage"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
 const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
+const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const AgentChatPage = lazy(() => import("./pages/business/AgentChatPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -32,7 +35,7 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-  return <QueryClientProvider client={queryClient}><AuthProvider><TooltipProvider>
+  return <QueryClientProvider client={queryClient}><AuthProvider><LanguageProvider><TooltipProvider>
     <Toaster /><Sonner /><RequestActivityIndicator />
     <BrowserRouter><ErrorBoundary><Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-background p-8 text-sm font-bold text-muted-foreground"><span className="mr-3 h-3 w-3 animate-pulse rounded-full bg-primary" />Opening Tenvora…</div>}>
       <Routes>
@@ -40,6 +43,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<ProtectedRoute><BusinessHome /></ProtectedRoute>} />
+        <Route path="/agent" element={<ProtectedRoute><AgentChatPage /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
         <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />
         <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
@@ -47,11 +51,12 @@ export default function App() {
         <Route path="/suppliers" element={<ProtectedRoute><SuppliersPage /></ProtectedRoute>} />
         <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><BusinessExpensesPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/team" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><UserManagement /></ProtectedRoute>} />
         <Route path="/audit" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><AuditLogView /></ProtectedRoute>} />
         <Route path="/admin/users" element={<Navigate to="/team" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense></ErrorBoundary></BrowserRouter>
-  </TooltipProvider></AuthProvider></QueryClientProvider>;
+  </TooltipProvider></LanguageProvider></AuthProvider></QueryClientProvider>;
 }

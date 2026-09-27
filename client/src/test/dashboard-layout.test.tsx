@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
@@ -12,13 +14,19 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 describe("Business workspace navigation", () => {
   it("exposes the complete business workflow", () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { container } = render(
-      <MemoryRouter>
-        <DashboardLayout>
-          <p>Business workspace content</p>
-        </DashboardLayout>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <LanguageProvider defaultLanguage="en">
+            <DashboardLayout>
+              <p>Business workspace content</p>
+            </DashboardLayout>
+          </LanguageProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
+
     const linkNames = Array.from(container.querySelectorAll("a"), (link) => link.textContent?.trim());
     expect(linkNames).toEqual(expect.arrayContaining([
       "Home", "Sales", "Customers", "Products", "Purchases", "Suppliers", "Expenses",

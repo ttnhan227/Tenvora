@@ -39,8 +39,10 @@ import {
 } from "@/components/design-system";
 import { adminUserService, AdminUser } from "@/services/adminUserService";
 import { PageHeader } from "@/components/business/BusinessUI";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function UserManagement() {
+  const { isVietnamese } = useLanguage();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function UserManagement() {
     if (res.success && res.data) {
       setUsers(res.data);
     }
-    if (!res.success) setErrorMessage(res.errors?.join(" ") || "Unable to load team members.");
+    if (!res.success) setErrorMessage(res.errors?.join(" ") || (isVietnamese ? "Không thể tải danh sách nhân viên." : "Unable to load team members."));
     setLoading(false);
   }
 
@@ -79,7 +81,7 @@ export default function UserManagement() {
       setPassword("");
       loadUsers();
     } else {
-      setErrorMessage(res.errors?.[0] || "Failed to add team member.");
+      setErrorMessage(res.errors?.[0] || (isVietnamese ? "Không thể thêm nhân viên." : "Failed to add team member."));
     }
   }
 
@@ -87,13 +89,13 @@ export default function UserManagement() {
     const res = await adminUserService.toggleUserActive(user.id);
     if (res.success) {
       loadUsers();
-    } else setErrorMessage(res.errors?.join(" ") || "Unable to change member status.");
+    } else setErrorMessage(res.errors?.join(" ") || (isVietnamese ? "Không thể đổi trạng thái nhân viên." : "Unable to change member status."));
   }
 
   const columns: Column<AdminUser>[] = [
     {
       key: "email",
-      header: "Team Member",
+      header: isVietnamese ? "Nhân viên" : "Team member",
       sortable: true,
       render: (u) => (
         <div className="font-semibold text-foreground flex items-center gap-2">
@@ -106,7 +108,7 @@ export default function UserManagement() {
     },
     {
       key: "role",
-      header: "Workspace Role",
+      header: isVietnamese ? "Vai trò" : "Workspace role",
       align: "center",
       sortable: true,
       render: (u) => (
@@ -117,7 +119,7 @@ export default function UserManagement() {
     },
     {
       key: "isActive",
-      header: "Status",
+      header: isVietnamese ? "Trạng thái" : "Status",
       align: "center",
       sortable: true,
       render: (u) => (
@@ -126,7 +128,7 @@ export default function UserManagement() {
     },
     {
       key: "createdAt",
-      header: "Joined Date",
+      header: isVietnamese ? "Ngày tham gia" : "Joined date",
       align: "right",
       sortable: true,
       render: (u) => (
@@ -137,7 +139,7 @@ export default function UserManagement() {
     },
     {
       key: "actions",
-      header: "Actions",
+      header: isVietnamese ? "Thao tác" : "Actions",
       align: "right",
       render: (u) => (
         <Button
@@ -146,7 +148,7 @@ export default function UserManagement() {
           onClick={() => handleToggleStatus(u)}
           className="h-7 px-2.5 text-xs font-medium border-border bg-card hover:bg-muted"
         >
-          {u.isActive ? "Deactivate" : "Activate"}
+          {u.isActive ? (isVietnamese ? "Vô hiệu hoá" : "Deactivate") : (isVietnamese ? "Kích hoạt" : "Activate")}
         </Button>
       ),
     },
@@ -156,9 +158,9 @@ export default function UserManagement() {
     <DashboardLayout>
       <div className="space-y-6">
         <PageHeader
-          eyebrow="Business setup"
-          title="Your team"
-          description="Choose who can help keep the record book up to date and what they are allowed to do."
+          eyebrow={isVietnamese ? "Thiết lập kinh doanh" : "Business setup"}
+          title={isVietnamese ? "Nhân viên của bạn" : "Your team"}
+          description={isVietnamese ? "Chọn người có thể cập nhật sổ và quyền họ được sử dụng." : "Choose who can help keep the record book up to date and what they are allowed to do."}
           actions={<>
             <Button
               variant="outline"
@@ -166,14 +168,14 @@ export default function UserManagement() {
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              {isVietnamese ? "Làm mới" : "Refresh"}
             </Button>
 
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Add team member
+                  {isVietnamese ? "Thêm nhân viên" : "Add team member"}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[420px] bg-card border border-border text-xs rounded-xl p-6">
@@ -181,10 +183,10 @@ export default function UserManagement() {
                   <DialogHeader className="space-y-1.5">
                     <DialogTitle className="text-base font-bold flex items-center gap-2">
                       <Shield className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
-                      Add Team Member
+                      {isVietnamese ? "Thêm nhân viên" : "Add team member"}
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                      Create a member and assign a role. Share credentials directly; no invitation email is sent.
+                      {isVietnamese ? "Tạo tài khoản và gán vai trò. Hệ thống không gửi email mời." : "Create a member and assign a role. Share credentials directly; no invitation email is sent."}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -195,7 +197,7 @@ export default function UserManagement() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="team-email" className="text-xs font-medium text-foreground">Work Email</Label>
+                    <Label htmlFor="team-email" className="text-xs font-medium text-foreground">{isVietnamese ? "Email công việc" : "Work email"}</Label>
                     <Input
                       id="team-email"
                       type="email"
@@ -208,7 +210,7 @@ export default function UserManagement() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="team-password" className="text-xs font-medium text-foreground">Password</Label>
+                    <Label htmlFor="team-password" className="text-xs font-medium text-foreground">{isVietnamese ? "Mật khẩu" : "Password"}</Label>
                     <Input
                       id="team-password"
                       type="password"
@@ -219,19 +221,19 @@ export default function UserManagement() {
                       required
                       className="h-9 text-xs font-mono"
                     />
-                    <p className="text-[11px] text-muted-foreground">Use at least 12 characters.</p>
+                    <p className="text-[11px] text-muted-foreground">{isVietnamese ? "Dùng ít nhất 12 ký tự." : "Use at least 12 characters."}</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="team-role" className="text-xs font-medium text-foreground">Role &amp; Permissions</Label>
+                    <Label htmlFor="team-role" className="text-xs font-medium text-foreground">{isVietnamese ? "Vai trò & quyền" : "Role & permissions"}</Label>
                     <Select value={role} onValueChange={setRole}>
                       <SelectTrigger id="team-role" className="h-9 text-xs">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder={isVietnamese ? "Chọn vai trò" : "Select role"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="TenantAdmin">Administrator (Full Access)</SelectItem>
-                        <SelectItem value="OperationsManager">Operations Manager (Business records)</SelectItem>
-                        <SelectItem value="ReadOnly">Read only (View records)</SelectItem>
+                        <SelectItem value="TenantAdmin">{isVietnamese ? "Quản trị viên (toàn quyền)" : "Administrator (Full Access)"}</SelectItem>
+                        <SelectItem value="OperationsManager">{isVietnamese ? "Quản lý vận hành (sổ kinh doanh)" : "Operations Manager (Business records)"}</SelectItem>
+                        <SelectItem value="ReadOnly">{isVietnamese ? "Chỉ xem" : "Read only (View records)"}</SelectItem>
 
                       </SelectContent>
                     </Select>
@@ -239,7 +241,7 @@ export default function UserManagement() {
 
                   <DialogFooter className="pt-3">
                     <Button type="submit" disabled={creating} className="w-full h-9 text-xs font-semibold rounded-md shadow-sm">
-                      {creating ? "Adding..." : "Add Member"}
+                      {creating ? (isVietnamese ? "Đang thêm..." : "Adding...") : (isVietnamese ? "Thêm nhân viên" : "Add member")}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -256,8 +258,8 @@ export default function UserManagement() {
           keyExtractor={(u) => u.id}
           loading={loading}
           pageSize={15}
-          emptyTitle="No team members found"
-          emptyDescription="Add your first team member to collaborate in this workspace."
+          emptyTitle={isVietnamese ? "Chưa có nhân viên" : "No team members found"}
+          emptyDescription={isVietnamese ? "Thêm nhân viên đầu tiên để cùng cập nhật sổ." : "Add your first team member to collaborate in this workspace."}
         />
       </div>
     </DashboardLayout>

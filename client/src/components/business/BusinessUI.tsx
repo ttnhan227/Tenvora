@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description: string; actions?: ReactNode }) {
   return (
@@ -30,11 +31,30 @@ export function EmptyState({ icon: Icon, title, description, action, compact = f
   );
 }
 
-export function LoadingState({ label = "Opening your records…" }: { label?: string }) {
+export function LoadingState({ label }: { label?: string }) {
+  const { isVietnamese } = useLanguage();
   return (
     <div role="status" className="paper-card flex min-h-48 flex-col items-center justify-center gap-3 p-8 text-muted-foreground">
       <LoaderCircle className="h-6 w-6 animate-spin text-primary" />
-      <p className="text-sm font-medium">{label}</p>
+      <p className="text-sm font-medium">{label ?? (isVietnamese ? "Đang mở sổ ghi chép…" : "Opening your records…")}</p>
+    </div>
+  );
+}
+
+export function PrerequisiteNotice({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description: string; action: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-primary/35 bg-accent/35 p-4 sm:flex-row sm:items-center">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border bg-card text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-bold">{title}</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+      <div className="shrink-0 [&_a]:gap-2">
+        {action}
+      </div>
+      <ArrowRight className="hidden h-4 w-4 text-muted-foreground sm:block" />
     </div>
   );
 }
@@ -60,11 +80,13 @@ export function MoneyCard({ label, value, detail, icon: Icon, tone = "plain", fe
 }
 
 export function StatusPill({ status }: { status: string }) {
+  const { isVietnamese } = useLanguage();
   const normalized = status.toLowerCase();
   const tone = normalized === "paid" || normalized === "active"
     ? "border-[hsl(var(--success)/.25)] bg-[hsl(var(--success)/.1)] text-[hsl(var(--success))]"
     : normalized.includes("partial")
       ? "border-[hsl(var(--warning)/.35)] bg-[hsl(var(--warning)/.13)] text-amber-800 dark:text-amber-300"
       : "border-[hsl(var(--destructive)/.2)] bg-[hsl(var(--destructive)/.08)] text-destructive";
-  return <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold", tone)}><span className="h-1.5 w-1.5 rounded-full bg-current" />{status}</span>;
+  const localized = isVietnamese ? ({ paid: "Đã thanh toán", "partially paid": "Thanh toán một phần", unpaid: "Chưa thanh toán", active: "Đang hoạt động", disabled: "Đã vô hiệu hoá", archived: "Đã lưu trữ" }[normalized] ?? status) : status;
+  return <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold", tone)}><span className="h-1.5 w-1.5 rounded-full bg-current" />{localized}</span>;
 }

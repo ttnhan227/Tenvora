@@ -299,10 +299,12 @@ public sealed class GoogleAuthTests
         Assert.Equal("Alex Mercer's Business", apiResult.Data?.CompanyName);
         Assert.Equal("TenantAdmin", apiResult.Data?.Role);
         Assert.True(apiResult.Data?.GoogleLinked);
+        Assert.False(apiResult.Data?.HasPassword);
 
         var createdUser = await db.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.GoogleSub == "google-new-user-999", ct);
         Assert.NotNull(createdUser);
         Assert.Equal("alex@gmail.com", createdUser.Email);
+        Assert.False(createdUser.HasPassword);
         Assert.NotNull(createdUser.Tenant);
         Assert.Equal("Alex Mercer's Business", createdUser.Tenant.CompanyName);
     }

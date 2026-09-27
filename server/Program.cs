@@ -154,10 +154,14 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 // Services
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IGoogleAuthValidator, GoogleAuthValidator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();
+builder.Services.AddScoped<IAiAssistantService, AiAssistantService>();
+builder.Services.AddScoped<IAiActionService, AiActionService>();
+builder.Services.AddScoped<IAiAgentService, AiAgentService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")

@@ -1,68 +1,286 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Pencil, Plus, Search, Users } from "lucide-react";
+import { ArrowRight, Download, Filter, Pencil, Plus, Search, Users, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { apiError, businessMoney, businessService, BusinessCustomer, CustomerInput } from "@/services/businessService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { exportToCsv } from "@/lib/csvExport";
+import {
+  apiError,
+  businessMoney,
+  businessService,
+  BusinessCustomer,
+  CustomerInput,
+} from "@/services/businessService";
 
-const emptyCustomer: CustomerInput = { name: "", phone: "", email: "", address: "", notes: "", status: "Active" };
+const emptyCustomer: CustomerInput = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  notes: "",
+  status: "Active",
+};
 
 export default function CustomersPage() {
+  const { isVietnamese, t } = useLanguage();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const returnTo = params.get("returnTo");
   const [search, setSearch] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [debtFilter, setDebtFilter] = useState<"all" | "has_debt" | "zero_balance">("all");
+  const [dialogOpen, setDialogOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<BusinessCustomer | null>(null);
   const [form, setForm] = useState<CustomerInput>(emptyCustomer);
+
   const { data = [], isLoading } = useQuery({
     queryKey: ["business-customers", search],
     queryFn: () => businessService.getCustomers(search),
   });
 
+  const filteredCustomers = data.filter((c) => {
+    if (debtFilter === "has_debt") return c.outstandingBalance > 0;
+    if (debtFilter === "zero_balance") return c.outstandingBalance <= 0;
+    return true;
+  });
+
+  const totalOutstanding = data.reduce((acc, curr) => acc + curr.outstandingBalance, 0);
+  const currency = data[0]?.currency ?? "USD";
+
   const save = useMutation({
-    mutationFn: () => editing ? businessService.updateCustomer(editing.id, form) : businessService.createCustomer(form),
+    mutationFn: () =>
+      editing ? businessService.updateCustomer(editing.id, form) : businessService.createCustomer(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
       setDialogOpen(false);
-      toast.success(editing ? "Customer updated" : "Customer added");
+      toast.success(
+        editing
+          ? isVietnamese
+            ? "Đã cập nhật khách hàng"
+            : "Customer updated"
+          : isVietnamese
+          ? "Đã thêm khách hàng"
+          : "Customer added"
+      );
+      if (!editing && returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
+        navigate(returnTo);
+      }
     },
-    onError: (error) => toast.error(apiError(error, "Could not save the customer.")),
+    onError: (error) =>
+      toast.error(apiError(error, isVietnamese ? "Không thể lưu khách hàng." : "Could not save the customer.")),
   });
 
-  const openCreate = () => { setEditing(null); setForm(emptyCustomer); setDialogOpen(true); };
-  const openEdit = (customer: BusinessCustomer) => {
-    setEditing(customer);
-    setForm({ name: customer.name, phone: customer.phone ?? "", email: customer.email ?? "", address: customer.address ?? "", notes: customer.notes ?? "", status: customer.status });
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyCustomer);
     setDialogOpen(true);
   };
-  const submit = (event: FormEvent) => { event.preventDefault(); save.mutate(); };
+
+  const openEdit = (customer: BusinessCustomer) => {
+    setEditing(customer);
+    setForm({
+      name: customer.name,
+      phone: customer.phone ?? "",
+      email: customer.email ?? "",
+      address: customer.address ?? "",
+      notes: customer.notes ?? "",
+      status: customer.status,
+    });
+    setDialogOpen(true);
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    save.mutate();
+  };
+
+  const handleExportCsv = () => {
+    if (filteredCustomers.length === 0) return;
+    exportToCsv(
+      `customers-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: isVietnamese ? "Tên khách hàng" : "Customer Name", accessor: (c) => c.name },
+        { header: isVietnamese ? "Số điện thoại" : "Phone", accessor: (c) => c.phone ?? "" },
+        { header: "Email", accessor: (c) => c.email ?? "" },
+        { header: isVietnamese ? "Địa chỉ" : "Address", accessor: (c) => c.address ?? "" },
+        { header: isVietnamese ? "Tổng tiền mua" : "Total Sales", accessor: (c) => c.totalSales },
+        { header: isVietnamese ? "Đã thanh toán" : "Total Paid", accessor: (c) => c.totalPaid },
+        { header: isVietnamese ? "Còn nợ" : "Outstanding Balance", accessor: (c) => c.outstandingBalance },
+        { header: isVietnamese ? "Số đơn" : "Sales Count", accessor: (c) => c.salesCount },
+        { header: isVietnamese ? "Ghi chú" : "Notes", accessor: (c) => c.notes ?? "" },
+      ],
+      filteredCustomers
+    );
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <PageHeader eyebrow="People you sell to" title="Customers" description="Keep names, contact details, sales, payments, and current balances together." actions={<Button onClick={openCreate}><Plus />Add customer</Button>} />
+        <PageHeader
+          eyebrow={isVietnamese ? "Người mua hàng của bạn" : "People you sell to"}
+          title={t("nav.customers")}
+          description={
+            isVietnamese
+              ? "Lưu thông tin liên hệ, đơn bán, khoản thanh toán và công nợ của từng khách hàng."
+              : "Keep names, contact details, sales, payments, and current balances together."
+          }
+          actions={
+            <div className="flex gap-2">
+              {data.length > 0 && (
+                <Button variant="outline" onClick={handleExportCsv} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  {isVietnamese ? "Xuất CSV" : "Export CSV"}
+                </Button>
+              )}
+              <Button onClick={openCreate} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {isVietnamese ? "Thêm khách hàng" : "Add customer"}
+              </Button>
+            </div>
+          }
+        />
 
-        <div className="relative max-w-xl">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name, phone, or email" className="pl-9" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex max-w-2xl flex-1 flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={isVietnamese ? "Tìm theo tên, điện thoại hoặc email" : "Search by name, phone, or email"}
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={debtFilter} onValueChange={(val: any) => setDebtFilter(val)}>
+              <SelectTrigger className="sm:w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{isVietnamese ? "Tất cả khách hàng" : "All customers"}</SelectItem>
+                <SelectItem value="has_debt">
+                  {isVietnamese ? "Đang có nợ phải thu" : "Customers with debt"}
+                </SelectItem>
+                <SelectItem value="zero_balance">
+                  {isVietnamese ? "Đã thanh toán đủ" : "Settled / No debt"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {totalOutstanding > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{isVietnamese ? "Tổng công nợ phải thu:" : "Total Receivables:"}</span>
+              <span className="font-bold text-amber-600 dark:text-amber-400">
+                {businessMoney(totalOutstanding, currency)}
+              </span>
+            </div>
+          )}
         </div>
 
-        {isLoading ? <LoadingState label="Opening your customer list…" /> : data.length === 0 ? (
-          <EmptyState icon={Users} title={search ? "No customers match that search" : "No customers yet"} description={search ? "Try a name, phone number, or email address." : "Add the first person or business you sell to. Their balance will update automatically with every sale and payment."} action={!search && <Button onClick={openCreate}>Add first customer</Button>} />
+        {isLoading ? (
+          <LoadingState label={isVietnamese ? "Đang mở danh sách khách hàng…" : "Opening your customer list…"} />
+        ) : filteredCustomers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={
+              search || debtFilter !== "all"
+                ? isVietnamese
+                  ? "Không tìm thấy khách hàng phù hợp"
+                  : "No customers match that search"
+                : isVietnamese
+                ? "Chưa có khách hàng"
+                : "No customers yet"
+            }
+            description={
+              search || debtFilter !== "all"
+                ? isVietnamese
+                  ? "Hãy thử tên, số điện thoại hoặc xoá bộ lọc nợ."
+                  : "Try a name, phone number, or clearing the debt filter."
+                : isVietnamese
+                ? "Thêm người hoặc doanh nghiệp đầu tiên bạn bán hàng. Số dư sẽ tự cập nhật sau mỗi đơn bán và khoản thanh toán."
+                : "Add the first person or business you sell to. Their balance will update automatically with every sale and payment."
+            }
+            action={
+              !search && debtFilter === "all" && (
+                <Button onClick={openCreate}>{isVietnamese ? "Thêm khách hàng đầu tiên" : "Add first customer"}</Button>
+              )
+            }
+          />
         ) : (
           <div className="paper-card overflow-hidden">
             <div className="divide-y">
-              {data.map((customer) => (
-                <div key={customer.id} className="grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                  <div className="min-w-0"><Link to={`/customers/${customer.id}`} className="font-semibold hover:text-primary">{customer.name}</Link><p className="mt-1 truncate text-sm text-muted-foreground">{[customer.phone, customer.email].filter(Boolean).join(" · ") || "No contact details"}</p></div>
-                  <div className="sm:text-right"><p className={customer.outstandingBalance > 0 ? "font-semibold text-amber-600" : "font-semibold"}>{businessMoney(customer.outstandingBalance, customer.currency)}</p><p className="mt-1 text-xs text-muted-foreground">outstanding · {customer.salesCount} sales</p></div>
-                  <div className="flex gap-1 sm:justify-end"><Button variant="ghost" size="icon" aria-label={`Edit ${customer.name}`} onClick={() => openEdit(customer)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" asChild><Link aria-label={`View ${customer.name}`} to={`/customers/${customer.id}`}><ArrowRight size={16} /></Link></Button></div>
+              {filteredCustomers.map((customer) => (
+                <div key={customer.id} className="grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center hover:bg-muted/20 transition-colors">
+                  <div className="min-w-0">
+                    <Link to={`/customers/${customer.id}`} className="font-semibold text-foreground hover:text-primary">
+                      {customer.name}
+                    </Link>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">
+                      {[customer.phone, customer.email].filter(Boolean).join(" · ") ||
+                        (isVietnamese ? "Chưa có thông tin liên hệ" : "No contact details")}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p
+                      className={
+                        customer.outstandingBalance > 0
+                          ? "font-bold text-amber-600 dark:text-amber-400"
+                          : "font-semibold text-foreground"
+                      }
+                    >
+                      {businessMoney(customer.outstandingBalance, customer.currency)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {customer.outstandingBalance > 0
+                        ? isVietnamese
+                          ? `còn nợ · ${customer.salesCount} đơn bán`
+                          : `outstanding · ${customer.salesCount} sales`
+                        : isVietnamese
+                        ? `hết nợ · ${customer.salesCount} đơn bán`
+                        : `settled · ${customer.salesCount} sales`}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 sm:justify-end">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${customer.name}`}
+                      onClick={() => openEdit(customer)}
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link
+                        aria-label={`${isVietnamese ? "Xem" : "View"} ${customer.name}`}
+                        to={`/customers/${customer.id}`}
+                      >
+                        <ArrowRight size={16} />
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -72,13 +290,88 @@ export default function CustomersPage() {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><span className="notebook-label w-fit">Customer card</span><DialogTitle className="mt-2">{editing ? "Edit customer" : "Add customer"}</DialogTitle><DialogDescription>Save the details you use to recognize and contact this customer.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <span className="notebook-label w-fit">{isVietnamese ? "Thông tin khách hàng" : "Customer card"}</span>
+            <DialogTitle className="mt-2">
+              {editing
+                ? isVietnamese
+                  ? "Sửa khách hàng"
+                  : "Edit customer"
+                : isVietnamese
+                ? "Thêm khách hàng"
+                : "Add customer"}
+            </DialogTitle>
+            <DialogDescription>
+              {isVietnamese
+                ? "Lưu thông tin giúp bạn nhận biết và liên hệ khách hàng này."
+                : "Save the details you use to recognize and contact this customer."}
+            </DialogDescription>
+          </DialogHeader>
+
           <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-2"><Label htmlFor="customer-name">Name *</Label><Input id="customer-name" autoFocus required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Customer name" /></div>
-            <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label htmlFor="customer-phone">Phone</Label><Input id="customer-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div><div className="space-y-2"><Label htmlFor="customer-email">Email</Label><Input id="customer-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div></div>
-            <div className="space-y-2"><Label htmlFor="customer-address">Address</Label><Input id="customer-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-            <div className="space-y-2"><Label htmlFor="customer-notes">Notes</Label><Textarea id="customer-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything useful to remember" /></div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button disabled={save.isPending}>{save.isPending ? "Saving…" : "Save customer"}</Button></DialogFooter>
+            <div className="space-y-2">
+              <Label htmlFor="customer-name">{isVietnamese ? "Tên khách hàng" : "Name"} *</Label>
+              <Input
+                id="customer-name"
+                autoFocus
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder={isVietnamese ? "Tên khách hàng hoặc tên công ty" : "Customer or company name"}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="customer-phone">{isVietnamese ? "Điện thoại" : "Phone"}</Label>
+                <Input
+                  id="customer-phone"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="0901234567"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer-email">Email</Label>
+                <Input
+                  id="customer-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="customer@example.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer-address">{isVietnamese ? "Địa chỉ" : "Address"}</Label>
+              <Input
+                id="customer-address"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder={isVietnamese ? "Số nhà, tên đường, phường/xã…" : "Street address, ward, city…"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer-notes">{isVietnamese ? "Ghi chú" : "Notes"}</Label>
+              <Textarea
+                id="customer-notes"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder={isVietnamese ? "Thông tin hữu ích cần nhớ, hạn mức nợ…" : "Payment terms, special notes…"}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button disabled={save.isPending}>
+                {save.isPending
+                  ? t("common.saving")
+                  : isVietnamese
+                  ? "Lưu khách hàng"
+                  : "Save customer"}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

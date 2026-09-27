@@ -3,7 +3,7 @@ import apiClient from "@/services/apiClient";
 import { businessService } from "@/services/businessService";
 
 vi.mock("@/services/apiClient", () => ({
-  default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
 describe("Tenvora 2.0 business API contracts", () => {
@@ -29,6 +29,15 @@ describe("Tenvora 2.0 business API contracts", () => {
     });
   });
 
+  it("records customer account lump-sum payment with idempotency key", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { totalAllocated: 500_000 } } });
+    const request = { amount: 500_000, method: "Bank transfer", reference: "REF123" };
+    await businessService.recordCustomerAccountPayment("customer-1", request);
+    expect(apiClient.post).toHaveBeenCalledWith("/customers/customer-1/payments", request, {
+      headers: { "Idempotency-Key": expect.any(String) },
+    });
+  });
+
   it("records later payments against a sale rather than overwriting a balance", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { id: "sale-1" } } });
     const request = { amount: 500_000, method: "Bank transfer" };
@@ -47,13 +56,25 @@ describe("Tenvora 2.0 business API contracts", () => {
     expect(apiClient.post).toHaveBeenNthCalledWith(2, "/purchases/purchase-1/payments", { amount: 50, method: "Cash" }, { headers: { "Idempotency-Key": expect.any(String) } });
   });
 
-  it("uses the simple business expense and dashboard endpoints", async () => {
+  it("uses the business expense and dashboard endpoints with update and delete", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { id: "expense-1" } } });
+    vi.mocked(apiClient.put).mockResolvedValue({ data: { data: { id: "expense-1" } } });
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: {} });
     vi.mocked(apiClient.get).mockResolvedValue({ data: { data: {} } });
+
     const expense = { category: "Transportation", amount: 25, description: "Delivery" };
     await businessService.createBusinessExpense(expense);
+    await businessService.updateBusinessExpense("expense-1", expense);
+    await businessService.deleteBusinessExpense("expense-1");
     await businessService.getDashboard();
+    await businessService.getDashboard("month");
+
     expect(apiClient.post).toHaveBeenCalledWith("/business-expenses", expense, { headers: { "Idempotency-Key": expect.any(String) } });
-    expect(apiClient.get).toHaveBeenCalledWith("/business-dashboard");
+    expect(apiClient.put).toHaveBeenCalledWith("/business-expenses/expense-1", expense);
+    expect(apiClient.delete).toHaveBeenCalledWith("/business-expenses/expense-1");
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "/business-dashboard");
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/business-dashboard", {
+      params: { period: "month", from: undefined, to: undefined },
+    });
   });
 });

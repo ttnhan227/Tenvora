@@ -279,4 +279,101 @@ public sealed class BusinessWorkflowTests
         Assert.Empty((await service.GetBusinessExpensesAsync(a, null, null, null, null)).Data!);
         Assert.Single((await service.GetBusinessExpensesAsync(b, null, null, null, null)).Data!);
     }
+
+    [Fact]
+    public async Task InventoryAndCostTrackingUpdatesAcrossSalesPurchasesAndVoids()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var productRes = await service.CreateProductAsync(tenantId,
+            new("Widget A", "WID-A", "unit", 100m, "Initial stock", CostPrice: 50m, StockQuantity: 10m, MinStockLevel: 5m));
+        Assert.True(productRes.Success);
+        var productId = productRes.Data!.Id;
+        Assert.Equal(10m, productRes.Data.StockQuantity);
+        Assert.Equal(50m, productRes.Data.CostPrice);
+
+        var customer = await service.CreateCustomerAsync(tenantId, new("Customer X", "0123456789", null, null, null));
+        var saleRes = await service.CreateSaleAsync(tenantId, "sale-inv-1",
+            new(customer.Data!.Id, [new(productId, 4m, 100m)]));
+        Assert.True(saleRes.Success);
+
+        var afterSale = await service.GetProductAsync(tenantId, productId);
+        Assert.Equal(6m, afterSale.Data!.StockQuantity);
+
+        var supplier = await service.CreateSupplierAsync(tenantId, new("Supplier Y", null, null, null, null));
+        var purchaseRes = await service.CreatePurchaseAsync(tenantId, "purch-inv-1",
+            new(supplier.Data!.Id, [new("Widget A", "unit", 10m, 60m, ProductId: productId)]));
+        Assert.True(purchaseRes.Success);
+
+        var afterPurchase = await service.GetProductAsync(tenantId, productId);
+        Assert.Equal(16m, afterPurchase.Data!.StockQuantity);
+        Assert.Equal(60m, afterPurchase.Data.CostPrice);
+
+        var voidRes = await service.VoidSaleAsync(tenantId, saleRes.Data!.Id);
+        Assert.True(voidRes.Success);
+
+        var afterVoid = await service.GetProductAsync(tenantId, productId);
+        Assert.Equal(20m, afterVoid.Data!.StockQuantity);
+    }
+
+    [Fact]
+    public async Task CustomerAccountPaymentAllocatesViaFifo()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var customer = await service.CreateCustomerAsync(tenantId, new("Debt Customer", "0999999999", null, null, null));
+        var product = await service.CreateProductAsync(tenantId, new("Item", null, "pc", 10m, null));
+        var custId = customer.Data!.Id;
+        var prodId = product.Data!.Id;
+
+        // Sale 1: $100
+        var s1 = await service.CreateSaleAsync(tenantId, "sale-fifo-1", new(custId, [new(prodId, 10m, 10m)], SoldAt: DateTime.UtcNow.AddHours(-2)));
+        // Sale 2: $150
+        var s2 = await service.CreateSaleAsync(tenantId, "sale-fifo-2", new(custId, [new(prodId, 15m, 10m)], SoldAt: DateTime.UtcNow.AddHours(-1)));
+
+        var customerBefore = await service.GetCustomerAsync(tenantId, custId);
+        Assert.Equal(250m, customerBefore.Data!.Customer.OutstandingBalance);
+
+        // Pay $150 lump-sum
+        var payRes = await service.RecordCustomerAccountPaymentAsync(tenantId, custId, "account-pay-1",
+            new(150m, "BankTransfer", "REF-LUMP-01", "Settling older balance"));
+        Assert.True(payRes.Success);
+        Assert.Equal(150m, payRes.Data!.TotalAllocated);
+        Assert.Equal(100m, payRes.Data.RemainingBalance);
+        Assert.Equal(2, payRes.Data.AffectedSales.Count);
+
+        // Check Sale 1 is fully paid ($100), Sale 2 has $100 remaining ($50 allocated)
+        var sale1 = await service.GetSaleAsync(tenantId, s1.Data!.Id);
+        var sale2 = await service.GetSaleAsync(tenantId, s2.Data!.Id);
+
+        Assert.Equal(0m, sale1.Data!.OutstandingBalance);
+        Assert.Equal(100m, sale2.Data!.OutstandingBalance);
+    }
+
+    [Fact]
+    public async Task ExpenseUpdateDeleteAndDashboardPeriodMetricsWork()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var exp = await service.CreateBusinessExpenseAsync(tenantId, "exp-1", new("Utilities", 100m, ExpenseDate: DateTime.UtcNow));
+        Assert.True(exp.Success);
+
+        var updated = await service.UpdateBusinessExpenseAsync(tenantId, exp.Data!.Id,
+            new("Utilities", 120m, DateTime.UtcNow, "Updated notes"));
+        Assert.True(updated.Success);
+        Assert.Equal(120m, updated.Data!.Amount);
+
+        var dashMonth = await service.GetDashboardAsync(tenantId, "month");
+        Assert.True(dashMonth.Success);
+        Assert.Equal(120m, dashMonth.Data!.PeriodExpenses);
+
+        var del = await service.DeleteBusinessExpenseAsync(tenantId, exp.Data.Id);
+        Assert.True(del.Success);
+
+        var list = await service.GetBusinessExpensesAsync(tenantId, null, null, null, null);
+        Assert.Empty(list.Data!);
+    }
 }

@@ -9,7 +9,10 @@ interface AuthContextType {
   googleLogin: (credential: string) => Promise<ApiResponse<AuthResponse>>;
   register: (companyName: string, email: string, password: string, baseCurrency?: string) => Promise<ApiResponse<AuthResponse>>;
   setPassword: (currentPassword: string | undefined, newPassword: string) => Promise<ApiResponse<void>>;
+  completeOnboarding: (companyName: string, preferredCurrency: string, businessType: string, fullName?: string, phoneNumber?: string) => Promise<ApiResponse<UserProfile>>;
+  updateSettings: (companyName: string, preferredCurrency: string, businessType: string, fullName?: string, phoneNumber?: string) => Promise<ApiResponse<UserProfile>>;
   logout: () => void;
+
   refreshProfile: () => Promise<void>;
 }
 
@@ -62,6 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked,
           hasPassword: result.data.hasPassword ?? true,
+          businessType: result.data.businessType,
+          onboardingCompleted: result.data.onboardingCompleted ?? false,
+          fullName: result.data.fullName,
+          phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -90,6 +97,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked ?? true,
           hasPassword: result.data.hasPassword ?? false,
+          businessType: result.data.businessType,
+          onboardingCompleted: result.data.onboardingCompleted ?? false,
+          fullName: result.data.fullName,
+          phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -122,6 +133,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           companyName: result.data.companyName,
           googleLinked: result.data.googleLinked,
           hasPassword: result.data.hasPassword ?? true,
+          businessType: result.data.businessType,
+          onboardingCompleted: result.data.onboardingCompleted ?? false,
+          fullName: result.data.fullName,
+          phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
         localStorage.setItem("user", JSON.stringify(profile));
@@ -155,6 +170,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeOnboarding = async (
+    companyName: string,
+    preferredCurrency: string,
+    businessType: string,
+    fullName?: string,
+    phoneNumber?: string
+  ): Promise<ApiResponse<UserProfile>> => {
+    try {
+      const result = await authService.completeOnboarding({
+        companyName,
+        preferredCurrency,
+        businessType,
+        fullName,
+        phoneNumber,
+      });
+      if (result.success && result.data) {
+        setUser(result.data);
+        localStorage.setItem("user", JSON.stringify(result.data));
+      }
+      return result;
+    } catch (error) {
+      console.error("Complete onboarding error:", error);
+      return {
+        success: false,
+        message: "Failed to update workspace setup.",
+        errors: ["Failed to update workspace setup."],
+      };
+    }
+  };
+
+  const updateSettings = async (
+    companyName: string,
+    preferredCurrency: string,
+    businessType: string,
+    fullName?: string,
+    phoneNumber?: string
+  ): Promise<ApiResponse<UserProfile>> => {
+    try {
+      const result = await authService.updateSettings({
+        companyName,
+        preferredCurrency,
+        businessType,
+        fullName,
+        phoneNumber,
+      });
+      if (result.success && result.data) {
+        setUser(result.data);
+        localStorage.setItem("user", JSON.stringify(result.data));
+      }
+      return result;
+    } catch (error) {
+      console.error("Update settings error:", error);
+      return {
+        success: false,
+        message: "Failed to update settings.",
+        errors: ["Failed to update settings."],
+      };
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -176,9 +251,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     googleLogin,
     register,
     setPassword,
+    completeOnboarding,
+    updateSettings,
     logout,
     refreshProfile,
   };
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

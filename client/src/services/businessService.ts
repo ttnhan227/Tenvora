@@ -22,6 +22,9 @@ export interface Product {
   sku?: string;
   unit: string;
   defaultPrice: number;
+  costPrice: number;
+  stockQuantity: number;
+  minStockLevel?: number;
   currency: string;
   isActive: boolean;
   notes?: string;
@@ -75,6 +78,21 @@ export interface CustomerDetail {
   payments: BusinessPayment[];
 }
 
+export interface CustomerAccountPaymentInput {
+  amount: number;
+  method: string;
+  reference?: string;
+  notes?: string;
+  paidAt?: string;
+}
+
+export interface CustomerAccountPaymentResult {
+  totalAmountPaid: number;
+  totalAllocated: number;
+  remainingBalance: number;
+  affectedSales: Sale[];
+}
+
 export interface Supplier {
   id: string; name: string; phone?: string; email?: string; address?: string; notes?: string;
   status: "Active" | "Archived"; currency: string; totalPurchases: number; totalPaid: number;
@@ -85,7 +103,26 @@ export interface PurchasePayment { id: string; purchaseId: string; purchaseNumbe
 export interface Purchase { id: string; purchaseNumber: string; supplierId: string; supplierName: string; currency: string; totalAmount: number; paidAmount: number; outstandingBalance: number; paymentStatus: "Paid" | "Partially paid" | "Unpaid"; status: "Posted" | "Voided"; notes?: string; purchasedAt: string; createdAt: string; items: PurchaseItem[]; payments: PurchasePayment[]; }
 export interface BusinessExpense { id: string; category: string; amount: number; currency: string; description?: string; expenseDate: string; createdAt: string; }
 export interface BusinessActivity { type: string; id: string; title: string; detail: string; amount: number; occurredAt: string; }
-export interface BusinessDashboard { currency: string; todaySales: number; todayPayments: number; todayPurchases: number; todaySupplierPayments: number; todayExpenses: number; outstandingCustomers: number; outstandingSuppliers: number; unpaidCustomers: BusinessCustomer[]; unpaidSuppliers: Supplier[]; recentActivity: BusinessActivity[]; }
+export interface BusinessDashboard {
+  currency: string;
+  period: string;
+  periodSales: number;
+  periodPayments: number;
+  periodPurchases: number;
+  periodSupplierPayments: number;
+  periodExpenses: number;
+  periodNetProfit: number;
+  todaySales: number;
+  todayPayments: number;
+  todayPurchases: number;
+  todaySupplierPayments: number;
+  todayExpenses: number;
+  outstandingCustomers: number;
+  outstandingSuppliers: number;
+  unpaidCustomers: BusinessCustomer[];
+  unpaidSuppliers: Supplier[];
+  recentActivity: BusinessActivity[];
+}
 
 export interface CustomerInput {
   name: string;
@@ -101,6 +138,9 @@ export interface ProductInput {
   sku?: string;
   unit: string;
   defaultPrice: number;
+  costPrice?: number;
+  stockQuantity?: number;
+  minStockLevel?: number;
   notes?: string;
   isActive?: boolean;
 }
@@ -134,6 +174,11 @@ export const businessService = {
 
   async updateCustomer(id: string, input: CustomerInput): Promise<BusinessCustomer> {
     const response = await apiClient.put(`/customers/${id}`, { ...input, status: input.status ?? "Active" });
+    return response.data.data;
+  },
+
+  async recordCustomerAccountPayment(customerId: string, input: CustomerAccountPaymentInput): Promise<CustomerAccountPaymentResult> {
+    const response = await apiClient.post(`/customers/${customerId}/payments`, input, { headers: mutationHeaders() });
     return response.data.data;
   },
 
@@ -192,8 +237,16 @@ export const businessService = {
   async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string }): Promise<BusinessExpense> {
     const response = await apiClient.post("/business-expenses", input, { headers: mutationHeaders() }); return response.data.data;
   },
-  async getDashboard(): Promise<BusinessDashboard> {
-    const response = await apiClient.get("/business-dashboard"); return response.data.data;
+  async updateBusinessExpense(id: string, input: { category: string; amount: number; expenseDate?: string; description?: string }): Promise<BusinessExpense> {
+    const response = await apiClient.put(`/business-expenses/${id}`, input); return response.data.data;
+  },
+  async deleteBusinessExpense(id: string): Promise<void> {
+    await apiClient.delete(`/business-expenses/${id}`);
+  },
+  async getDashboard(period?: string, from?: string, to?: string): Promise<BusinessDashboard> {
+    const config = period || from || to ? { params: { period, from, to } } : undefined;
+    const response = await (config ? apiClient.get("/business-dashboard", config) : apiClient.get("/business-dashboard"));
+    return response.data.data;
   },
 };
 

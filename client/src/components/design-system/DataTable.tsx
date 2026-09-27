@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface Column<T> {
   key: string;
@@ -47,6 +48,7 @@ export function DataTable<T>({
   className,
   hoverable = true,
 }: DataTableProps<T>) {
+  const { isVietnamese } = useLanguage();
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,7 +117,7 @@ export function DataTable<T>({
                 <th className="py-2 px-3 w-8 text-center">
                   <input
                     type="checkbox"
-                    aria-label="Select all rows on this page"
+                    aria-label={isVietnamese ? "Chọn tất cả dòng trên trang" : "Select all rows on this page"}
                     checked={!!isAllSelected}
                     onChange={(e) => onSelectAll && onSelectAll(e.target.checked)}
                     className="rounded border-border text-primary focus:ring-ring h-3.5 w-3.5 cursor-pointer"
@@ -208,7 +210,7 @@ export function DataTable<T>({
                       >
                         <input
                           type="checkbox"
-                          aria-label={`Select row ${id}`}
+                          aria-label={`${isVietnamese ? "Chọn dòng" : "Select row"} ${id}`}
                           checked={!!isSelected}
                           onChange={() => onToggleSelect(id)}
                           className="rounded border-border text-primary focus:ring-ring h-3.5 w-3.5 cursor-pointer"
@@ -257,7 +259,7 @@ export function DataTable<T>({
       {!loading && sortedData.length > pageSize && (
         <div className="px-4 py-3 border-t border-border bg-muted/40 flex items-center justify-between text-xs text-muted-foreground">
           <div>
-            Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} entries
+            {isVietnamese ? "Hiển thị" : "Showing"} {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, sortedData.length)} {isVietnamese ? "trên" : "of"} {sortedData.length} {isVietnamese ? "mục" : "entries"}
           </div>
           <div className="flex items-center gap-1.5">
             <Button
@@ -268,7 +270,7 @@ export function DataTable<T>({
               className="h-6 px-2 text-[10px] font-mono border-border bg-card"
             >
               <ChevronLeft className="h-3 w-3 mr-0.5" />
-              Prev
+              {isVietnamese ? "Trước" : "Prev"}
             </Button>
             <span className="px-2 font-bold text-foreground">
               {currentPage} / {totalPages}
@@ -280,7 +282,7 @@ export function DataTable<T>({
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               className="h-6 px-2 text-[10px] font-mono border-border bg-card"
             >
-              Next
+              {isVietnamese ? "Sau" : "Next"}
               <ChevronRight className="h-3 w-3 ml-0.5" />
             </Button>
           </div>

@@ -16,4 +16,12 @@ public sealed class BusinessExpensesController(IBusinessService service) : Contr
     [HttpPost, Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
     public async Task<IActionResult> Create([FromHeader(Name = "Idempotency-Key")] string? key, CreateBusinessExpenseRequest request) =>
         (await service.CreateBusinessExpenseAsync(User.GetTenantId(), key?.Trim() ?? string.Empty, request)).ToActionResult();
+
+    [HttpPut("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> Update(Guid id, UpdateBusinessExpenseRequest request) =>
+        (await service.UpdateBusinessExpenseAsync(User.GetTenantId(), id, request)).ToActionResult();
+
+    [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        (await service.DeleteBusinessExpenseAsync(User.GetTenantId(), id)).ToActionResult();
 }

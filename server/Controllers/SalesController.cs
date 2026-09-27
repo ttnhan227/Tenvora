@@ -27,5 +27,8 @@ public sealed class SalesController(IBusinessService service) : ControllerBase
     public async Task<IActionResult> RecordPayment(Guid id, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         RecordBusinessPaymentRequest request) =>
         (await service.RecordPaymentAsync(User.GetTenantId(), id, idempotencyKey?.Trim() ?? string.Empty, request)).ToActionResult();
-}
 
+    [HttpPost("{id:guid}/void"), Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
+    public async Task<IActionResult> Void(Guid id) =>
+        (await service.VoidSaleAsync(User.GetTenantId(), id)).ToActionResult();
+}

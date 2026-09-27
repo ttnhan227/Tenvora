@@ -47,6 +47,9 @@ public record ProductDto(
     string? Sku,
     string Unit,
     decimal DefaultPrice,
+    decimal CostPrice,
+    decimal StockQuantity,
+    decimal? MinStockLevel,
     string Currency,
     bool IsActive,
     string? Notes,
@@ -58,7 +61,10 @@ public record CreateProductRequest(
     [MaxLength(100)] string? Sku,
     [Required, MaxLength(40)] string Unit,
     decimal DefaultPrice,
-    [MaxLength(1000)] string? Notes
+    [MaxLength(1000)] string? Notes = null,
+    decimal CostPrice = 0m,
+    decimal StockQuantity = 0m,
+    decimal? MinStockLevel = null
 );
 
 public record UpdateProductRequest(
@@ -66,8 +72,11 @@ public record UpdateProductRequest(
     [MaxLength(100)] string? Sku,
     [Required, MaxLength(40)] string Unit,
     decimal DefaultPrice,
-    bool IsActive,
-    [MaxLength(1000)] string? Notes
+    bool IsActive = true,
+    [MaxLength(1000)] string? Notes = null,
+    decimal? CostPrice = null,
+    decimal? StockQuantity = null,
+    decimal? MinStockLevel = null
 );
 
 public record CreateSaleItemRequest(Guid ProductId, decimal Quantity, decimal? UnitPrice = null);
@@ -87,6 +96,21 @@ public record RecordBusinessPaymentRequest(
     [MaxLength(200)] string? Reference = null,
     [MaxLength(1000)] string? Notes = null,
     DateTime? PaidAt = null
+);
+
+public record RecordCustomerAccountPaymentRequest(
+    decimal Amount,
+    [MaxLength(50)] string Method = "Other",
+    [MaxLength(200)] string? Reference = null,
+    [MaxLength(1000)] string? Notes = null,
+    DateTime? PaidAt = null
+);
+
+public record CustomerAccountPaymentResultDto(
+    decimal TotalAmountPaid,
+    decimal TotalAllocated,
+    decimal RemainingBalance,
+    List<SaleSummaryDto> AffectedSales
 );
 
 public record SaleItemDto(
@@ -167,12 +191,31 @@ public record PurchaseDto(Guid Id, string PurchaseNumber, Guid SupplierId, strin
 public record CreateBusinessExpenseRequest([Required, MaxLength(50)] string Category, decimal Amount,
     DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null);
 
+public record UpdateBusinessExpenseRequest([Required, MaxLength(50)] string Category, decimal Amount,
+    DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null);
+
 public record BusinessExpenseDto(Guid Id, string Category, decimal Amount, string Currency, string? Description,
     DateTime ExpenseDate, DateTime CreatedAt);
 
 public record BusinessActivityDto(string Type, Guid Id, string Title, string Detail, decimal Amount, DateTime OccurredAt);
 
-public record BusinessDashboardDto(string Currency, decimal TodaySales, decimal TodayPayments, decimal TodayPurchases,
-    decimal TodaySupplierPayments, decimal TodayExpenses, decimal OutstandingCustomers, decimal OutstandingSuppliers,
-    List<BusinessCustomerDto> UnpaidCustomers, List<SupplierDto> UnpaidSuppliers,
-    List<BusinessActivityDto> RecentActivity);
+public record BusinessDashboardDto(
+    string Currency,
+    decimal TodaySales,
+    decimal TodayPayments,
+    decimal TodayPurchases,
+    decimal TodaySupplierPayments,
+    decimal TodayExpenses,
+    decimal OutstandingCustomers,
+    decimal OutstandingSuppliers,
+    List<BusinessCustomerDto> UnpaidCustomers,
+    List<SupplierDto> UnpaidSuppliers,
+    List<BusinessActivityDto> RecentActivity,
+    string Period = "today",
+    decimal PeriodSales = 0m,
+    decimal PeriodPayments = 0m,
+    decimal PeriodPurchases = 0m,
+    decimal PeriodSupplierPayments = 0m,
+    decimal PeriodExpenses = 0m,
+    decimal PeriodNetProfit = 0m
+);

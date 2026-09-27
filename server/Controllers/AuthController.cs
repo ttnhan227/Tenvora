@@ -74,6 +74,18 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? request)
+    {
+        Guid userId = Guid.Empty;
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            try { userId = User.GetUserId(); } catch { /* ignore if missing */ }
+        }
+        var result = await _authService.LogoutAsync(userId, request?.RefreshToken);
+        return Ok(result);
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me()
@@ -93,6 +105,32 @@ public class AuthController : ControllerBase
     {
         var userId = User.GetUserId();
         var result = await _authService.SetPasswordAsync(userId, request);
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("onboarding")]
+    public async Task<IActionResult> CompleteOnboarding([FromBody] CompleteOnboardingRequest request)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        var result = await _authService.CompleteOnboardingAsync(userId, tenantId, request);
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPut("settings")]
+    public async Task<IActionResult> UpdateSettings([FromBody] UpdateSettingsRequest request)
+    {
+        var userId = User.GetUserId();
+        var tenantId = User.GetTenantId();
+        var result = await _authService.UpdateSettingsAsync(userId, tenantId, request);
         if (!result.Success)
             return BadRequest(result);
 

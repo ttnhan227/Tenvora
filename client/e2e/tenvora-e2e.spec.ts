@@ -31,6 +31,7 @@ async function businessFixture(page: Page) {
       email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND",
     }));
     localStorage.setItem("theme", "light");
+    localStorage.setItem("tenvora_lang", "en");
   });
 
   await page.route("**/api/**", async (route) => {
@@ -130,9 +131,10 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await page.getByRole("option", { name: /Standard product/ }).click();
     await dialog.getByLabel("Quantity").fill("15");
     await dialog.getByLabel("Unit price").fill("180000");
-    await dialog.getByLabel("Payment received now").fill("1000000");
+    await dialog.getByRole("button", { name: "Partly paid" }).click();
+    await dialog.getByLabel("How much did they pay?").fill("1000000");
     await expect(dialog.getByText(/2,700,000/).first()).toBeVisible();
-    await dialog.getByRole("button", { name: "Record sale" }).click();
+    await dialog.getByRole("button", { name: "Save sale" }).click();
 
     await expect(page.getByText("SALE-20260925-0001", { exact: true })).toBeVisible();
     await expect(page.getByText("Partially paid")).toBeVisible();
@@ -149,10 +151,37 @@ test.describe("Tenvora 2.0 golden workflow", () => {
   test("core business screens remain usable on a phone", async ({ page }) => {
     await businessFixture(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    for (const [route, heading] of [["/dashboard", "Example Local Business"], ["/customers", "Customers"], ["/products", "Products & services"], ["/sales", "Sales"], ["/suppliers", "Suppliers"], ["/purchases", "Purchases"], ["/expenses", "Expenses"]]) {
+    for (const [route, heading] of [["/dashboard", /Good (morning|afternoon|evening), Owner/], ["/customers", "Customers"], ["/products", "Products & services"], ["/sales", "Sales"], ["/suppliers", "Suppliers"], ["/purchases", "Purchases"], ["/expenses", "Expenses"]] as const) {
       await page.goto(route);
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), `${route} should not overflow`).toBeFalsy();
+      const overflow = await page.evaluate(() => {
+        if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+        return Array.from(document.querySelectorAll<HTMLElement>("body *"))
+          .filter((element) => {
+            const rect = element.getBoundingClientRect();
+            return rect.right > window.innerWidth + 1 && rect.width > 0;
+          })
+          .slice(0, 5)
+          .map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.trim().slice(0, 60) }));
+      });
+      expect(overflow, `${route} should not overflow`).toEqual([]);
     }
+  });
+
+  test("language switch updates business page content and dialogs immediately", async ({ page }) => {
+    await businessFixture(page);
+    await page.goto("/customers");
+    await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder("Search by name, phone, or email")).toBeVisible();
+
+    await page.getByRole("button", { name: "Chuyển sang Tiếng Việt" }).click();
+    await expect(page.getByRole("heading", { name: "Khách hàng & Sổ nợ", exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder("Tìm theo tên, điện thoại hoặc email")).toBeVisible();
+
+    await page.getByRole("button", { name: "Thêm khách hàng" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Thêm khách hàng" })).toBeVisible();
+    await expect(dialog.getByLabel("Tên *")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Huỷ bỏ" })).toBeVisible();
   });
 });

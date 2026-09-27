@@ -8,6 +8,6 @@ namespace Tenvora.Api.Controllers;
 [ApiController, Route("api/business-dashboard"), Authorize]
 public sealed class BusinessDashboardController(IBusinessService service) : ControllerBase
 {
-    [HttpGet] public async Task<IActionResult> Get() =>
-        (await service.GetDashboardAsync(User.GetTenantId())).ToActionResult();
+    [HttpGet] public async Task<IActionResult> Get([FromQuery] string? period, [FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
+        (await service.GetDashboardAsync(User.GetTenantId(), period, from, to)).ToActionResult();
 }

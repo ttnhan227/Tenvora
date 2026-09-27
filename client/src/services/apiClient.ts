@@ -34,8 +34,24 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Mutex to serialize token refresh operations
-let refreshMutex = Promise.resolve();
+// Single-flight token refresh to prevent concurrent race conditions
+let refreshPromise: Promise<string> | null = null;
+
+async function performTokenRefresh(): Promise<string> {
+  const currentRefreshToken = localStorage.getItem("refreshToken");
+  if (!currentRefreshToken) {
+    throw new Error("No refresh token available");
+  }
+
+  const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
+    refreshToken: currentRefreshToken,
+  });
+
+  const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", newRefreshToken);
+  return accessToken;
+}
 
 // Response interceptor to handle 401 and refresh token
 apiClient.interceptors.response.use(
@@ -57,40 +73,22 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (!refreshToken) {
-          // No refresh token available, redirect to login
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          window.location.href = "/login";
-          return Promise.reject(error);
+        if (!refreshPromise) {
+          refreshPromise = performTokenRefresh().finally(() => {
+            refreshPromise = null;
+          });
         }
 
-        // Use mutex to ensure only one refresh request at a time
-        const refreshResult = await (refreshMutex = refreshMutex.then(async () => {
-          try {
-            const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
-            const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-            localStorage.setItem("accessToken", accessToken);
-            localStorage.setItem("refreshToken", newRefreshToken);
-            return accessToken;
-          } catch (refreshError) {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("user");
-            window.location.href = "/login";
-            throw refreshError;
-          }
-        }));
-
-        originalRequest.headers.Authorization = `Bearer ${refreshResult}`;
+        const newAccessToken = await refreshPromise;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
-        window.location.href = "/login";
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
         return Promise.reject(refreshError);
       }
     }

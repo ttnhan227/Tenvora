@@ -20,6 +20,15 @@ public sealed class Product
     [Column(TypeName = "numeric(18,4)")]
     public decimal DefaultPrice { get; set; }
 
+    [Column(TypeName = "numeric(18,4)")]
+    public decimal CostPrice { get; set; } = 0m;
+
+    [Column(TypeName = "numeric(18,4)")]
+    public decimal StockQuantity { get; set; } = 0m;
+
+    [Column(TypeName = "numeric(18,4)")]
+    public decimal? MinStockLevel { get; set; }
+
     [MaxLength(3)]
     public string Currency { get; set; } = "USD";
 
