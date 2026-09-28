@@ -143,6 +143,7 @@ describe("BusinessReportModal & ReportsPage", () => {
       currency: "VND",
       period: "month",
       periodSales: 15000000,
+      periodCogs: 6000000,
       periodPayments: 12000000,
       periodPurchases: 6000000,
       periodSupplierPayments: 5000000,

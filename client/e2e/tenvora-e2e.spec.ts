@@ -118,6 +118,57 @@ async function businessFixture(page: Page) {
 }
 
 test.describe("Tenvora 2.0 golden workflow", () => {
+  test("keeps the Agent page and assistant drawer on the same live conversation", async ({ page }) => {
+    await businessFixture(page);
+    const conversationId = "11111111-1111-1111-1111-111111111111";
+    const messages: any[] = [
+      { id: "seed-assistant", role: "assistant", content: "Shared conversation ready.", createdAt: now },
+    ];
+    let sequence = 0;
+
+    await page.route("**/api/ai/assistant/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+      if (path.endsWith("/conversations") && request.method() === "GET") {
+        await route.fulfill({ json: { success: true, data: [{ id: conversationId, title: "Shared operations", createdAt: now, updatedAt: now, messageCount: messages.length, lastMessage: messages.at(-1)?.content }] } });
+        return;
+      }
+      if (path.endsWith(`/conversations/${conversationId}`) && request.method() === "GET") {
+        await route.fulfill({ json: { success: true, data: { id: conversationId, title: "Shared operations", createdAt: now, updatedAt: now, messages } } });
+        return;
+      }
+      if (path.endsWith("/agent-chat") && request.method() === "POST") {
+        const input = request.postDataJSON();
+        sequence++;
+        messages.push({ id: `user-${sequence}`, role: "user", content: input.message, createdAt: now });
+        const reply = `Synced reply ${sequence}`;
+        messages.push({ id: `assistant-${sequence}`, role: "assistant", content: reply, createdAt: now });
+        await route.fulfill({ json: { success: true, data: { conversationId, messageId: `assistant-${sequence}`, reply, toolCalls: [], provider: "test", model: "test", isFallback: false } } });
+        return;
+      }
+      await route.fulfill({ json: { success: true, data: [] } });
+    });
+
+    await page.goto(`/agent?id=${conversationId}`);
+    await expect(page.getByText("Shared conversation ready.", { exact: true })).toBeVisible();
+    const pageComposer = page.getByPlaceholder(/Ask or tell Tenvora Agent/i);
+    await pageComposer.fill("Message from full page");
+    await pageComposer.press("Enter");
+    await expect(page.getByText("Synced reply 1", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "AI Assistant" }).last().click();
+    const drawer = page.getByRole("complementary", { name: "Tenvora Agent Drawer" });
+    await expect(drawer.getByText("Message from full page", { exact: true })).toBeVisible();
+    const drawerComposer = drawer.getByPlaceholder(/Message Tenvora Agent/i);
+    await drawerComposer.fill("Message from drawer");
+    await drawerComposer.press("Enter");
+    await expect(drawer.getByText("Synced reply 2", { exact: true })).toBeVisible();
+    await drawer.getByRole("button", { name: "Close" }).click();
+
+    await expect(page.getByText("Message from drawer", { exact: true })).toBeVisible();
+    await expect(page.getByText("Synced reply 2", { exact: true })).toBeVisible();
+  });
+
   test("previews and imports a customer CSV without manual entry", async ({ page }) => {
     await businessFixture(page);
     await page.goto("/imports?type=customers");

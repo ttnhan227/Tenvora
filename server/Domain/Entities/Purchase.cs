@@ -54,6 +54,10 @@ public sealed class PurchasePayment
     [MaxLength(128)] public string RequestHash { get; set; } = default!;
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsReversed { get; set; } = false;
+    public DateTime? ReversedAt { get; set; }
+    public Guid? ReversedByUserId { get; set; }
+    [MaxLength(500)] public string? ReversalReason { get; set; }
     public Purchase? Purchase { get; set; }
     public Supplier? Supplier { get; set; }
 }

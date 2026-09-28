@@ -20,6 +20,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<PurchasePayment> PurchasePayments => Set<PurchasePayment>();
     public DbSet<BusinessExpense> BusinessExpenses => Set<BusinessExpense>();
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
     public DbSet<AiAction> AiActions => Set<AiAction>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiConversationMessage> AiConversationMessages => Set<AiConversationMessage>();
@@ -142,6 +143,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.StockQuantity).HasPrecision(18, 4).HasDefaultValue(0m);
             entity.Property(e => e.MinStockLevel).HasPrecision(18, 4);
             entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.TrackInventory).HasDefaultValue(true);
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.HasIndex(e => new { e.TenantId, e.Name });
             entity.HasIndex(e => new { e.TenantId, e.Sku }).IsUnique();
@@ -181,6 +184,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Unit).HasMaxLength(40).IsRequired();
             entity.Property(e => e.Quantity).HasPrecision(18, 4);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 4);
+            entity.Property(e => e.UnitCost).HasPrecision(18, 4);
             entity.Property(e => e.LineTotal).HasPrecision(18, 4);
             entity.HasOne(e => e.Sale).WithMany(s => s.Items).HasPrincipalKey(s => new { s.TenantId, s.Id })
                 .HasForeignKey(e => new { e.TenantId, e.SaleId }).OnDelete(DeleteBehavior.Cascade);
@@ -201,6 +205,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.IsReversed).HasDefaultValue(false);
+            entity.Property(e => e.ReversalReason).HasMaxLength(500);
             entity.HasOne(e => e.Sale).WithMany(s => s.Payments).HasPrincipalKey(s => new { s.TenantId, s.Id, s.CustomerId })
                 .HasForeignKey(e => new { e.TenantId, e.SaleId, e.CustomerId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Customer).WithMany(c => c.Payments).HasPrincipalKey(c => new { c.TenantId, c.Id })
@@ -208,6 +214,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.CustomerId, e.PaidAt });
             entity.HasIndex(e => new { e.TenantId, e.SaleId, e.PaidAt });
+            entity.HasIndex(e => new { e.TenantId, e.IsReversed });
             entity.ToTable(t => t.HasCheckConstraint("CK_BusinessPayments_Amount_Positive", "\"Amount\" > 0"));
         });
 
@@ -272,13 +279,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.IsReversed).HasDefaultValue(false);
+            entity.Property(e => e.ReversalReason).HasMaxLength(500);
             entity.HasOne(e => e.Purchase).WithMany(p => p.Payments).HasPrincipalKey(p => new { p.TenantId, p.Id, p.SupplierId })
                 .HasForeignKey(e => new { e.TenantId, e.PurchaseId, e.SupplierId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Supplier).WithMany(s => s.Payments).HasPrincipalKey(s => new { s.TenantId, s.Id })
                 .HasForeignKey(e => new { e.TenantId, e.SupplierId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.PurchaseId, e.PaidAt });
+            entity.HasIndex(e => new { e.TenantId, e.IsReversed });
             entity.ToTable(t => t.HasCheckConstraint("CK_PurchasePayments_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        modelBuilder.Entity<StockAdjustment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.QuantityBefore).HasPrecision(18, 4);
+            entity.Property(e => e.AdjustmentQuantity).HasPrecision(18, 4);
+            entity.Property(e => e.QuantityAfter).HasPrecision(18, 4);
+            entity.Property(e => e.Reason).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasOne(e => e.Product).WithMany(p => p.StockAdjustments).HasPrincipalKey(p => new { p.TenantId, p.Id })
+                .HasForeignKey(e => new { e.TenantId, e.ProductId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.TenantId, e.ProductId });
+            entity.HasIndex(e => new { e.TenantId, e.AdjustedAt });
+            entity.ToTable(t => t.HasCheckConstraint("CK_StockAdjustments_NonNegativeAfter", "\"QuantityAfter\" >= 0"));
         });
 
         modelBuilder.Entity<BusinessExpense>(entity =>

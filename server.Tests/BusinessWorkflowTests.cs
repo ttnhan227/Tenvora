@@ -5,6 +5,7 @@ using Tenvora.Api.Controllers;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Models;
 using Tenvora.Api.Services;
+using Tenvora.Api.Domain.Entities;
 using Xunit;
 
 namespace Tenvora.Tests;
@@ -375,5 +376,284 @@ public sealed class BusinessWorkflowTests
 
         var list = await service.GetBusinessExpensesAsync(tenantId, null, null, null, null);
         Assert.Empty(list.Data!);
+    }
+
+    [Fact]
+    public async Task NegativeStockPreventionRejectsSaleWhenStockIsInsufficient()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Stock", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId,
+            new("Physical Item", "PHYS-01", "pcs", 100m, null, CostPrice: 40m, StockQuantity: 5m, TrackInventory: true))).Data!;
+
+        // Attempt to sell 6 when stock is 5
+        var failSale = await service.CreateSaleAsync(tenantId, "fail-stock-1",
+            new(cust.Id, [new(prod.Id, 6m, 100m)]));
+        Assert.False(failSale.Success);
+        Assert.Contains("Insufficient stock", failSale.Message);
+
+        // Sell 4 when stock is 5 -> Succeeds, stock becomes 1
+        var okSale = await service.CreateSaleAsync(tenantId, "ok-stock-1",
+            new(cust.Id, [new(prod.Id, 4m, 100m)]));
+        Assert.True(okSale.Success);
+
+        var afterSale = (await service.GetProductAsync(tenantId, prod.Id)).Data!;
+        Assert.Equal(1m, afterSale.StockQuantity);
+    }
+
+    [Fact]
+    public async Task HistoricalCogsSnapshotAndGroundedNetProfitCalculationsWork()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Profit", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId,
+            new("Widget Cost", null, "pcs", 200m, null, CostPrice: 80m, StockQuantity: 10m, TrackInventory: true))).Data!;
+
+        // Sell 2 units at $200 each (Revenue $400, COGS $160)
+        var sale = (await service.CreateSaleAsync(tenantId, "sale-cogs-1",
+            new(cust.Id, [new(prod.Id, 2m, 200m)], PaymentAmount: 400m))).Data!;
+
+        Assert.Equal(80m, sale.Items[0].UnitCost);
+
+        // Later supplier purchase or product cost changes to $100
+        await service.UpdateProductAsync(tenantId, prod.Id,
+            new("Widget Cost", null, "pcs", 200m, CostPrice: 100m, IsActive: true));
+
+        // Sale item historical cost snapshot must remain $80
+        var reloadedSale = (await service.GetSaleAsync(tenantId, sale.Id)).Data!;
+        Assert.Equal(80m, reloadedSale.Items[0].UnitCost);
+
+        // Add $50 expense
+        await service.CreateBusinessExpenseAsync(tenantId, "exp-profit-1",
+            new("Shipping", 50m, ExpenseDate: DateTime.UtcNow));
+
+        // Dashboard profit check: Revenue ($400) - COGS ($160) - Expenses ($50) = Net Profit ($190)
+        var dash = (await service.GetDashboardAsync(tenantId, "month")).Data!;
+        Assert.Equal(400m, dash.PeriodSales);
+        Assert.Equal(160m, dash.PeriodCogs);
+        Assert.Equal(50m, dash.PeriodExpenses);
+        Assert.Equal(190m, dash.PeriodNetProfit);
+    }
+
+    [Fact]
+    public async Task PaymentReversalRestoresBalancesAndPreventsDoubleReversal()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Rev", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId, new("Item Rev", null, "pcs", 100m, null))).Data!;
+
+        var sale = (await service.CreateSaleAsync(tenantId, "sale-rev-1",
+            new(cust.Id, [new(prod.Id, 1m, 100m)], PaymentAmount: 40m))).Data!;
+
+        Assert.Equal(60m, sale.OutstandingBalance);
+        var paymentId = sale.Payments[0].Id;
+
+        // Reverse the $40 payment
+        var revRes = await service.ReverseSalePaymentAsync(tenantId, sale.Id, paymentId, null, new("Customer bounced check"));
+        Assert.True(revRes.Success);
+        Assert.Equal(100m, revRes.Data!.OutstandingBalance);
+        Assert.Equal(0m, revRes.Data.PaidAmount);
+
+        var reversedPayment = revRes.Data.Payments.First(p => p.Id == paymentId);
+        Assert.True(reversedPayment.IsReversed);
+        Assert.Equal("Customer bounced check", reversedPayment.ReversalReason);
+        Assert.NotNull(reversedPayment.ReversedAt);
+
+        // Customer balance should now reflect $100 owed
+        var custAfter = (await service.GetCustomerAsync(tenantId, cust.Id)).Data!;
+        Assert.Equal(100m, custAfter.Customer.OutstandingBalance);
+
+        // Attempting to reverse again should fail
+        var secondRev = await service.ReverseSalePaymentAsync(tenantId, sale.Id, paymentId, null, new("Double reversal attempt"));
+        Assert.False(secondRev.Success);
+        Assert.Contains("already been reversed", secondRev.Message);
+    }
+
+    [Fact]
+    public async Task VoidSaleWithPaymentReversalsAndStockRestorationWorks()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Void", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId,
+            new("Item Void", null, "pcs", 100m, null, StockQuantity: 10m, TrackInventory: true))).Data!;
+
+        var sale = (await service.CreateSaleAsync(tenantId, "sale-to-void",
+            new(cust.Id, [new(prod.Id, 3m, 100m)], PaymentAmount: 150m))).Data!;
+
+        // Stock decreased to 7
+        Assert.Equal(7m, (await service.GetProductAsync(tenantId, prod.Id)).Data!.StockQuantity);
+
+        // Void the sale with payment reversal
+        var voidRes = await service.VoidSaleAsync(tenantId, sale.Id, null,
+            new VoidSaleRequest(ReversePayments: true, Reason: "Order cancelled"));
+        Assert.True(voidRes.Success);
+        Assert.Equal(SaleStatuses.Voided, voidRes.Data!.Status);
+        Assert.Equal(0m, voidRes.Data.OutstandingBalance);
+
+        // Stock restored back to 10
+        Assert.Equal(10m, (await service.GetProductAsync(tenantId, prod.Id)).Data!.StockQuantity);
+
+        // Attached payment is reversed
+        var voidedPayment = voidRes.Data.Payments.First();
+        Assert.True(voidedPayment.IsReversed);
+    }
+
+    [Fact]
+    public async Task SafeVoidPurchaseRejectsWhenStockAlreadySold()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var supp = (await service.CreateSupplierAsync(tenantId, new("Supplier Safe", null, null, null, null))).Data!;
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Safe", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId,
+            new("Safe Item", null, "pcs", 100m, null, StockQuantity: 0m, TrackInventory: true))).Data!;
+
+        // Purchase 10 units
+        var purch = (await service.CreatePurchaseAsync(tenantId, "purch-safe-1",
+            new(supp.Id, [new("Safe Item", "pcs", 10m, 50m, ProductId: prod.Id)]))).Data!;
+        Assert.Equal(10m, (await service.GetProductAsync(tenantId, prod.Id)).Data!.StockQuantity);
+
+        // Sell 8 units -> stock is 2
+        var sale = await service.CreateSaleAsync(tenantId, "sale-safe-1",
+            new(cust.Id, [new(prod.Id, 8m, 100m)]));
+        Assert.True(sale.Success);
+        Assert.Equal(2m, (await service.GetProductAsync(tenantId, prod.Id)).Data!.StockQuantity);
+
+        // Void purchase attempts to return 10 units, but only 2 remain -> must be rejected
+        var voidPurch = await service.VoidPurchaseAsync(tenantId, purch.Id, null,
+            new VoidPurchaseRequest(ReversePayments: true, Reason: "Defective shipment"));
+        Assert.False(voidPurch.Success);
+        Assert.Contains("Cannot void purchase", voidPurch.Message);
+        Assert.Contains("already been sold", voidPurch.Message);
+    }
+
+    [Fact]
+    public async Task StockAdjustmentLifecycleAndNegativeStockPreventionWork()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var prod = (await service.CreateProductAsync(tenantId,
+            new("Adj Item", null, "pcs", 50m, null, StockQuantity: 10m, TrackInventory: true))).Data!;
+
+        // Adjust -3 (Damaged) -> stock becomes 7
+        var adj1 = await service.CreateStockAdjustmentAsync(tenantId, null,
+            new(prod.Id, -3m, "damaged", "Broken during unloading"));
+        Assert.True(adj1.Success);
+        Assert.Equal(10m, adj1.Data!.QuantityBefore);
+        Assert.Equal(7m, adj1.Data.QuantityAfter);
+        Assert.Equal(-3m, adj1.Data.AdjustmentQuantity);
+
+        // Adjust +5 (Count correction) -> stock becomes 12
+        var adj2 = await service.CreateStockAdjustmentAsync(tenantId, null,
+            new(prod.Id, 5m, "count_correction", "Found in shelf B"));
+        Assert.True(adj2.Success);
+        Assert.Equal(12m, adj2.Data!.QuantityAfter);
+
+        // Attempting to adjust -15 (Shrinkage) when only 12 in stock -> rejected
+        var adjFail = await service.CreateStockAdjustmentAsync(tenantId, null,
+            new(prod.Id, -15m, "shrinkage", "Theft report"));
+        Assert.False(adjFail.Success);
+        Assert.Contains("cannot become negative", adjFail.Message);
+
+        // History check
+        var history = await service.GetStockAdjustmentsAsync(tenantId, prod.Id);
+        Assert.True(history.Success);
+        Assert.Equal(2, history.Data!.Count);
+    }
+
+    [Fact]
+    public async Task CustomerStatementCalculatesRunningBalancesAccurately()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Customer Statement", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId, new("Item Stmt", null, "pcs", 100m, null))).Data!;
+
+        // Sale 1: $200 (Paid $50) -> outstanding $150
+        var s1 = (await service.CreateSaleAsync(tenantId, "sale-stmt-1",
+            new(cust.Id, [new(prod.Id, 2m, 100m)], PaymentAmount: 50m, SoldAt: DateTime.UtcNow.AddDays(-2)))).Data!;
+
+        // Later payment: $50
+        await service.RecordPaymentAsync(tenantId, s1.Id, "pay-stmt-1", new(50m, "Bank transfer"));
+
+        // Sale 2: $100 (Unpaid)
+        await service.CreateSaleAsync(tenantId, "sale-stmt-2",
+            new(cust.Id, [new(prod.Id, 1m, 100m)], PaymentAmount: 0m, SoldAt: DateTime.UtcNow.AddDays(-1)));
+
+        var statement = (await service.GetCustomerStatementAsync(tenantId, cust.Id, null, null)).Data!;
+        Assert.Equal(300m, statement.TotalDebits);
+        Assert.Equal(100m, statement.TotalCredits);
+        Assert.Equal(200m, statement.ClosingBalance);
+        Assert.Equal(4, statement.Entries.Count); // Sale 1 debit ($200), Pay 1 credit ($50), Pay 2 credit ($50), Sale 2 debit ($100)
+    }
+
+    [Fact]
+    public async Task ServerSidePaginationReturnsAccurateMetadata()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+
+        // Seed 15 customers
+        for (int i = 1; i <= 15; i++)
+        {
+            await service.CreateCustomerAsync(tenantId, new($"Client {i:D2}", null, null, null, null));
+        }
+
+        // Page 1, size 10
+        var p1 = (await service.GetCustomersPagedAsync(tenantId, null, null, 1, 10)).Data!;
+        Assert.Equal(10, p1.Items.Count);
+        Assert.Equal(15, p1.TotalCount);
+        Assert.Equal(2, p1.TotalPages);
+        Assert.Equal(1, p1.Page);
+
+        // Page 2, size 10
+        var p2 = (await service.GetCustomersPagedAsync(tenantId, null, null, 2, 10)).Data!;
+        Assert.Equal(5, p2.Items.Count);
+        Assert.Equal(15, p2.TotalCount);
+    }
+
+    [Fact]
+    public async Task DeleteProductPermanentlyRemovesUnusedProduct()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var product = (await service.CreateProductAsync(tenantId, new("Unused item", null, "pcs", 25m, null))).Data!;
+
+        var result = await service.DeleteProductAsync(tenantId, product.Id);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data!.DeletedPermanently);
+        Assert.False(result.Data.Archived);
+        Assert.Null(await db.Products.FindAsync([product.Id], TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DeleteProductArchivesProductReferencedByFinancialHistory()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var (customerId, productId) = await SeedCustomerAndProduct(service, tenantId);
+        var sale = await service.CreateSaleAsync(tenantId, "product-delete-history",
+            new(customerId, [new(productId, 1m, 180_000m)]));
+        Assert.True(sale.Success);
+
+        var result = await service.DeleteProductAsync(tenantId, productId);
+
+        Assert.True(result.Success);
+        Assert.False(result.Data!.DeletedPermanently);
+        Assert.True(result.Data.Archived);
+        Assert.False((await db.Products.SingleAsync(p => p.Id == productId, TestContext.Current.CancellationToken)).IsActive);
+        Assert.Single(await db.SaleItems.Where(i => i.ProductId == productId).ToListAsync(TestContext.Current.CancellationToken));
     }
 }

@@ -573,6 +573,39 @@ Output JSON only.";
                 : string.Join("\n", matches.Select(c => $"- {c.Name}: {c.OutstandingBalance:N0} {currency}"));
         }
 
+        if (Regex.IsMatch(lower, @"\b(profit|net profit|margin|lợi nhuận|lãi|lãi lỗ)\b"))
+        {
+            var periodName = lower.Contains("week") || lower.Contains("tuần") ? "week"
+                : lower.Contains("month") || lower.Contains("tháng") ? "month"
+                : lower.Contains("year") || lower.Contains("năm") ? "year"
+                : "today";
+            var dashP = (await _businessService.GetDashboardAsync(tenantId, periodName)).Data;
+            if (dashP != null)
+            {
+                var periodText = periodName switch
+                {
+                    "week" => vietnamese ? "tuần này" : "this week",
+                    "month" => vietnamese ? "tháng này" : "this month",
+                    "year" => vietnamese ? "năm nay" : "this year",
+                    _ => vietnamese ? "hôm nay" : "today"
+                };
+                return vietnamese
+                    ? $"Lợi nhuận ước tính ({periodText}): {dashP.PeriodNetProfit:N0} {currency}\n- Doanh thu: {dashP.PeriodSales:N0} {currency}\n- Giá vốn hàng bán (COGS): {dashP.PeriodCogs:N0} {currency}\n- Chi phí hoạt động: {dashP.PeriodExpenses:N0} {currency}"
+                    : $"Estimated net profit ({periodText}): {dashP.PeriodNetProfit:N0} {currency}\n- Revenue: {dashP.PeriodSales:N0} {currency}\n- Cost of Goods Sold (COGS): {dashP.PeriodCogs:N0} {currency}\n- Operating Expenses: {dashP.PeriodExpenses:N0} {currency}";
+            }
+        }
+
+        if (Regex.IsMatch(lower, @"\b(adjustment|adjustments|shrinkage|spoilage|damaged|hao hụt|hư hỏng|kiểm kê|điều chỉnh kho)\b"))
+        {
+            var adjustments = (await _businessService.GetStockAdjustmentsAsync(tenantId, null)).Data ?? [];
+            if (adjustments.Count == 0)
+                return vietnamese ? "Chưa có phiếu điều chỉnh tồn kho nào." : "There are no stock adjustment records.";
+            var recent = adjustments.Take(5).Select(a => $"- {a.ProductName}: {(a.AdjustmentQuantity > 0 ? "+" : "")}{a.AdjustmentQuantity:G29} ({a.Reason}) — Còn: {a.QuantityAfter:G29}");
+            return vietnamese
+                ? $"Gần đây có {adjustments.Count} lần điều chỉnh tồn kho:\n{string.Join("\n", recent)}"
+                : $"Recent {adjustments.Count} stock adjustments:\n{string.Join("\n", recent)}";
+        }
+
         return null;
     }
 

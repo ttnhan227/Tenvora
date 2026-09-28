@@ -5,6 +5,7 @@ import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Users, Wall
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
+import { PaginationBar } from "@/components/business/PaginationBar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,30 +51,43 @@ export default function CustomersPage() {
   const [params] = useSearchParams();
   const returnTo = params.get("returnTo");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Archived" | "all">("Active");
   const [debtFilter, setDebtFilter] = useState<"all" | "has_debt" | "zero_balance">("all");
   const [dialogOpen, setDialogOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<BusinessCustomer | null>(null);
   const [form, setForm] = useState<CustomerInput>(emptyCustomer);
 
-  const { data = [], isLoading } = useQuery({
-    queryKey: ["business-customers", search],
-    queryFn: () => businessService.getCustomers(search),
+  const { data: pagedData, isLoading } = useQuery({
+    queryKey: ["business-customers-paged", search, statusFilter, page],
+    queryFn: () =>
+      businessService.getCustomersPaged(
+        search,
+        statusFilter === "all" ? undefined : statusFilter,
+        page,
+        pageSize
+      ),
   });
 
-  const filteredCustomers = data.filter((c) => {
+  const rawCustomers = pagedData?.items ?? [];
+  const totalCount = pagedData?.totalCount ?? 0;
+
+  const filteredCustomers = rawCustomers.filter((c) => {
     if (debtFilter === "has_debt") return c.outstandingBalance > 0;
     if (debtFilter === "zero_balance") return c.outstandingBalance <= 0;
     return true;
   });
 
-  const totalOutstanding = data.reduce((acc, curr) => acc + curr.outstandingBalance, 0);
-  const currency = data[0]?.currency ?? "USD";
+  const totalOutstanding = rawCustomers.reduce((acc, curr) => acc + curr.outstandingBalance, 0);
+  const currency = rawCustomers[0]?.currency ?? "USD";
 
   const save = useMutation({
     mutationFn: () =>
       editing ? businessService.updateCustomer(editing.id, form) : businessService.createCustomer(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       setDialogOpen(false);
       toast.success(
         editing
@@ -149,7 +163,7 @@ export default function CustomersPage() {
           actions={
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=customers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>
-              {data.length > 0 && (
+              {rawCustomers.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
@@ -164,23 +178,71 @@ export default function CustomersPage() {
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex max-w-2xl flex-1 flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
+          <div className="flex max-w-3xl flex-1 flex-wrap gap-3 sm:items-center">
+            <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
                 placeholder={isVietnamese ? "Tìm theo tên, điện thoại hoặc email" : "Search by name, phone, or email"}
                 className="pl-9"
               />
             </div>
 
+            <div className="flex rounded-lg border bg-muted/30 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("Active");
+                  setPage(1);
+                }}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  statusFilter === "Active"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isVietnamese ? "Đang giao dịch" : "Active"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("Archived");
+                  setPage(1);
+                }}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  statusFilter === "Archived"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isVietnamese ? "Đã lưu trữ" : "Archived"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setPage(1);
+                }}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  statusFilter === "all"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isVietnamese ? "Tất cả" : "All"}
+              </button>
+            </div>
+
             <Select value={debtFilter} onValueChange={(val: any) => setDebtFilter(val)}>
-              <SelectTrigger className="sm:w-52">
+              <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{isVietnamese ? "Tất cả khách hàng" : "All customers"}</SelectItem>
+                <SelectItem value="all">{isVietnamese ? "Tất cả công nợ" : "All debt status"}</SelectItem>
                 <SelectItem value="has_debt">
                   {isVietnamese ? "Đang có nợ phải thu" : "Customers with debt"}
                 </SelectItem>
@@ -285,6 +347,12 @@ export default function CustomersPage() {
                 </div>
               ))}
             </div>
+            <PaginationBar
+              currentPage={page}
+              totalItems={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

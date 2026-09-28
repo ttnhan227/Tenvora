@@ -1,10 +1,25 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileUp, Minus, PackageOpen, PackagePlus, Plus, Search, Truck, WalletCards } from "lucide-react";
+import {
+  Ban,
+  Download,
+  FileUp,
+  Minus,
+  PackageOpen,
+  PackagePlus,
+  Plus,
+  Search,
+  Truck,
+  Undo2,
+  WalletCards,
+} from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
+import { PaginationBar } from "@/components/business/PaginationBar";
+import { PaymentReversalModal } from "@/components/business/PaymentReversalModal";
+import { VoidDocumentModal } from "@/components/business/VoidDocumentModal";
 import { exportToCsv } from "@/lib/csvExport";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +67,9 @@ export default function PurchasesPage() {
   const qc = useQueryClient();
   const [params] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
   const [open, setOpen] = useState(params.get("create") === "1");
   const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<Line[]>([line()]);
@@ -60,6 +78,18 @@ export default function PurchasesPage() {
   const [notes, setNotes] = useState("");
   const [paying, setPaying] = useState<Purchase | null>(null);
   const [payAmount, setPayAmount] = useState(0);
+
+  // Reversal & Void state
+  const [reversingPayment, setReversingPayment] = useState<{
+    purchaseId: string;
+    paymentId: string;
+    amount: number;
+    currency: string;
+    method: string;
+    purchaseNumber: string;
+  } | null>(null);
+  const [voidingPurchase, setVoidingPurchase] = useState<Purchase | null>(null);
+
   const suppliers = useQuery({
     queryKey: ["suppliers", "active"],
     queryFn: () => businessService.getSuppliers(),
@@ -69,9 +99,12 @@ export default function PurchasesPage() {
     queryFn: () => businessService.getProducts("", true),
   });
   const purchases = useQuery({
-    queryKey: ["purchases", search],
-    queryFn: () => businessService.getPurchases(search),
+    queryKey: ["purchases-paged", search, page],
+    queryFn: () => businessService.getPurchasesPaged(search, undefined, undefined, undefined, page, pageSize),
   });
+  const purchaseItems = purchases.data?.items ?? [];
+  const totalCount = purchases.data?.totalCount ?? 0;
+
   const total = useMemo(
     () => items.reduce((s, i) => s + i.quantity * i.unitCost, 0),
     [items],
@@ -79,8 +112,10 @@ export default function PurchasesPage() {
   const currency = suppliers.data?.[0]?.currency ?? "USD";
   const refresh = () =>
     Promise.all([
+      qc.invalidateQueries({ queryKey: ["purchases-paged"] }),
       qc.invalidateQueries({ queryKey: ["purchases"] }),
       qc.invalidateQueries({ queryKey: ["suppliers"] }),
+      qc.invalidateQueries({ queryKey: ["products"] }),
       qc.invalidateQueries({ queryKey: ["business-dashboard"] }),
     ]);
   const create = useMutation({
@@ -120,7 +155,7 @@ export default function PurchasesPage() {
     setItems(items.map((v, x) => (x === i ? { ...v, ...p } : v)));
 
   const handleExportCsv = () => {
-    if (!purchases.data || purchases.data.length === 0) return;
+    if (purchaseItems.length === 0) return;
     exportToCsv(
       `purchases-${new Date().toISOString().split("T")[0]}`,
       [
@@ -133,8 +168,20 @@ export default function PurchasesPage() {
         { header: isVietnamese ? "Còn nợ" : "Outstanding Balance", accessor: (p) => p.outstandingBalance },
         { header: isVietnamese ? "Trạng thái thanh toán" : "Payment Status", accessor: (p) => p.paymentStatus },
       ],
-      purchases.data
+      purchaseItems
     );
+  };
+
+  const handleReversePayment = async (reason: string) => {
+    if (!reversingPayment) return;
+    await businessService.reversePurchasePayment(reversingPayment.purchaseId, reversingPayment.paymentId, reason);
+    await refresh();
+  };
+
+  const handleVoidPurchase = async (options: { reversePayments: boolean; reason?: string }) => {
+    if (!voidingPurchase) return;
+    await businessService.voidPurchase(voidingPurchase.id, options);
+    await refresh();
   };
 
   return (
@@ -147,7 +194,7 @@ export default function PurchasesPage() {
           actions={
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=purchases"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import bills"}</Link></Button>
-              {(purchases.data ?? []).length > 0 && (
+              {purchaseItems.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
@@ -165,63 +212,145 @@ export default function PurchasesPage() {
           <Input
             className="pl-9"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder={isVietnamese ? "Tìm nhà cung cấp, mặt hàng hoặc mã nhập" : "Search supplier, item, or purchase number"}
           />
         </div>
         {purchases.isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ nhập hàng…" : "Opening your purchase records…"} />
-        ) : (purchases.data ?? []).length === 0 ? (
+        ) : purchaseItems.length === 0 ? (
           <EmptyState icon={PackageOpen} title={search ? (isVietnamese ? "Không tìm thấy lần nhập phù hợp" : "No purchases match that search") : (isVietnamese ? "Chưa có lần nhập hàng" : "No purchases yet")} description={search ? (isVietnamese ? "Hãy thử nhà cung cấp, mặt hàng hoặc mã nhập khác." : "Try a supplier, item, or purchase number.") : (isVietnamese ? "Thêm nhà cung cấp, sau đó ghi hàng đã mua và tình trạng thanh toán." : "Add a supplier first, then record what the business bought and whether it was paid.")} action={!search && <Button onClick={() => setOpen(true)}>{isVietnamese ? "Ghi lần nhập đầu tiên" : "Record first purchase"}</Button>} />
         ) : (
-          <div className="space-y-3">
-            {purchases.data!.map((p) => (
-              <article key={p.id} className="paper-card p-5 transition-colors hover:border-primary/25 sm:p-6">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row">
-                  <div>
-                    <div className="flex items-center gap-2"><p className="text-xs font-semibold text-muted-foreground">{p.purchaseNumber}</p><StatusPill status={p.paymentStatus} /></div>
-                    <h2 className="mt-2 text-lg font-semibold">
-                      {p.supplierName}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {p.items
-                        .map((i) => `${i.quantity} ${i.unit} ${i.description}`)
-                        .join(" · ")}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {new Date(p.purchasedAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="sm:text-right">
-                    <p className="text-xl font-semibold">
-                      {businessMoney(p.totalAmount, p.currency)}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {isVietnamese ? "Đã trả" : "Paid"} {businessMoney(p.paidAmount, p.currency)}
-                    </p>
-                    {p.outstandingBalance > 0 && (
-                      <>
-                        <p className="mt-1 font-semibold text-amber-600">
-                          {isVietnamese ? "Còn nợ" : "Owed"} {businessMoney(p.outstandingBalance, p.currency)}
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {purchaseItems.map((p) => {
+                const isVoided = p.status === "Voided";
+                return (
+                  <article
+                    key={p.id}
+                    className={`paper-card p-5 transition-colors sm:p-6 ${
+                      isVoided ? "opacity-60 bg-muted/20 border-dashed" : "hover:border-primary/25"
+                    }`}
+                  >
+                    <div className="flex flex-col justify-between gap-4 sm:flex-row">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-muted-foreground">{p.purchaseNumber}</p>
+                          <StatusPill status={p.paymentStatus} />
+                        </div>
+                        <h2 className="mt-2 text-lg font-semibold">
+                          {p.supplierName}
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {p.items
+                            .map((i) => `${i.quantity} ${i.unit} ${i.description}`)
+                            .join(" · ")}
                         </p>
-                        <Button
-                          className="mt-3"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setPaying(p);
-                            setPayAmount(p.outstandingBalance);
-                          }}
-                        >
-                          <WalletCards className="mr-2 h-4 w-4" />
-                          {isVietnamese ? "Trả nhà cung cấp" : "Pay supplier"}
-                        </Button>
-                      </>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {new Date(p.purchasedAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className={`text-xl font-semibold ${isVoided ? "line-through text-muted-foreground" : ""}`}>
+                          {businessMoney(p.totalAmount, p.currency)}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {isVietnamese ? "Đã trả" : "Paid"} {businessMoney(p.paidAmount, p.currency)}
+                        </p>
+                        {p.outstandingBalance > 0 && !isVoided && (
+                          <p className="mt-1 font-semibold text-amber-600">
+                            {isVietnamese ? "Còn nợ" : "Owed"} {businessMoney(p.outstandingBalance, p.currency)}
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2 justify-end">
+                          {p.outstandingBalance > 0 && !isVoided && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setPaying(p);
+                                setPayAmount(p.outstandingBalance);
+                              }}
+                            >
+                              <WalletCards className="mr-2 h-4 w-4" />
+                              {isVietnamese ? "Trả nhà cung cấp" : "Pay supplier"}
+                            </Button>
+                          )}
+                          {!isVoided && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setVoidingPurchase(p)}
+                              className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Ban className="h-4 w-4" />
+                              {isVietnamese ? "Hủy đơn" : "Void"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {p.payments && p.payments.length > 0 && (
+                      <div className="mt-4 border-t pt-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {isVietnamese ? "Lịch sử thanh toán" : "Payment history"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {p.payments.map((payment) => (
+                            <span
+                              key={payment.id}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs ${
+                                payment.isReversed
+                                  ? "bg-destructive/10 text-muted-foreground line-through"
+                                  : "bg-secondary"
+                              }`}
+                            >
+                              <span>
+                                {businessMoney(payment.amount, payment.currency)} ·{" "}
+                                {methodLabel(payment.method)} ·{" "}
+                                {new Date(payment.paidAt).toLocaleDateString()}
+                              </span>
+                              {payment.isReversed ? (
+                                <span className="no-underline rounded bg-destructive/20 px-1 py-0.5 text-[10px] font-semibold text-destructive">
+                                  {isVietnamese ? "Đã hoàn tác" : "Reversed"}
+                                </span>
+                              ) : !isVoided ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReversingPayment({
+                                      purchaseId: p.id,
+                                      paymentId: payment.id,
+                                      amount: payment.amount,
+                                      currency: payment.currency,
+                                      method: payment.method,
+                                      purchaseNumber: p.purchaseNumber,
+                                    })
+                                  }
+                                  title={isVietnamese ? "Hoàn tác thanh toán này" : "Reverse this payment"}
+                                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                  </article>
+                );
+              })}
+            </div>
+            <PaginationBar
+              currentPage={page}
+              totalItems={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>
@@ -460,6 +589,29 @@ export default function PurchasesPage() {
           )}
         </DialogContent>
       </Dialog>
+      {reversingPayment && (
+        <PaymentReversalModal
+          open={!!reversingPayment}
+          onOpenChange={(open) => !open && setReversingPayment(null)}
+          paymentId={reversingPayment.paymentId}
+          paymentAmount={reversingPayment.amount}
+          paymentCurrency={reversingPayment.currency}
+          paymentMethod={reversingPayment.method}
+          referenceDocNumber={reversingPayment.purchaseNumber}
+          onConfirm={handleReversePayment}
+        />
+      )}
+      {voidingPurchase && (
+        <VoidDocumentModal
+          open={!!voidingPurchase}
+          onOpenChange={(open) => !open && setVoidingPurchase(null)}
+          documentType="purchase"
+          documentNumber={voidingPurchase.purchaseNumber}
+          totalAmountFormatted={businessMoney(voidingPurchase.totalAmount, voidingPurchase.currency)}
+          hasPayments={!!voidingPurchase.payments?.some((p) => !p.isReversed)}
+          onConfirm={handleVoidPurchase}
+        />
+      )}
     </DashboardLayout>
   );
 }

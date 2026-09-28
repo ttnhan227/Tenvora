@@ -65,6 +65,9 @@ public sealed class SaleItem
     public decimal UnitPrice { get; set; }
 
     [Column(TypeName = "numeric(18,4)")]
+    public decimal? UnitCost { get; set; }
+
+    [Column(TypeName = "numeric(18,4)")]
     public decimal LineTotal { get; set; }
 
     public Sale? Sale { get; set; }

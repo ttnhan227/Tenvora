@@ -10,8 +10,15 @@ namespace Tenvora.Api.Controllers;
 public sealed class ProductsController(IBusinessService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] bool? active = true) =>
-        (await service.GetProductsAsync(User.GetTenantId(), search, active)).ToActionResult();
+    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] bool? active = true,
+        [FromQuery] int? page = null, [FromQuery] int? pageSize = null)
+    {
+        if (page.HasValue)
+        {
+            return (await service.GetProductsPagedAsync(User.GetTenantId(), search, active, page.Value, pageSize ?? 20)).ToActionResult();
+        }
+        return (await service.GetProductsAsync(User.GetTenantId(), search, active)).ToActionResult();
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id) =>
@@ -24,5 +31,19 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
     [HttpPut("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
     public async Task<IActionResult> Update(Guid id, UpdateProductRequest request) =>
         (await service.UpdateProductAsync(User.GetTenantId(), id, request)).ToActionResult();
-}
 
+    [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        (await service.DeleteProductAsync(User.GetTenantId(), id)).ToActionResult();
+
+    [HttpGet("adjustments")]
+    public async Task<IActionResult> GetAdjustments([FromQuery] Guid? productId) =>
+        (await service.GetStockAdjustmentsAsync(User.GetTenantId(), productId)).ToActionResult();
+
+    [HttpPost("adjustments"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> CreateAdjustment(CreateStockAdjustmentRequest request)
+    {
+        var userId = User.GetUserId();
+        return (await service.CreateStockAdjustmentAsync(User.GetTenantId(), userId == Guid.Empty ? null : userId, request)).ToActionResult();
+    }
+}

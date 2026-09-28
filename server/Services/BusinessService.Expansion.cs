@@ -119,7 +119,10 @@ public sealed partial class BusinessService
                 return ApiResult<PurchaseDto>.Fail("Purchase quantities must be positive and costs non-negative, with at most four decimal places.");
             if (requested.ProductId.HasValue && products.TryGetValue(requested.ProductId.Value, out var prod))
             {
-                prod.StockQuantity = Money(prod.StockQuantity + requested.Quantity);
+                if (prod.TrackInventory)
+                {
+                    prod.StockQuantity = Money(prod.StockQuantity + requested.Quantity);
+                }
                 if (requested.UnitCost > 0)
                 {
                     prod.CostPrice = Money(requested.UnitCost);
@@ -161,7 +164,8 @@ public sealed partial class BusinessService
         }
         var purchase = await FindPurchase(tenantId, purchaseId, false);
         if (purchase == null) return ApiResult<PurchaseDto>.Fail("Purchase not found.");
-        var remaining = Money(purchase.TotalAmount - purchase.Payments.Sum(p => p.Amount));
+        var activePayments = purchase.Payments.Where(p => !p.IsReversed).ToList();
+        var remaining = Money(purchase.TotalAmount - activePayments.Sum(p => p.Amount));
         if (request.Amount <= 0 || request.Amount > remaining || Scale(request.Amount) > 4)
             return ApiResult<PurchaseDto>.Fail("Payment must be positive, may have at most four decimal places, and cannot exceed the outstanding balance.");
         var payment = new PurchasePayment { Id = Guid.NewGuid(), TenantId = tenantId, PurchaseId = purchase.Id,
@@ -177,23 +181,75 @@ public sealed partial class BusinessService
         return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
     }
 
-    public async Task<ApiResult<PurchaseDto>> VoidPurchaseAsync(Guid tenantId, Guid purchaseId)
+    public async Task<ApiResult<PurchaseDto>> ReversePurchasePaymentAsync(
+        Guid tenantId, Guid purchaseId, Guid paymentId, Guid? userId, ReversePaymentRequest request)
+    {
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        var purchase = await FindPurchase(tenantId, purchaseId, false);
+        if (purchase == null) return ApiResult<PurchaseDto>.Fail("Purchase not found.");
+        var payment = purchase.Payments.FirstOrDefault(p => p.Id == paymentId);
+        if (payment == null) return ApiResult<PurchaseDto>.Fail("Supplier payment not found on this purchase.");
+        if (payment.IsReversed) return ApiResult<PurchaseDto>.Fail("This payment has already been reversed.");
+
+        payment.IsReversed = true;
+        payment.ReversedAt = DateTime.UtcNow;
+        payment.ReversedByUserId = userId;
+        payment.ReversalReason = Clean(request.Reason) ?? "Supplier payment reversed by user";
+        purchase.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
+        return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
+    }
+
+    public async Task<ApiResult<PurchaseDto>> VoidPurchaseAsync(
+        Guid tenantId, Guid purchaseId, Guid? userId = null, VoidPurchaseRequest? request = null)
     {
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var purchase = await FindPurchase(tenantId, purchaseId, false);
         if (purchase == null) return ApiResult<PurchaseDto>.Fail("Purchase not found.");
         if (purchase.Status == "Voided") return ApiResult<PurchaseDto>.Ok(MapPurchase(purchase));
-        if (purchase.Payments.Count > 0)
-            return ApiResult<PurchaseDto>.Fail("A purchase with payments cannot be voided. Reverse or correct the payments first.");
+
+        var activePayments = purchase.Payments.Where(p => !p.IsReversed).ToList();
+        if (activePayments.Count > 0)
+        {
+            if (request == null || !request.ReversePayments)
+                return ApiResult<PurchaseDto>.Fail("A purchase with active payments cannot be voided. Reverse the payments first, or confirm void with payment reversal.");
+
+            foreach (var payment in activePayments)
+            {
+                payment.IsReversed = true;
+                payment.ReversedAt = DateTime.UtcNow;
+                payment.ReversedByUserId = userId;
+                payment.ReversalReason = Clean(request.Reason) ?? $"Reversed due to voiding purchase {purchase.PurchaseNumber}";
+            }
+        }
 
         var productIds = purchase.Items.Where(i => i.ProductId.HasValue).Select(i => i.ProductId!.Value).Distinct().ToList();
         var products = await db.Products.Where(p => p.TenantId == tenantId && productIds.Contains(p.Id)).ToListAsync();
+
+        // Check if any product has already had received units sold
         foreach (var item in purchase.Items)
         {
             if (item.ProductId.HasValue)
             {
                 var prod = products.FirstOrDefault(p => p.Id == item.ProductId.Value);
-                if (prod != null)
+                if (prod != null && prod.TrackInventory)
+                {
+                    if (prod.StockQuantity < item.Quantity)
+                    {
+                        return ApiResult<PurchaseDto>.Fail($"Cannot void purchase: Product '{prod.Name}' has only {prod.StockQuantity:0.####} in stock, but {item.Quantity:0.####} were received in this purchase. Some items have already been sold. Adjust sales or stock before voiding this purchase.");
+                    }
+                }
+            }
+        }
+
+        foreach (var item in purchase.Items)
+        {
+            if (item.ProductId.HasValue)
+            {
+                var prod = products.FirstOrDefault(p => p.Id == item.ProductId.Value);
+                if (prod != null && prod.TrackInventory)
                 {
                     prod.StockQuantity = Money(prod.StockQuantity - item.Quantity);
                     prod.UpdatedAt = DateTime.UtcNow;
@@ -323,7 +379,7 @@ public sealed partial class BusinessService
 
         var currency = await Currency(tenantId);
         var sales = await db.Sales.AsNoTracking().Where(s => s.TenantId == tenantId && s.Status == SaleStatuses.Posted)
-            .Include(s => s.Customer).Include(s => s.Payments).ToListAsync();
+            .Include(s => s.Customer).Include(s => s.Items).Include(s => s.Payments).ToListAsync();
         var purchases = await db.Purchases.AsNoTracking().Where(p => p.TenantId == tenantId && p.Status == "Posted")
             .Include(p => p.Supplier).Include(p => p.Payments).ToListAsync();
         var expenses = await db.BusinessExpenses.AsNoTracking().Where(e => e.TenantId == tenantId).ToListAsync();
@@ -336,27 +392,29 @@ public sealed partial class BusinessService
             .OrderByDescending(s => s.OutstandingBalance).Take(5).ToList();
 
         var activity = sales.Select(s => new BusinessActivityDto("Sale", s.Id, s.Customer?.Name ?? "Customer", s.SaleNumber, s.TotalAmount, s.SoldAt))
-            .Concat(sales.SelectMany(s => s.Payments.Select(p => new BusinessActivityDto("Customer payment", p.Id, s.Customer?.Name ?? "Customer", s.SaleNumber, p.Amount, p.PaidAt))))
+            .Concat(sales.SelectMany(s => s.Payments.Where(p => !p.IsReversed).Select(p => new BusinessActivityDto("Customer payment", p.Id, s.Customer?.Name ?? "Customer", s.SaleNumber, p.Amount, p.PaidAt))))
             .Concat(purchases.Select(p => new BusinessActivityDto("Purchase", p.Id, p.Supplier?.Name ?? "Supplier", p.PurchaseNumber, p.TotalAmount, p.PurchasedAt)))
-            .Concat(purchases.SelectMany(p => p.Payments.Select(x => new BusinessActivityDto("Supplier payment", x.Id, p.Supplier?.Name ?? "Supplier", p.PurchaseNumber, x.Amount, x.PaidAt))))
+            .Concat(purchases.SelectMany(p => p.Payments.Where(x => !x.IsReversed).Select(x => new BusinessActivityDto("Supplier payment", x.Id, p.Supplier?.Name ?? "Supplier", p.PurchaseNumber, x.Amount, x.PaidAt))))
             .Concat(expenses.Select(e => new BusinessActivityDto("Expense", e.Id, e.Category, e.Description ?? "Expense", e.Amount, e.ExpenseDate)))
             .OrderByDescending(a => a.OccurredAt).Take(10).ToList();
 
         var todaySalesAmount = Money(sales.Where(s => s.SoldAt >= todayStart && s.SoldAt < todayEnd).Sum(s => s.TotalAmount));
-        var todayPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
+        var todayPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => !p.IsReversed && p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
         var todayPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= todayStart && p.PurchasedAt < todayEnd).Sum(p => p.TotalAmount));
-        var todaySupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
+        var todaySupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => !p.IsReversed && p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
         var todayExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= todayStart && e.ExpenseDate < todayEnd).Sum(e => e.Amount));
 
-        var periodSalesAmount = Money(sales.Where(s => s.SoldAt >= periodStart && s.SoldAt <= periodEnd).Sum(s => s.TotalAmount));
-        var periodPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
+        var periodSalesList = sales.Where(s => s.SoldAt >= periodStart && s.SoldAt <= periodEnd).ToList();
+        var periodSalesAmount = Money(periodSalesList.Sum(s => s.TotalAmount));
+        var periodCogsAmount = Money(periodSalesList.SelectMany(s => s.Items).Where(i => i.UnitCost.HasValue).Sum(i => i.Quantity * i.UnitCost!.Value));
+        var periodPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
         var periodPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= periodStart && p.PurchasedAt <= periodEnd).Sum(p => p.TotalAmount));
-        var periodSupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
+        var periodSupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
         var periodExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= periodStart && e.ExpenseDate <= periodEnd).Sum(e => e.Amount));
-        var periodNetProfit = Money(periodSalesAmount - (periodExpensesAmount + periodPurchasesAmount));
+        var periodNetProfit = Money(periodSalesAmount - periodCogsAmount - periodExpensesAmount);
 
-        var totalOutstandingCustomers = Money(sales.Sum(s => s.TotalAmount - s.Payments.Sum(p => p.Amount)));
-        var totalOutstandingSuppliers = Money(purchases.Sum(p => p.TotalAmount - p.Payments.Sum(x => x.Amount)));
+        var totalOutstandingCustomers = Money(sales.Sum(s => s.TotalAmount - s.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)));
+        var totalOutstandingSuppliers = Money(purchases.Sum(p => p.TotalAmount - p.Payments.Where(x => !x.IsReversed).Sum(x => x.Amount)));
 
         return ApiResult<BusinessDashboardDto>.Ok(new(
             currency,
@@ -372,6 +430,7 @@ public sealed partial class BusinessService
             activity,
             normalizedPeriod,
             periodSalesAmount,
+            periodCogsAmount,
             periodPaymentsAmount,
             periodPurchasesAmount,
             periodSupplierPaymentsAmount,
@@ -388,10 +447,10 @@ public sealed partial class BusinessService
     }
     private static SupplierDto MapSupplier(Supplier s, string currency) => MapDashboardSupplier(s, s.Purchases.Where(p => p.Status == "Posted").ToList(), currency);
     private static SupplierDto MapDashboardSupplier(Supplier s, List<Purchase> purchases, string currency)
-    { var total = Money(purchases.Sum(p => p.TotalAmount)); var paid = Money(purchases.SelectMany(p => p.Payments).Sum(p => p.Amount)); return new(s.Id, s.Name, s.Phone, s.Email, s.Address, s.Notes, s.Status, currency, total, paid, Money(total - paid), purchases.Count, s.CreatedAt); }
+    { var total = Money(purchases.Sum(p => p.TotalAmount)); var paid = Money(purchases.SelectMany(p => p.Payments.Where(p => !p.IsReversed)).Sum(p => p.Amount)); return new(s.Id, s.Name, s.Phone, s.Email, s.Address, s.Notes, s.Status, currency, total, paid, Money(total - paid), purchases.Count, s.CreatedAt); }
     private static BusinessCustomerDto MapDashboardCustomer(Customer c, List<Sale> sales, string currency)
-    { var total = Money(sales.Sum(s => s.TotalAmount)); var paid = Money(sales.SelectMany(s => s.Payments).Sum(p => p.Amount)); return new(c.Id, c.Name, c.Phone, c.Email, c.Address, c.Notes, c.Status, currency, total, paid, Money(total - paid), sales.Count, c.CreatedAt); }
+    { var total = Money(sales.Sum(s => s.TotalAmount)); var paid = Money(sales.SelectMany(s => s.Payments.Where(p => !p.IsReversed)).Sum(p => p.Amount)); return new(c.Id, c.Name, c.Phone, c.Email, c.Address, c.Notes, c.Status, currency, total, paid, Money(total - paid), sales.Count, c.CreatedAt); }
     private static PurchaseDto MapPurchase(Purchase p)
-    { var paid = Money(p.Payments.Sum(x => x.Amount)); var balance = Money(p.TotalAmount - paid); return new(p.Id, p.PurchaseNumber, p.SupplierId, p.Supplier?.Name ?? "Supplier", p.Currency, p.TotalAmount, paid, balance, balance == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid", p.Status, p.Notes, p.PurchasedAt, p.CreatedAt, p.Items.Select(i => new PurchaseItemDto(i.Id, i.ProductId, i.Description, i.Unit, i.Quantity, i.UnitCost, i.LineTotal)).ToList(), p.Payments.OrderByDescending(x => x.PaidAt).Select(x => new PurchasePaymentDto(x.Id, x.PurchaseId, p.PurchaseNumber, x.SupplierId, x.Amount, x.Currency, x.Method, x.Reference, x.Notes, x.PaidAt)).ToList()); }
+    { var paid = Money(p.Payments.Where(x => !x.IsReversed).Sum(x => x.Amount)); var balance = p.Status == "Voided" ? 0m : Money(p.TotalAmount - paid); return new(p.Id, p.PurchaseNumber, p.SupplierId, p.Supplier?.Name ?? "Supplier", p.Currency, p.TotalAmount, paid, balance, p.Status == "Voided" ? "Voided" : balance == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid", p.Status, p.Notes, p.PurchasedAt, p.CreatedAt, p.Items.Select(i => new PurchaseItemDto(i.Id, i.ProductId, i.Description, i.Unit, i.Quantity, i.UnitCost, i.LineTotal)).ToList(), p.Payments.OrderByDescending(x => x.PaidAt).Select(x => new PurchasePaymentDto(x.Id, x.PurchaseId, p.PurchaseNumber, x.SupplierId, x.Amount, x.Currency, x.Method, x.Reference, x.Notes, x.PaidAt, x.IsReversed, x.ReversedAt, x.ReversalReason)).ToList()); }
     private static BusinessExpenseDto MapExpense(BusinessExpense e) => new(e.Id, e.Category, e.Amount, e.Currency, e.Description, e.ExpenseDate, e.CreatedAt);
 }

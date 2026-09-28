@@ -11,13 +11,24 @@ namespace Tenvora.Api.Controllers;
 public sealed class BusinessCustomersController(IBusinessService service) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] string? status = "Active") =>
-        (await service.GetCustomersAsync(User.GetTenantId(), search, status)).ToActionResult();
+    public async Task<IActionResult> Get([FromQuery] string? search, [FromQuery] string? status = "Active",
+        [FromQuery] int? page = null, [FromQuery] int? pageSize = null)
+    {
+        if (page.HasValue)
+        {
+            return (await service.GetCustomersPagedAsync(User.GetTenantId(), search, status, page.Value, pageSize ?? 20)).ToActionResult();
+        }
+        return (await service.GetCustomersAsync(User.GetTenantId(), search, status)).ToActionResult();
+    }
 
     [HttpGet("{id:guid}")]
     [HttpGet("{id:guid}/history")]
     public async Task<IActionResult> GetById(Guid id) =>
         (await service.GetCustomerAsync(User.GetTenantId(), id)).ToActionResult();
+
+    [HttpGet("{id:guid}/statement")]
+    public async Task<IActionResult> GetStatement(Guid id, [FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
+        (await service.GetCustomerStatementAsync(User.GetTenantId(), id, from, to)).ToActionResult();
 
     [HttpPost, Authorize(Roles = "TenantAdmin,OperationsManager")]
     public async Task<IActionResult> Create(CreateBusinessCustomerRequest request) =>

@@ -533,6 +533,10 @@ RULES:
                     todayPayments = d?.TodayPayments ?? 0,
                     todayExpenses = d?.TodayExpenses ?? 0,
                     todayPurchases = d?.TodayPurchases ?? 0,
+                    periodSales = d?.PeriodSales ?? 0,
+                    periodCogs = d?.PeriodCogs ?? 0,
+                    periodExpenses = d?.PeriodExpenses ?? 0,
+                    periodPurchases = d?.PeriodPurchases ?? 0,
                     estimatedNetProfit = d?.PeriodNetProfit ?? 0,
                     outstandingCustomers = d?.OutstandingCustomers ?? 0,
                     outstandingSuppliers = d?.OutstandingSuppliers ?? 0,
@@ -631,6 +635,39 @@ RULES:
                     Date = x.ExpenseDate.ToString("yyyy-MM-dd")
                 }).ToList();
                 return (exps, $"Tra cứu lịch sử chi phí ({exps.Count} khoản)", null);
+            }
+
+            case "query_purchases_history":
+            {
+                var search = args.TryGetProperty("search", out var s) ? s.GetString() ?? "" : "";
+                var purchasesResult = await _businessService.GetPurchasesAsync(tenantId, search, null, null, null);
+                var purchases = (purchasesResult.Data ?? new()).Take(10).Select(x => new
+                {
+                    x.PurchaseNumber,
+                    x.SupplierName,
+                    x.TotalAmount,
+                    x.PaidAmount,
+                    x.OutstandingBalance,
+                    x.PaymentStatus,
+                    Date = x.PurchasedAt.ToString("yyyy-MM-dd HH:mm")
+                }).ToList();
+                return (purchases, $"Tra cứu lịch sử đơn nhập hàng ({purchases.Count} đơn)", null);
+            }
+
+            case "query_stock_adjustments":
+            {
+                var adjResult = await _businessService.GetStockAdjustmentsAsync(tenantId, null);
+                var adjs = (adjResult.Data ?? new()).Take(10).Select(x => new
+                {
+                    x.ProductName,
+                    x.AdjustmentQuantity,
+                    x.QuantityBefore,
+                    x.QuantityAfter,
+                    x.Reason,
+                    x.Notes,
+                    Date = x.AdjustedAt.ToString("yyyy-MM-dd HH:mm")
+                }).ToList();
+                return (adjs, $"Tra cứu lịch sử điều chỉnh tồn kho ({adjs.Count} lần)", null);
             }
 
             case "propose_transaction":
@@ -752,6 +789,29 @@ RULES:
                         category = new { type = "STRING", description = "Category filter" },
                         search = new { type = "STRING", description = "Description search" }
                     }
+                }
+            },
+            new
+            {
+                name = "query_purchases_history",
+                description = "Query purchases and inventory orders from suppliers, including amounts and payment status.",
+                parameters = new
+                {
+                    type = "OBJECT",
+                    properties = new
+                    {
+                        search = new { type = "STRING", description = "Supplier name, purchase number, or product description" }
+                    }
+                }
+            },
+            new
+            {
+                name = "query_stock_adjustments",
+                description = "Query historical stock adjustments, shrinkage, damages, spoiled items, and inventory corrections.",
+                parameters = new
+                {
+                    type = "OBJECT",
+                    properties = new { }
                 }
             },
             new

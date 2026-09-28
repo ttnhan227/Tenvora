@@ -53,7 +53,15 @@ public record ProductDto(
     string Currency,
     bool IsActive,
     string? Notes,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool TrackInventory = false
+);
+
+public record ProductDeletionResultDto(
+    Guid ProductId,
+    string ProductName,
+    bool DeletedPermanently,
+    bool Archived
 );
 
 public record CreateProductRequest(
@@ -64,7 +72,8 @@ public record CreateProductRequest(
     [MaxLength(1000)] string? Notes = null,
     decimal CostPrice = 0m,
     decimal StockQuantity = 0m,
-    decimal? MinStockLevel = null
+    decimal? MinStockLevel = null,
+    bool TrackInventory = false
 );
 
 public record UpdateProductRequest(
@@ -76,7 +85,8 @@ public record UpdateProductRequest(
     [MaxLength(1000)] string? Notes = null,
     decimal? CostPrice = null,
     decimal? StockQuantity = null,
-    decimal? MinStockLevel = null
+    decimal? MinStockLevel = null,
+    bool? TrackInventory = null
 );
 
 public record CreateSaleItemRequest(Guid ProductId, decimal Quantity, decimal? UnitPrice = null);
@@ -120,7 +130,8 @@ public record SaleItemDto(
     string Unit,
     decimal Quantity,
     decimal UnitPrice,
-    decimal LineTotal
+    decimal LineTotal,
+    decimal? UnitCost = null
 );
 
 public record BusinessPaymentDto(
@@ -133,7 +144,10 @@ public record BusinessPaymentDto(
     string Method,
     string? Reference,
     string? Notes,
-    DateTime PaidAt
+    DateTime PaidAt,
+    bool IsReversed = false,
+    DateTime? ReversedAt = null,
+    string? ReversalReason = null
 );
 
 public record SaleSummaryDto(
@@ -180,8 +194,21 @@ public record RecordPurchasePaymentRequest(decimal Amount, [MaxLength(50)] strin
 public record PurchaseItemDto(Guid Id, Guid? ProductId, string Description, string Unit, decimal Quantity,
     decimal UnitCost, decimal LineTotal);
 
-public record PurchasePaymentDto(Guid Id, Guid PurchaseId, string PurchaseNumber, Guid SupplierId, decimal Amount,
-    string Currency, string Method, string? Reference, string? Notes, DateTime PaidAt);
+public record PurchasePaymentDto(
+    Guid Id,
+    Guid PurchaseId,
+    string PurchaseNumber,
+    Guid SupplierId,
+    decimal Amount,
+    string Currency,
+    string Method,
+    string? Reference,
+    string? Notes,
+    DateTime PaidAt,
+    bool IsReversed = false,
+    DateTime? ReversedAt = null,
+    string? ReversalReason = null
+);
 
 public record PurchaseDto(Guid Id, string PurchaseNumber, Guid SupplierId, string SupplierName, string Currency,
     decimal TotalAmount, decimal PaidAmount, decimal OutstandingBalance, string PaymentStatus, string Status,
@@ -213,9 +240,76 @@ public record BusinessDashboardDto(
     List<BusinessActivityDto> RecentActivity,
     string Period = "today",
     decimal PeriodSales = 0m,
+    decimal PeriodCogs = 0m,
     decimal PeriodPayments = 0m,
     decimal PeriodPurchases = 0m,
     decimal PeriodSupplierPayments = 0m,
     decimal PeriodExpenses = 0m,
     decimal PeriodNetProfit = 0m
+);
+
+public record ReversePaymentRequest(
+    [MaxLength(500)] string? Reason = null
+);
+
+public record VoidSaleRequest(
+    bool ReversePayments = true,
+    [MaxLength(500)] string? Reason = null
+);
+
+public record VoidPurchaseRequest(
+    bool ReversePayments = true,
+    [MaxLength(500)] string? Reason = null
+);
+
+public record StockAdjustmentDto(
+    Guid Id,
+    Guid ProductId,
+    string ProductName,
+    string Unit,
+    decimal QuantityBefore,
+    decimal AdjustmentQuantity,
+    decimal QuantityAfter,
+    string Reason,
+    string? Notes,
+    Guid? UserId,
+    DateTime AdjustedAt,
+    DateTime CreatedAt
+);
+
+public record CreateStockAdjustmentRequest(
+    Guid ProductId,
+    decimal AdjustmentQuantity,
+    [Required, MaxLength(50)] string Reason,
+    [MaxLength(500)] string? Notes = null
+);
+
+public record PagedResult<T>(
+    List<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize,
+    int TotalPages
+);
+
+public record CustomerStatementEntryDto(
+    DateTime Date,
+    string Type,
+    string Reference,
+    decimal Debit,
+    decimal Credit,
+    decimal RunningBalance,
+    string? Notes,
+    bool IsReversed = false
+);
+
+public record CustomerStatementDto(
+    BusinessCustomerDto Customer,
+    DateTime? From,
+    DateTime? To,
+    decimal OpeningBalance,
+    decimal TotalDebits,
+    decimal TotalCredits,
+    decimal ClosingBalance,
+    List<CustomerStatementEntryDto> Entries
 );

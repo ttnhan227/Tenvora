@@ -18,15 +18,20 @@ import {
   ScanBarcode,
   Search,
   Trash2,
+  Undo2,
   UserPlus,
   WalletCards,
   X,
   Zap,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
+import { PaginationBar } from "@/components/business/PaginationBar";
+import { PaymentReversalModal } from "@/components/business/PaymentReversalModal";
 import { ReceiptModal } from "@/components/business/ReceiptModal";
+import { VoidDocumentModal } from "@/components/business/VoidDocumentModal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -114,6 +119,9 @@ export default function SalesPage() {
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
   const [createOpen, setCreateOpen] = useState(params.get("create") === "1");
   const [customerId, setCustomerId] = useState(params.get("customer") ?? "");
   const [items, setItems] = useState<DraftItem[]>([newItem()]);
@@ -125,6 +133,17 @@ export default function SalesPage() {
   const [laterPayment, setLaterPayment] = useState(0);
   const [laterMethod, setLaterMethod] = useState("Cash");
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
+
+  // Reversal & Void state
+  const [reversingPayment, setReversingPayment] = useState<{
+    saleId: string;
+    paymentId: string;
+    amount: number;
+    currency: string;
+    method: string;
+    saleNumber: string;
+  } | null>(null);
+  const [voidingSale, setVoidingSale] = useState<Sale | null>(null);
 
   // Barcode & rapid scan state
   const [barcodeQuery, setBarcodeQuery] = useState("");
@@ -157,10 +176,13 @@ export default function SalesPage() {
     queryKey: ["products", "active"],
     queryFn: () => businessService.getProducts("", true),
   });
-  const { data: sales = [], isLoading } = useQuery({
-    queryKey: ["sales", search],
-    queryFn: () => businessService.getSales(search),
+  const { data: salesData, isLoading } = useQuery({
+    queryKey: ["sales-paged", search, page],
+    queryFn: () => businessService.getSalesPaged(search, undefined, undefined, undefined, page, pageSize),
   });
+  const sales = salesData?.items ?? [];
+  const totalCount = salesData?.totalCount ?? 0;
+
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [items],
@@ -177,8 +199,11 @@ export default function SalesPage() {
         notes: notes || undefined,
       }),
     onSuccess: (sale) => {
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setCreateOpen(false);
       resetForm();
       playCashierSound("success");
@@ -199,8 +224,10 @@ export default function SalesPage() {
         method: laterMethod,
       }),
     onSuccess: (sale) => {
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setPayingSale(null);
       playCashierSound("success");
       toast.success(isVietnamese ? "Đã ghi khoản thanh toán" : "Payment recorded", { description: sale.outstandingBalance > 0 ? (isVietnamese ? `Còn lại: ${businessMoney(sale.outstandingBalance, sale.currency)}.` : `Remaining balance: ${businessMoney(sale.outstandingBalance, sale.currency)}.`) : (isVietnamese ? "Đơn bán này đã được thanh toán đủ." : "This sale is now paid in full.") });
@@ -208,6 +235,26 @@ export default function SalesPage() {
     onError: (error) =>
       toast.error(apiError(error, isVietnamese ? "Không thể ghi khoản thanh toán." : "Could not record the payment.")),
   });
+
+  const handleReversePayment = async (reason: string) => {
+    if (!reversingPayment) return;
+    await businessService.reverseSalePayment(reversingPayment.saleId, reversingPayment.paymentId, reason);
+    queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
+    queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+  };
+
+  const handleVoidSale = async (options: { reversePayments: boolean; reason?: string }) => {
+    if (!voidingSale) return;
+    await businessService.voidSale(voidingSale.id, options);
+    queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
+    queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+  };
 
   function resetForm() {
     setCustomerId("");
@@ -455,7 +502,10 @@ export default function SalesPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder={isVietnamese ? "Tìm khách hàng, hàng hoá hoặc mã đơn" : "Search customer, product, or sale number"}
             className="pl-9"
           />
@@ -465,96 +515,152 @@ export default function SalesPage() {
         ) : sales.length === 0 ? (
           <EmptyState icon={ReceiptText} title={search ? (isVietnamese ? "Không tìm thấy đơn bán phù hợp" : "No sales match that search") : (isVietnamese ? "Chưa có đơn bán" : "No sales yet")} description={search ? (isVietnamese ? "Hãy thử tên khách hàng, hàng hoá hoặc mã đơn khác." : "Try a customer name, product, or sale number.") : (isVietnamese ? "Đơn bán sẽ xuất hiện tại đây sau khi bạn ghi đơn đầu tiên. Hãy thêm khách hàng và hàng hoá trước nếu cần." : "Your sales will appear here after you record the first one. Add a customer and product first if you haven't already.")} action={!search && <Button onClick={() => setCreateOpen(true)}>{isVietnamese ? "Ghi đơn bán đầu tiên" : "Record first sale"}</Button>} />
         ) : (
-          <div className="space-y-3">
-            {sales.map((sale) => (
-              <article key={sale.id} className="paper-card p-5 transition-colors hover:border-primary/25 sm:p-6">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        {sale.saleNumber}
-                      </span>
-                      <StatusPill status={sale.paymentStatus} />
-                    </div>
-                    <Link
-                      to={`/customers/${sale.customerId}`}
-                      className="mt-2 block text-lg font-semibold hover:text-primary"
-                    >
-                      {sale.customerName}
-                    </Link>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {sale.items
-                        .map(
-                          (item) =>
-                            `${item.quantity} ${item.unit} ${item.productName}`,
-                        )
-                        .join(" · ")}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {new Date(sale.soldAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="sm:text-right">
-                    <p className="text-xl font-semibold">
-                      {businessMoney(sale.totalAmount, sale.currency)}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {isVietnamese ? "Đã thu" : "Paid"} {businessMoney(sale.paidAmount, sale.currency)}
-                    </p>
-                    {sale.outstandingBalance > 0 && (
-                      <p className="mt-1 font-semibold text-amber-600">
-                        {isVietnamese ? "Còn nợ" : "Owed"}{" "}
-                        {businessMoney(
-                          sale.outstandingBalance,
-                          sale.currency,
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {sales.map((sale) => {
+                const isVoided = sale.status === "Voided";
+                return (
+                  <article
+                    key={sale.id}
+                    className={`paper-card p-5 transition-colors sm:p-6 ${
+                      isVoided ? "opacity-60 bg-muted/20 border-dashed" : "hover:border-primary/25"
+                    }`}
+                  >
+                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {sale.saleNumber}
+                          </span>
+                          <StatusPill status={sale.paymentStatus} />
+                        </div>
+                        <Link
+                          to={`/customers/${sale.customerId}`}
+                          className="mt-2 block text-lg font-semibold hover:text-primary"
+                        >
+                          {sale.customerName}
+                        </Link>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {sale.items
+                            .map(
+                              (item) =>
+                                `${item.quantity} ${item.unit} ${item.productName}`,
+                            )
+                            .join(" · ")}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {new Date(sale.soldAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="sm:text-right">
+                        <p className={`text-xl font-semibold ${isVoided ? "line-through text-muted-foreground" : ""}`}>
+                          {businessMoney(sale.totalAmount, sale.currency)}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {isVietnamese ? "Đã thu" : "Paid"} {businessMoney(sale.paidAmount, sale.currency)}
+                        </p>
+                        {sale.outstandingBalance > 0 && !isVoided && (
+                          <p className="mt-1 font-semibold text-amber-600">
+                            {isVietnamese ? "Còn nợ" : "Owed"}{" "}
+                            {businessMoney(
+                              sale.outstandingBalance,
+                              sale.currency,
+                            )}
+                          </p>
                         )}
-                      </p>
+                        <div className="mt-3 flex flex-wrap gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setReceiptSale(sale)}
+                            className="gap-1.5"
+                          >
+                            <Printer className="h-4 w-4" />
+                            {isVietnamese ? "In phiếu" : "Receipt"}
+                          </Button>
+                          {sale.outstandingBalance > 0 && !isVoided && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openPayment(sale)}
+                              className="gap-1.5"
+                            >
+                              <WalletCards className="h-4 w-4" />
+                              {isVietnamese ? "Nhận thanh toán" : "Receive payment"}
+                            </Button>
+                          )}
+                          {!isVoided && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setVoidingSale(sale)}
+                              className="gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Ban className="h-4 w-4" />
+                              {isVietnamese ? "Hủy đơn" : "Void"}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {sale.payments.length > 0 && (
+                      <div className="mt-4 border-t pt-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {isVietnamese ? "Lịch sử thanh toán" : "Payment history"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {sale.payments.map((payment) => (
+                            <span
+                              key={payment.id}
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs ${
+                                payment.isReversed
+                                  ? "bg-destructive/10 text-muted-foreground line-through"
+                                  : "bg-secondary"
+                              }`}
+                            >
+                              <span>
+                                {businessMoney(payment.amount, payment.currency)} ·{" "}
+                                {methodLabel(payment.method)} ·{" "}
+                                {new Date(payment.paidAt).toLocaleDateString()}
+                              </span>
+                              {payment.isReversed ? (
+                                <span className="no-underline rounded bg-destructive/20 px-1 py-0.5 text-[10px] font-semibold text-destructive">
+                                  {isVietnamese ? "Đã hoàn tác" : "Reversed"}
+                                </span>
+                              ) : !isVoided ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReversingPayment({
+                                      saleId: sale.id,
+                                      paymentId: payment.id,
+                                      amount: payment.amount,
+                                      currency: payment.currency,
+                                      method: payment.method,
+                                      saleNumber: sale.saleNumber,
+                                    })
+                                  }
+                                  title={isVietnamese ? "Hoàn tác thanh toán này" : "Reverse this payment"}
+                                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    <div className="mt-3 flex flex-wrap gap-2 justify-end">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setReceiptSale(sale)}
-                        className="gap-1.5"
-                      >
-                        <Printer className="h-4 w-4" />
-                        {isVietnamese ? "In phiếu" : "Receipt"}
-                      </Button>
-                      {sale.outstandingBalance > 0 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openPayment(sale)}
-                          className="gap-1.5"
-                        >
-                          <WalletCards className="h-4 w-4" />
-                          {isVietnamese ? "Nhận thanh toán" : "Receive payment"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {sale.payments.length > 0 && (
-                  <div className="mt-4 border-t pt-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {isVietnamese ? "Lịch sử thanh toán" : "Payment history"}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {sale.payments.map((payment) => (
-                        <span
-                          key={payment.id}
-                          className="rounded-lg bg-secondary px-3 py-2 text-xs"
-                        >
-                          {businessMoney(payment.amount, payment.currency)} ·{" "}
-                          {methodLabel(payment.method)} ·{" "}
-                          {new Date(payment.paidAt).toLocaleDateString()}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </article>
-            ))}
+                  </article>
+                );
+              })}
+            </div>
+            <PaginationBar
+              currentPage={page}
+              totalItems={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>
@@ -1025,6 +1131,29 @@ export default function SalesPage() {
         onOpenChange={(open) => !open && setReceiptSale(null)}
         sale={receiptSale}
       />
+      {reversingPayment && (
+        <PaymentReversalModal
+          open={!!reversingPayment}
+          onOpenChange={(open) => !open && setReversingPayment(null)}
+          paymentId={reversingPayment.paymentId}
+          paymentAmount={reversingPayment.amount}
+          paymentCurrency={reversingPayment.currency}
+          paymentMethod={reversingPayment.method}
+          referenceDocNumber={reversingPayment.saleNumber}
+          onConfirm={handleReversePayment}
+        />
+      )}
+      {voidingSale && (
+        <VoidDocumentModal
+          open={!!voidingSale}
+          onOpenChange={(open) => !open && setVoidingSale(null)}
+          documentType="sale"
+          documentNumber={voidingSale.saleNumber}
+          totalAmountFormatted={businessMoney(voidingSale.totalAmount, voidingSale.currency)}
+          hasPayments={voidingSale.payments.some((p) => !p.isReversed)}
+          onConfirm={handleVoidSale}
+        />
+      )}
     </DashboardLayout>
   );
 }

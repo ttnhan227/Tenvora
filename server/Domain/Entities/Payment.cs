@@ -34,6 +34,12 @@ public sealed class Payment
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public bool IsReversed { get; set; } = false;
+    public DateTime? ReversedAt { get; set; }
+    public Guid? ReversedByUserId { get; set; }
+    [MaxLength(500)]
+    public string? ReversalReason { get; set; }
+
     public Sale? Sale { get; set; }
     public Customer? Customer { get; set; }
 }

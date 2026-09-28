@@ -4,15 +4,15 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description: string; actions?: ReactNode }) {
+export function PageHeader({ eyebrow, title, description, actions, actionsFullWidth = false }: { eyebrow?: string; title: string; description: string; actions?: ReactNode; actionsFullWidth?: boolean }) {
   return (
-    <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+    <header className={cn("flex flex-col justify-between gap-5", !actionsFullWidth && "sm:flex-row sm:items-end")}>
       <div className="max-w-2xl">
         {eyebrow && <span className="notebook-label">{eyebrow}</span>}
         <h1 className="page-title mt-3 text-foreground">{title}</h1>
         <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && <div className={cn("flex flex-wrap gap-2", actionsFullWidth && "w-full")}>{actions}</div>}
     </header>
   );
 }

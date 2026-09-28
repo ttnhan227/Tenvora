@@ -128,7 +128,8 @@ export default function ReportsPage() {
   const totalExpenses = dash?.periodExpenses ?? expensesList.reduce((acc, e) => acc + e.amount, 0);
   const totalPurchases = dash?.periodPurchases ?? purchasesList.reduce((acc, p) => acc + p.totalAmount, 0);
   const totalSupplierPaid = dash?.periodSupplierPayments ?? purchasesList.reduce((acc, p) => acc + p.paidAmount, 0);
-  const netProfit = dash?.periodNetProfit ?? (totalSales - (totalExpenses + totalPurchases));
+  const totalCogs = dash?.periodCogs ?? salesList.flatMap(s => s.items).reduce((acc, i) => acc + (i.unitCost != null ? (i.quantity * i.unitCost) : 0), 0);
+  const netProfit = dash?.periodNetProfit ?? (totalSales - totalCogs - totalExpenses);
   const outstandingCustomers = dash?.outstandingCustomers ?? salesList.reduce((acc, s) => acc + s.outstandingBalance, 0);
   const outstandingSuppliers = dash?.outstandingSuppliers ?? purchasesList.reduce((acc, p) => acc + p.outstandingBalance, 0);
 
@@ -149,6 +150,7 @@ export default function ReportsPage() {
     totalSupplierPaid,
     totalExpenses,
     expensesCount: expensesList.length,
+    totalCogs,
     netProfit,
     outstandingCustomers,
     outstandingSuppliers,
@@ -286,8 +288,8 @@ export default function ReportsPage() {
                 value={money(netProfit)}
                 detail={
                   isVietnamese
-                    ? "Doanh thu - (Chi phí + Nhập hàng)"
-                    : "Sales - (Expenses + Purchases)"
+                    ? "Doanh thu - Giá vốn - Chi phí"
+                    : "Sales - COGS - Expenses"
                 }
                 icon={TrendingUp}
                 tone={netProfit >= 0 ? "good" : "out"}
@@ -346,24 +348,20 @@ export default function ReportsPage() {
 
                 <div className="flex justify-between py-3">
                   <span className="font-semibold text-destructive">
-                    {isVietnamese ? "2. Chi phí vận hành cửa hàng (Operating Expenses)" : "2. Operating Expenses"}
+                    {isVietnamese ? "2. Giá vốn hàng bán (Cost of Goods Sold - COGS)" : "2. Cost of Goods Sold (COGS)"}
                   </span>
-                  <span className="font-bold tabular-nums text-destructive">-{money(totalExpenses)}</span>
+                  <span className="font-bold tabular-nums text-destructive">-{money(totalCogs)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-xs text-muted-foreground pl-4">
+                  <span>{isVietnamese ? "Lợi nhuận gộp (Doanh thu - Giá vốn)" : "Gross Profit (Revenue - COGS)"}</span>
+                  <span className="tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{money(totalSales - totalCogs)}</span>
                 </div>
 
                 <div className="flex justify-between py-3">
                   <span className="font-semibold text-destructive">
-                    {isVietnamese ? "3. Tiền nhập hàng từ nhà cung cấp (Purchases & Supplies)" : "3. Inventory Purchases"}
+                    {isVietnamese ? "3. Chi phí vận hành cửa hàng (Operating Expenses)" : "3. Operating Expenses"}
                   </span>
-                  <span className="font-bold tabular-nums text-destructive">-{money(totalPurchases)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-xs text-muted-foreground pl-4">
-                  <span>{isVietnamese ? "Đã thanh toán cho nhà cung cấp" : "Paid to suppliers"}</span>
-                  <span className="tabular-nums font-medium">{money(totalSupplierPaid)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-xs text-muted-foreground pl-4">
-                  <span>{isVietnamese ? "Còn nợ nhà cung cấp (Khoản phải trả)" : "Accounts payable (Supplier debt)"}</span>
-                  <span className="tabular-nums text-amber-700 dark:text-amber-400 font-medium">{money(outstandingSuppliers)}</span>
+                  <span className="font-bold tabular-nums text-destructive">-{money(totalExpenses)}</span>
                 </div>
 
                 <div className="flex justify-between py-4 text-base font-bold bg-muted/20 px-3 rounded-xl mt-2">
@@ -378,6 +376,24 @@ export default function ReportsPage() {
                   >
                     {money(netProfit)}
                   </span>
+                </div>
+
+                <div className="pt-4 mt-2">
+                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                    {isVietnamese ? "Dòng tiền nhập hàng từ nhà cung cấp" : "Supplier Purchases & Cash Outflow"}
+                  </div>
+                  <div className="flex justify-between py-2 text-xs">
+                    <span>{isVietnamese ? "Tổng tiền nhập hàng trong kỳ" : "Total purchases in period"}</span>
+                    <span className="tabular-nums font-medium">{money(totalPurchases)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 text-xs pl-4 text-muted-foreground">
+                    <span>{isVietnamese ? "Đã thanh toán cho nhà cung cấp" : "Paid to suppliers"}</span>
+                    <span className="tabular-nums font-medium">{money(totalSupplierPaid)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 text-xs pl-4 text-muted-foreground">
+                    <span>{isVietnamese ? "Còn nợ nhà cung cấp (Khoản phải trả)" : "Accounts payable (Supplier debt)"}</span>
+                    <span className="tabular-nums text-amber-700 dark:text-amber-400 font-medium">{money(outstandingSuppliers)}</span>
+                  </div>
                 </div>
               </div>
             </div>

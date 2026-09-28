@@ -33,6 +33,7 @@ public sealed class Product
     public string Currency { get; set; } = "USD";
 
     public bool IsActive { get; set; } = true;
+    public bool TrackInventory { get; set; } = false;
 
     [MaxLength(1000)]
     public string? Notes { get; set; }
@@ -42,4 +43,5 @@ public sealed class Product
 
     public ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
     public ICollection<PurchaseItem> PurchaseItems { get; set; } = new List<PurchaseItem>();
+    public ICollection<StockAdjustment> StockAdjustments { get; set; } = new List<StockAdjustment>();
 }

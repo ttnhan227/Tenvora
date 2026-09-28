@@ -29,6 +29,15 @@ describe("Tenvora 2.0 business API contracts", () => {
     });
   });
 
+  it("deletes a product through the product endpoint", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: { data: { productId: "product-1", deletedPermanently: true, archived: false } } });
+
+    const result = await businessService.deleteProduct("product-1");
+
+    expect(apiClient.delete).toHaveBeenCalledWith("/products/product-1");
+    expect(result.deletedPermanently).toBe(true);
+  });
+
   it("records customer account lump-sum payment with idempotency key", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { totalAllocated: 500_000 } } });
     const request = { amount: 500_000, method: "Bank transfer", reference: "REF123" };

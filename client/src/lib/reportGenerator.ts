@@ -21,6 +21,7 @@ export interface BusinessReportData {
   totalSupplierPaid: number;
   totalExpenses: number;
   expensesCount: number;
+  totalCogs?: number;
   netProfit: number;
   outstandingCustomers: number;
   outstandingSuppliers: number;

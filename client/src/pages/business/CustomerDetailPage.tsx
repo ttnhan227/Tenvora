@@ -1,12 +1,14 @@
 import { FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Mail, MapPin, MessageCircle, Phone, Plus, Printer, ReceiptText, WalletCards } from "lucide-react";
+import { ArrowLeft, FileText, Mail, MapPin, MessageCircle, Phone, Plus, Printer, ReceiptText, Undo2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, MoneyCard, StatusPill } from "@/components/business/BusinessUI";
 import { ReceiptModal } from "@/components/business/ReceiptModal";
 import { DebtReminderModal } from "@/components/business/DebtReminderModal";
+import { CustomerStatementModal } from "@/components/business/CustomerStatementModal";
+import { PaymentReversalModal } from "@/components/business/PaymentReversalModal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -38,9 +40,20 @@ export default function CustomerDetailPage() {
   const [accountRef, setAccountRef] = useState("");
   const [accountNotes, setAccountNotes] = useState("");
 
-  // Receipt & Reminder modals
+  // Receipt & Reminder & Statement modals
   const [receiptSale, setReceiptSale] = useState<Sale | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [statementOpen, setStatementOpen] = useState(false);
+
+  // Reversal state
+  const [reversingPayment, setReversingPayment] = useState<{
+    saleId: string;
+    paymentId: string;
+    amount: number;
+    currency: string;
+    method: string;
+    saleNumber: string;
+  } | null>(null);
 
   const query = useQuery({
     queryKey: ["business-customer", id],
@@ -110,6 +123,15 @@ export default function CustomerDetailPage() {
     setAccountPaymentOpen(true);
   };
 
+  const handleReversePayment = async (reason: string) => {
+    if (!reversingPayment) return;
+    await businessService.reverseSalePayment(reversingPayment.saleId, reversingPayment.paymentId, reason);
+    queryClient.invalidateQueries({ queryKey: ["business-customer", id] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+    queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+  };
+
   if (query.isLoading)
     return (
       <DashboardLayout>
@@ -175,6 +197,14 @@ export default function CustomerDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setStatementOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              {isVietnamese ? "Sao kê công nợ" : "Account statement"}
+            </Button>
             {customer.outstandingBalance > 0 && (
               <>
                 <Button
@@ -298,12 +328,39 @@ export default function CustomerDetailPage() {
                       <p className="micro-label">{isVietnamese ? "Thanh toán đã nhận" : "Payments received"}</p>
                       <div className="mt-2 divide-y">
                         {entry.payments.map((item) => (
-                          <div key={item.id} className="flex justify-between gap-3 py-2 text-sm">
-                            <span className="text-muted-foreground">
+                          <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                            <span className={`text-muted-foreground ${item.isReversed ? "line-through text-destructive/70" : ""}`}>
                               {new Date(item.paidAt).toLocaleDateString()} · {methodLabel(item.method)}
                               {item.reference && ` · Ref: ${item.reference}`}
                             </span>
-                            <span className="tabular-nums font-bold">{businessMoney(item.amount, item.currency)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className={`tabular-nums font-bold ${item.isReversed ? "line-through text-muted-foreground" : ""}`}>
+                                {businessMoney(item.amount, item.currency)}
+                              </span>
+                              {item.isReversed ? (
+                                <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
+                                  {isVietnamese ? "Đã hoàn tác" : "Reversed"}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setReversingPayment({
+                                      saleId: entry.id,
+                                      paymentId: item.id,
+                                      amount: item.amount,
+                                      currency: item.currency,
+                                      method: item.method,
+                                      saleNumber: entry.saleNumber,
+                                    })
+                                  }
+                                  title={isVietnamese ? "Hoàn tác thanh toán này" : "Reverse this payment"}
+                                  className="text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -508,6 +565,28 @@ export default function CustomerDetailPage() {
           onOpenChange={setReminderOpen}
           customer={customer}
           sales={sales}
+        />
+      )}
+
+      {/* Customer Account Statement Modal */}
+      <CustomerStatementModal
+        open={statementOpen}
+        onOpenChange={setStatementOpen}
+        customerId={customer.id}
+        customerName={customer.name}
+      />
+
+      {/* Payment Reversal Modal */}
+      {reversingPayment && (
+        <PaymentReversalModal
+          open={!!reversingPayment}
+          onOpenChange={(open) => !open && setReversingPayment(null)}
+          paymentId={reversingPayment.paymentId}
+          paymentAmount={reversingPayment.amount}
+          paymentCurrency={reversingPayment.currency}
+          paymentMethod={reversingPayment.method}
+          referenceDocNumber={reversingPayment.saleNumber}
+          onConfirm={handleReversePayment}
         />
       )}
     </DashboardLayout>

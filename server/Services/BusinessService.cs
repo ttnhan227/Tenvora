@@ -103,13 +103,15 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Sku == sku))
             return ApiResult<ProductDto>.Fail("A product with this SKU already exists.");
+        var trackInventory = request.TrackInventory || request.StockQuantity > 0 || request.MinStockLevel.HasValue;
         var product = new Product
         {
             Id = Guid.NewGuid(), TenantId = tenantId, Name = request.Name.Trim(), Sku = sku, Unit = request.Unit.Trim(),
             DefaultPrice = Money(request.DefaultPrice), CostPrice = Money(request.CostPrice),
             StockQuantity = Money(request.StockQuantity), MinStockLevel = request.MinStockLevel.HasValue ? Money(request.MinStockLevel.Value) : null,
             Currency = await Currency(tenantId), Notes = Clean(request.Notes),
-            IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+            IsActive = true, TrackInventory = trackInventory,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
         db.Products.Add(product);
         await db.SaveChangesAsync();
@@ -123,7 +125,6 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         var validation = ValidateProduct(request.Name, request.Unit, request.DefaultPrice);
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice.HasValue && (request.CostPrice.Value < 0 || Scale(request.CostPrice.Value) > 4)) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
-        if (request.StockQuantity.HasValue && Scale(request.StockQuantity.Value) > 4) return ApiResult<ProductDto>.Fail("Stock quantity cannot have more than 4 decimal places.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Id != productId && p.Sku == sku))
@@ -133,13 +134,40 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         product.Unit = request.Unit.Trim();
         product.DefaultPrice = Money(request.DefaultPrice);
         if (request.CostPrice.HasValue) product.CostPrice = Money(request.CostPrice.Value);
-        if (request.StockQuantity.HasValue) product.StockQuantity = Money(request.StockQuantity.Value);
+        // Direct stock mutation is prohibited; all adjustments are recorded via CreateStockAdjustmentAsync.
         product.MinStockLevel = request.MinStockLevel.HasValue ? Money(request.MinStockLevel.Value) : null;
         product.IsActive = request.IsActive;
+        if (request.TrackInventory.HasValue) product.TrackInventory = request.TrackInventory.Value;
         product.Notes = Clean(request.Notes);
         product.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return ApiResult<ProductDto>.Ok(MapProduct(product));
+    }
+
+    public async Task<ApiResult<ProductDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId)
+    {
+        var product = await db.Products.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == productId);
+        if (product == null) return ApiResult<ProductDeletionResultDto>.Fail("Product not found.");
+
+        var hasHistory = await db.SaleItems.AnyAsync(i => i.TenantId == tenantId && i.ProductId == productId)
+            || await db.PurchaseItems.AnyAsync(i => i.TenantId == tenantId && i.ProductId == productId)
+            || await db.StockAdjustments.AnyAsync(a => a.TenantId == tenantId && a.ProductId == productId);
+
+        if (hasHistory)
+        {
+            product.IsActive = false;
+            product.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return ApiResult<ProductDeletionResultDto>.Ok(
+                new(product.Id, product.Name, DeletedPermanently: false, Archived: true),
+                "Product archived because it is linked to financial or inventory history.");
+        }
+
+        db.Products.Remove(product);
+        await db.SaveChangesAsync();
+        return ApiResult<ProductDeletionResultDto>.Ok(
+            new(product.Id, product.Name, DeletedPermanently: true, Archived: false),
+            "Product deleted permanently.");
     }
 
     public async Task<ApiResult<List<SaleSummaryDto>>> GetSalesAsync(Guid tenantId, string? search, Guid? customerId, DateTime? from, DateTime? to)
@@ -208,8 +236,17 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             if (requested.Quantity <= 0 || Scale(requested.Quantity) > 4)
                 return ApiResult<SaleSummaryDto>.Fail("Quantity must be positive and may have at most four decimal places.");
             var product = products.Single(p => p.Id == requested.ProductId);
-            product.StockQuantity = Money(product.StockQuantity - requested.Quantity);
-            product.UpdatedAt = DateTime.UtcNow;
+            if (product.TrackInventory && product.StockQuantity < requested.Quantity)
+                return ApiResult<SaleSummaryDto>.Fail($"Insufficient stock for '{product.Name}'. Available: {product.StockQuantity:0.####}, Requested: {requested.Quantity:0.####}.");
+        }
+        foreach (var requested in request.Items)
+        {
+            var product = products.Single(p => p.Id == requested.ProductId);
+            if (product.TrackInventory)
+            {
+                product.StockQuantity = Money(product.StockQuantity - requested.Quantity);
+                product.UpdatedAt = DateTime.UtcNow;
+            }
             var unitPrice = requested.UnitPrice ?? product.DefaultPrice;
             if (unitPrice < 0 || Scale(unitPrice) > 4)
                 return ApiResult<SaleSummaryDto>.Fail("Unit price cannot be negative and may have at most four decimal places.");
@@ -218,7 +255,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             {
                 Id = Guid.NewGuid(), TenantId = tenantId, SaleId = sale.Id, ProductId = product.Id,
                 ProductName = product.Name, Unit = product.Unit, Quantity = requested.Quantity,
-                UnitPrice = unitPrice, LineTotal = total, Product = product
+                UnitPrice = unitPrice, UnitCost = product.CostPrice, LineTotal = total, Product = product
             });
         }
         sale.TotalAmount = Money(sale.Items.Sum(i => i.LineTotal));
@@ -264,8 +301,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             .ThenBy(s => s.CreatedAt)
             .ToListAsync();
 
-        var unpaidSales = openSales.Where(s => Money(s.TotalAmount - s.Payments.Sum(p => p.Amount)) > 0).ToList();
-        var totalOutstanding = Money(unpaidSales.Sum(s => s.TotalAmount - s.Payments.Sum(p => p.Amount)));
+        var unpaidSales = openSales.Where(s => Money(s.TotalAmount - s.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)) > 0).ToList();
+        var totalOutstanding = Money(unpaidSales.Sum(s => s.TotalAmount - s.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)));
         if (totalOutstanding <= 0)
             return ApiResult<CustomerAccountPaymentResultDto>.Fail("Customer does not have any outstanding balance.");
 
@@ -281,7 +318,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         {
             if (remainingToAllocate <= 0) break;
 
-            var salePaid = Money(sale.Payments.Sum(p => p.Amount));
+            var salePaid = Money(sale.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount));
             var saleRemaining = Money(sale.TotalAmount - salePaid);
             var paymentPortion = Math.Min(remainingToAllocate, saleRemaining);
 
@@ -341,7 +378,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         var sale = await FindSale(tenantId, saleId, false);
         if (sale == null) return ApiResult<SaleSummaryDto>.Fail("Sale not found.");
         if (sale.Status != SaleStatuses.Posted) return ApiResult<SaleSummaryDto>.Fail("This sale cannot receive payments.");
-        var paid = Money(sale.Payments.Sum(p => p.Amount));
+        var paid = Money(sale.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount));
         var remaining = Money(sale.TotalAmount - paid);
         if (request.Amount <= 0 || request.Amount > remaining || Scale(request.Amount) > 4)
             return ApiResult<SaleSummaryDto>.Fail("Payment must be positive, may have at most four decimal places, and cannot exceed the outstanding balance.");
@@ -361,21 +398,56 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));
     }
 
-    public async Task<ApiResult<SaleSummaryDto>> VoidSaleAsync(Guid tenantId, Guid saleId)
+    public async Task<ApiResult<SaleSummaryDto>> ReverseSalePaymentAsync(
+        Guid tenantId, Guid saleId, Guid paymentId, Guid? userId, ReversePaymentRequest request)
+    {
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        var sale = await FindSale(tenantId, saleId, false);
+        if (sale == null) return ApiResult<SaleSummaryDto>.Fail("Sale not found.");
+        var payment = sale.Payments.FirstOrDefault(p => p.Id == paymentId);
+        if (payment == null) return ApiResult<SaleSummaryDto>.Fail("Payment not found on this sale.");
+        if (payment.IsReversed) return ApiResult<SaleSummaryDto>.Fail("This payment has already been reversed.");
+
+        payment.IsReversed = true;
+        payment.ReversedAt = DateTime.UtcNow;
+        payment.ReversedByUserId = userId;
+        payment.ReversalReason = Clean(request.Reason) ?? "Payment reversed by user";
+        sale.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync();
+        if (write != null) await write.CommitAsync();
+        return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));
+    }
+
+    public async Task<ApiResult<SaleSummaryDto>> VoidSaleAsync(
+        Guid tenantId, Guid saleId, Guid? userId = null, VoidSaleRequest? request = null)
     {
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var sale = await FindSale(tenantId, saleId, false);
         if (sale == null) return ApiResult<SaleSummaryDto>.Fail("Sale not found.");
         if (sale.Status == SaleStatuses.Voided) return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));
-        if (sale.Payments.Count > 0)
-            return ApiResult<SaleSummaryDto>.Fail("A sale with payments cannot be voided. Reverse or correct the payments first.");
+
+        var activePayments = sale.Payments.Where(p => !p.IsReversed).ToList();
+        if (activePayments.Count > 0)
+        {
+            if (request == null || !request.ReversePayments)
+                return ApiResult<SaleSummaryDto>.Fail("A sale with active payments cannot be voided. Reverse the payments first, or confirm void with payment reversal.");
+
+            foreach (var payment in activePayments)
+            {
+                payment.IsReversed = true;
+                payment.ReversedAt = DateTime.UtcNow;
+                payment.ReversedByUserId = userId;
+                payment.ReversalReason = Clean(request.Reason) ?? $"Reversed due to voiding sale {sale.SaleNumber}";
+            }
+        }
 
         var productIds = sale.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await db.Products.Where(p => p.TenantId == tenantId && productIds.Contains(p.Id)).ToListAsync();
         foreach (var item in sale.Items)
         {
             var product = products.FirstOrDefault(p => p.Id == item.ProductId);
-            if (product != null)
+            if (product != null && product.TrackInventory)
             {
                 product.StockQuantity = Money(product.StockQuantity + item.Quantity);
                 product.UpdatedAt = DateTime.UtcNow;
@@ -387,6 +459,82 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
         return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));
+    }
+
+    public async Task<ApiResult<CustomerStatementDto>> GetCustomerStatementAsync(
+        Guid tenantId, Guid customerId, DateTime? from, DateTime? to)
+    {
+        var customer = await db.Customers.AsNoTracking()
+            .Include(c => c.Sales).ThenInclude(s => s.Payments)
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == customerId);
+        if (customer == null) return ApiResult<CustomerStatementDto>.Fail("Customer not found.");
+
+        var currency = await Currency(tenantId);
+        var customerDto = MapCustomer(customer, currency);
+
+        var fromUtc = from.HasValue ? Utc(from.Value.Date) : (DateTime?)null;
+        var toUtc = to.HasValue ? Utc(to.Value.Date.AddDays(1)) : (DateTime?)null;
+
+        var allEvents = new List<(DateTime Date, string Type, string Reference, decimal Debit, decimal Credit, string? Notes, bool IsReversed)>();
+
+        foreach (var sale in customer.Sales.Where(s => s.Status == SaleStatuses.Posted))
+        {
+            allEvents.Add((sale.SoldAt, "Sale", sale.SaleNumber, sale.TotalAmount, 0m, sale.Notes, false));
+            foreach (var payment in sale.Payments)
+            {
+                allEvents.Add((payment.PaidAt, "Payment", $"{sale.SaleNumber} ({payment.Method})", 0m, payment.Amount, payment.Notes, payment.IsReversed));
+                if (payment.IsReversed)
+                {
+                    allEvents.Add((payment.ReversedAt ?? payment.PaidAt, "Payment reversal", $"{sale.SaleNumber} (Reversal)", payment.Amount, 0m, payment.ReversalReason ?? "Payment reversed", true));
+                }
+            }
+        }
+
+        var sorted = allEvents.OrderBy(e => e.Date).ToList();
+
+        decimal openingBalance = 0m;
+        var periodEntries = new List<CustomerStatementEntryDto>();
+        decimal currentBalance = 0m;
+        decimal totalDebits = 0m;
+        decimal totalCredits = 0m;
+
+        foreach (var ev in sorted)
+        {
+            if (fromUtc.HasValue && ev.Date < fromUtc.Value)
+            {
+                openingBalance = Money(openingBalance + ev.Debit - ev.Credit);
+                currentBalance = openingBalance;
+            }
+            else if (!toUtc.HasValue || ev.Date < toUtc.Value)
+            {
+                currentBalance = Money(currentBalance + ev.Debit - ev.Credit);
+                totalDebits = Money(totalDebits + ev.Debit);
+                totalCredits = Money(totalCredits + ev.Credit);
+                periodEntries.Add(new CustomerStatementEntryDto(
+                    ev.Date,
+                    ev.Type,
+                    ev.Reference,
+                    ev.Debit,
+                    ev.Credit,
+                    currentBalance,
+                    ev.Notes,
+                    ev.IsReversed
+                ));
+            }
+        }
+
+        var closingBalance = periodEntries.Count > 0 ? currentBalance : openingBalance;
+
+        return ApiResult<CustomerStatementDto>.Ok(new CustomerStatementDto(
+            customerDto,
+            fromUtc,
+            toUtc,
+            openingBalance,
+            totalDebits,
+            totalCredits,
+            closingBalance,
+            periodEntries
+        ));
     }
 
     private async Task<Sale?> FindSale(Guid tenantId, Guid saleId, bool noTracking)
@@ -403,24 +551,26 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
     {
         var sales = customer.Sales.Where(s => s.Status == SaleStatuses.Posted).ToList();
         var total = Money(sales.Sum(s => s.TotalAmount));
-        var paid = Money(sales.SelectMany(s => s.Payments).Sum(p => p.Amount));
+        var paid = Money(sales.SelectMany(s => s.Payments).Where(p => !p.IsReversed).Sum(p => p.Amount));
         return new(customer.Id, customer.Name, customer.Phone, customer.Email, customer.Address, customer.Notes,
             customer.Status, currency, total, paid, Money(total - paid), sales.Count, customer.CreatedAt);
     }
 
     private static ProductDto MapProduct(Product p) =>
-        new(p.Id, p.Name, p.Sku, p.Unit, p.DefaultPrice, p.CostPrice, p.StockQuantity, p.MinStockLevel, p.Currency, p.IsActive, p.Notes, p.CreatedAt);
+        new(p.Id, p.Name, p.Sku, p.Unit, p.DefaultPrice, p.CostPrice, p.StockQuantity, p.MinStockLevel, p.Currency, p.IsActive, p.Notes, p.CreatedAt, p.TrackInventory);
 
     private static SaleSummaryDto MapSale(Sale sale)
     {
-        var paid = Money(sale.Payments.Sum(p => p.Amount));
-        var outstanding = Money(sale.TotalAmount - paid);
-        var paymentStatus = outstanding == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid";
+        var activePayments = sale.Payments.Where(p => !p.IsReversed).ToList();
+        var paid = Money(activePayments.Sum(p => p.Amount));
+        var outstanding = sale.Status == SaleStatuses.Voided ? 0m : Money(sale.TotalAmount - paid);
+        var paymentStatus = sale.Status == SaleStatuses.Voided ? "Voided" : outstanding == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid";
         return new(sale.Id, sale.SaleNumber, sale.CustomerId, sale.Customer?.Name ?? "Customer", sale.Currency,
             sale.TotalAmount, paid, outstanding, paymentStatus, sale.Status, sale.Notes, sale.SoldAt, sale.CreatedAt,
-            sale.Items.Select(i => new SaleItemDto(i.Id, i.ProductId, i.ProductName, i.Unit, i.Quantity, i.UnitPrice, i.LineTotal)).ToList(),
+            sale.Items.Select(i => new SaleItemDto(i.Id, i.ProductId, i.ProductName, i.Unit, i.Quantity, i.UnitPrice, i.LineTotal, i.UnitCost)).ToList(),
             sale.Payments.OrderByDescending(p => p.PaidAt).Select(p => new BusinessPaymentDto(
-                p.Id, p.SaleId, sale.SaleNumber, p.CustomerId, p.Amount, p.Currency, p.Method, p.Reference, p.Notes, p.PaidAt)).ToList());
+                p.Id, p.SaleId, sale.SaleNumber, p.CustomerId, p.Amount, p.Currency, p.Method, p.Reference, p.Notes, p.PaidAt,
+                p.IsReversed, p.ReversedAt, p.ReversalReason)).ToList());
     }
 
     private static string? ValidateProduct(string name, string unit, decimal price)
