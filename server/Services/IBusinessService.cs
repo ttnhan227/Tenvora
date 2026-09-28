@@ -11,13 +11,14 @@ public interface IBusinessService
     Task<ApiResult<CustomerStatementDto>> GetCustomerStatementAsync(Guid tenantId, Guid customerId, DateTime? from, DateTime? to);
     Task<ApiResult<BusinessCustomerDto>> CreateCustomerAsync(Guid tenantId, CreateBusinessCustomerRequest request);
     Task<ApiResult<BusinessCustomerDto>> UpdateCustomerAsync(Guid tenantId, Guid customerId, UpdateBusinessCustomerRequest request);
+    Task<ApiResult<RecordDeletionResultDto>> DeleteCustomerAsync(Guid tenantId, Guid customerId);
 
     Task<ApiResult<List<ProductDto>>> GetProductsAsync(Guid tenantId, string? search, bool? active);
     Task<ApiResult<PagedResult<ProductDto>>> GetProductsPagedAsync(Guid tenantId, string? search, bool? active, int page, int pageSize);
     Task<ApiResult<ProductDto>> GetProductAsync(Guid tenantId, Guid productId);
     Task<ApiResult<ProductDto>> CreateProductAsync(Guid tenantId, CreateProductRequest request);
     Task<ApiResult<ProductDto>> UpdateProductAsync(Guid tenantId, Guid productId, UpdateProductRequest request);
-    Task<ApiResult<ProductDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId);
+    Task<ApiResult<RecordDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId);
 
     Task<ApiResult<StockAdjustmentDto>> CreateStockAdjustmentAsync(Guid tenantId, Guid? userId, CreateStockAdjustmentRequest request);
     Task<ApiResult<List<StockAdjustmentDto>>> GetStockAdjustmentsAsync(Guid tenantId, Guid? productId);
@@ -37,6 +38,7 @@ public interface IBusinessService
     Task<ApiResult<SupplierDetailDto>> GetSupplierAsync(Guid tenantId, Guid supplierId);
     Task<ApiResult<SupplierDto>> CreateSupplierAsync(Guid tenantId, CreateSupplierRequest request);
     Task<ApiResult<SupplierDto>> UpdateSupplierAsync(Guid tenantId, Guid supplierId, UpdateSupplierRequest request);
+    Task<ApiResult<RecordDeletionResultDto>> DeleteSupplierAsync(Guid tenantId, Guid supplierId);
 
     Task<ApiResult<List<PurchaseDto>>> GetPurchasesAsync(Guid tenantId, string? search, Guid? supplierId, DateTime? from, DateTime? to);
     Task<ApiResult<PagedResult<PurchaseDto>>> GetPurchasesPagedAsync(Guid tenantId, string? search, Guid? supplierId, DateTime? from, DateTime? to, int page, int pageSize);

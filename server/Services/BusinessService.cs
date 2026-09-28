@@ -76,6 +76,31 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         return ApiResult<BusinessCustomerDto>.Ok(MapCustomer(customer, await Currency(tenantId)));
     }
 
+    public async Task<ApiResult<RecordDeletionResultDto>> DeleteCustomerAsync(Guid tenantId, Guid customerId)
+    {
+        var customer = await db.Customers.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == customerId);
+        if (customer == null) return ApiResult<RecordDeletionResultDto>.Fail("Customer not found.");
+
+        var hasHistory = await db.Sales.AnyAsync(s => s.TenantId == tenantId && s.CustomerId == customerId)
+            || await db.BusinessPayments.AnyAsync(p => p.TenantId == tenantId && p.CustomerId == customerId);
+
+        if (hasHistory)
+        {
+            customer.Status = "Archived";
+            customer.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return ApiResult<RecordDeletionResultDto>.Ok(
+                new(customer.Id, customer.Name, DeletedPermanently: false, Archived: true),
+                "Customer archived because it is linked to financial history.");
+        }
+
+        db.Customers.Remove(customer);
+        await db.SaveChangesAsync();
+        return ApiResult<RecordDeletionResultDto>.Ok(
+            new(customer.Id, customer.Name, DeletedPermanently: true, Archived: false),
+            "Customer deleted permanently.");
+    }
+
     public async Task<ApiResult<List<ProductDto>>> GetProductsAsync(Guid tenantId, string? search, bool? active)
     {
         var query = db.Products.AsNoTracking().Where(p => p.TenantId == tenantId);
@@ -144,10 +169,10 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         return ApiResult<ProductDto>.Ok(MapProduct(product));
     }
 
-    public async Task<ApiResult<ProductDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId)
+    public async Task<ApiResult<RecordDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId)
     {
         var product = await db.Products.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == productId);
-        if (product == null) return ApiResult<ProductDeletionResultDto>.Fail("Product not found.");
+        if (product == null) return ApiResult<RecordDeletionResultDto>.Fail("Product not found.");
 
         var hasHistory = await db.SaleItems.AnyAsync(i => i.TenantId == tenantId && i.ProductId == productId)
             || await db.PurchaseItems.AnyAsync(i => i.TenantId == tenantId && i.ProductId == productId)
@@ -158,14 +183,14 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             product.IsActive = false;
             product.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
-            return ApiResult<ProductDeletionResultDto>.Ok(
+            return ApiResult<RecordDeletionResultDto>.Ok(
                 new(product.Id, product.Name, DeletedPermanently: false, Archived: true),
                 "Product archived because it is linked to financial or inventory history.");
         }
 
         db.Products.Remove(product);
         await db.SaveChangesAsync();
-        return ApiResult<ProductDeletionResultDto>.Ok(
+        return ApiResult<RecordDeletionResultDto>.Ok(
             new(product.Id, product.Name, DeletedPermanently: true, Archived: false),
             "Product deleted permanently.");
     }

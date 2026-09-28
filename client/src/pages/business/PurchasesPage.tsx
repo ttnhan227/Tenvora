@@ -47,6 +47,7 @@ import {
   Purchase,
 } from "@/services/businessService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 
 type Line = {
   description: string;
@@ -63,6 +64,7 @@ const line = (): Line => ({
 });
 export default function PurchasesPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const methodLabel = (value: string) => isVietnamese ? ({ Cash: "Tiền mặt", "Bank transfer": "Chuyển khoản", Card: "Thẻ", Other: "Khác" }[value] ?? value) : value;
   const qc = useQueryClient();
   const [params] = useSearchParams();
@@ -70,7 +72,7 @@ export default function PurchasesPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const [open, setOpen] = useState(params.get("create") === "1");
+  const [open, setOpen] = useState(canManageRecords && params.get("create") === "1");
   const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<Line[]>([line()]);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -193,17 +195,19 @@ export default function PurchasesPage() {
           description={isVietnamese ? "Ghi hàng hoá hoặc dịch vụ mua từ nhà cung cấp và các khoản thanh toán đi kèm." : "Record goods or services bought from suppliers and keep every payment with the purchase."}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=purchases"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import bills"}</Link></Button>
+              {canManageRecords && <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=purchases"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import bills"}</Link></Button>}
               {purchaseItems.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={() => setOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {isVietnamese ? "Nhập hàng mới" : "New purchase"}
-              </Button>
+              {canManageRecords && (
+                <Button onClick={() => setOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  {isVietnamese ? "Nhập hàng mới" : "New purchase"}
+                </Button>
+              )}
             </div>
           }
         />
@@ -222,17 +226,17 @@ export default function PurchasesPage() {
         {purchases.isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ nhập hàng…" : "Opening your purchase records…"} />
         ) : purchaseItems.length === 0 ? (
-          <EmptyState icon={PackageOpen} title={search ? (isVietnamese ? "Không tìm thấy lần nhập phù hợp" : "No purchases match that search") : (isVietnamese ? "Chưa có lần nhập hàng" : "No purchases yet")} description={search ? (isVietnamese ? "Hãy thử nhà cung cấp, mặt hàng hoặc mã nhập khác." : "Try a supplier, item, or purchase number.") : (isVietnamese ? "Thêm nhà cung cấp, sau đó ghi hàng đã mua và tình trạng thanh toán." : "Add a supplier first, then record what the business bought and whether it was paid.")} action={!search && <Button onClick={() => setOpen(true)}>{isVietnamese ? "Ghi lần nhập đầu tiên" : "Record first purchase"}</Button>} />
+          <EmptyState icon={PackageOpen} title={search ? (isVietnamese ? "Không tìm thấy lần nhập phù hợp" : "No purchases match that search") : (isVietnamese ? "Chưa có lần nhập hàng" : "No purchases yet")} description={search ? (isVietnamese ? "Hãy thử nhà cung cấp, mặt hàng hoặc mã nhập khác." : "Try a supplier, item, or purchase number.") : (isVietnamese ? "Thêm nhà cung cấp, sau đó ghi hàng đã mua và tình trạng thanh toán." : "Add a supplier first, then record what the business bought and whether it was paid.")} action={!search && canManageRecords ? <Button onClick={() => setOpen(true)}>{isVietnamese ? "Ghi lần nhập đầu tiên" : "Record first purchase"}</Button> : undefined} />
         ) : (
           <div className="space-y-4">
-            <div className="space-y-3">
+            <div className="paper-card divide-y overflow-hidden">
               {purchaseItems.map((p) => {
                 const isVoided = p.status === "Voided";
                 return (
                   <article
                     key={p.id}
-                    className={`paper-card p-5 transition-colors sm:p-6 ${
-                      isVoided ? "opacity-60 bg-muted/20 border-dashed" : "hover:border-primary/25"
+                    className={`relative p-5 transition-colors before:absolute before:inset-y-0 before:left-0 before:w-1 sm:p-6 sm:pl-8 ${
+                      isVoided ? "opacity-60 bg-muted/20 before:bg-muted-foreground/30" : "hover:bg-muted/15 before:bg-sky-500/60"
                     }`}
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row">
@@ -266,7 +270,7 @@ export default function PurchasesPage() {
                           </p>
                         )}
                         <div className="mt-3 flex flex-wrap gap-2 justify-end">
-                          {p.outstandingBalance > 0 && !isVoided && (
+                          {canManageRecords && p.outstandingBalance > 0 && !isVoided && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -279,7 +283,7 @@ export default function PurchasesPage() {
                               {isVietnamese ? "Trả nhà cung cấp" : "Pay supplier"}
                             </Button>
                           )}
-                          {!isVoided && (
+                          {canManageRecords && !isVoided && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -317,7 +321,7 @@ export default function PurchasesPage() {
                                 <span className="no-underline rounded bg-destructive/20 px-1 py-0.5 text-[10px] font-semibold text-destructive">
                                   {isVietnamese ? "Đã hoàn tác" : "Reversed"}
                                 </span>
-                              ) : !isVoided ? (
+                              ) : canManageRecords && !isVoided ? (
                                 <button
                                   type="button"
                                   onClick={() =>

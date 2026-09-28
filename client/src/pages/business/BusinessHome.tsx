@@ -26,11 +26,13 @@ import { Button } from "@/components/ui/button";
 import { businessMoney, businessService } from "@/services/businessService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { getProfileOrDefault, BusinessType } from "@/data/businessProfiles";
 
 export default function BusinessHome() {
   const { user } = useAuth();
   const { t, isVietnamese } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const [period, setPeriod] = useState<string>("today");
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
@@ -71,23 +73,27 @@ export default function BusinessHome() {
                 <FileText className="h-4 w-4 text-primary" />
                 <span>{isVietnamese ? "Báo cáo" : "Report"}</span>
               </Button>
-              <Button asChild variant="outline">
-                <Link to="/expenses?create=1">
-                  <Receipt className="h-4 w-4" />
-                  <span>{isVietnamese ? "+ Ghi khoản chi" : "Add expense"}</span>
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link to="/sales?create=1">
-                  <Plus className="h-4 w-4" />
-                  <span>{isVietnamese ? "+ Bán hàng" : "New sale"}</span>
-                </Link>
-              </Button>
+              {canManageRecords && (
+                <>
+                  <Button asChild variant="outline">
+                    <Link to="/expenses?create=1">
+                      <Receipt className="h-4 w-4" />
+                      <span>{isVietnamese ? "+ Ghi khoản chi" : "Add expense"}</span>
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/sales?create=1">
+                      <Plus className="h-4 w-4" />
+                      <span>{isVietnamese ? "+ Bán hàng" : "New sale"}</span>
+                    </Link>
+                  </Button>
+                </>
+              )}
             </>
           }
         />
 
-        {!hasActivity && (
+        {!hasActivity && canManageRecords && (
           <GettingStartedGuide
             companyName={user?.companyName || (isVietnamese ? "doanh nghiệp của bạn" : "Your business")}
             currency={currency}
@@ -223,11 +229,11 @@ export default function BusinessHome() {
                         icon={ShoppingBasket}
                         title={isVietnamese ? "Hôm nay chưa có hoạt động" : "No activity yet today"}
                         description={isVietnamese ? "Ghi đơn bán, lần nhập hàng hoặc khoản chi để xem tại đây." : "Record a sale, purchase, or expense and it will appear here."}
-                        action={
+                        action={canManageRecords ? (
                           <Button asChild>
                             <Link to="/sales?create=1">{isVietnamese ? "Ghi đơn bán đầu tiên" : (profile.starterSteps[0]?.actionLabel || "Record first sale")}</Link>
                           </Button>
-                        }
+                        ) : undefined}
                       />
                     </div>
                   ) : (

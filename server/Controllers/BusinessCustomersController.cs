@@ -38,8 +38,11 @@ public sealed class BusinessCustomersController(IBusinessService service) : Cont
     public async Task<IActionResult> Update(Guid id, UpdateBusinessCustomerRequest request) =>
         (await service.UpdateCustomerAsync(User.GetTenantId(), id, request)).ToActionResult();
 
+    [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> Delete(Guid id) =>
+        (await service.DeleteCustomerAsync(User.GetTenantId(), id)).ToActionResult();
+
     [HttpPost("{id:guid}/payments"), Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
     public async Task<IActionResult> RecordAccountPayment(Guid id, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, RecordCustomerAccountPaymentRequest request) =>
         (await service.RecordCustomerAccountPaymentAsync(User.GetTenantId(), id, idempotencyKey?.Trim() ?? string.Empty, request)).ToActionResult();
 }
-

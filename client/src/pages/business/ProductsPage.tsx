@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
+import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { StockAdjustmentModal } from "@/components/business/StockAdjustmentModal";
 import { StockAdjustmentHistoryModal } from "@/components/business/StockAdjustmentHistoryModal";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
 import { apiError, businessMoney, businessService, Product, ProductInput } from "@/services/businessService";
 
@@ -32,6 +34,7 @@ const emptyProduct: ProductInput = {
 
 export default function ProductsPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -173,22 +176,26 @@ export default function ProductsPage() {
                 <History className="h-4 w-4" />
                 {isVietnamese ? "Nhật ký điều chỉnh kho" : "Stock Adjustments"}
               </Button>
-              <Button asChild variant="outline" className="h-10 shrink-0 gap-2">
-                <Link to="/imports?type=products">
-                  <Upload className="h-4 w-4" />
-                  {isVietnamese ? "Nhập Excel / CSV" : "Import Excel / CSV"}
-                </Link>
-              </Button>
+              {canManageRecords && (
+                <Button asChild variant="outline" className="h-10 shrink-0 gap-2">
+                  <Link to="/imports?type=products">
+                    <Upload className="h-4 w-4" />
+                    {isVietnamese ? "Nhập Excel / CSV" : "Import Excel / CSV"}
+                  </Link>
+                </Button>
+              )}
               {products.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="h-10 shrink-0 gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={openCreate} className="h-10 shrink-0 gap-2 lg:ml-auto">
-                <Plus className="h-4 w-4" />
-                {isVietnamese ? "Thêm hàng hoá" : "Add product"}
-              </Button>
+              {canManageRecords && (
+                <Button onClick={openCreate} className="h-10 shrink-0 gap-2 lg:ml-auto">
+                  <Plus className="h-4 w-4" />
+                  {isVietnamese ? "Thêm hàng hoá" : "Add product"}
+                </Button>
+              )}
             </div>
           }
         />
@@ -258,7 +265,7 @@ export default function ProductsPage() {
                 ? "Thêm hàng hoá hoặc dịch vụ cùng giá bán, giá vốn và số lượng tồn kho khởi tạo."
                 : "Add your products or services with their selling price, cost price, and initial stock."
             }
-            action={!search && <Button onClick={openCreate}>{isVietnamese ? "Thêm hàng hoá đầu tiên" : "Add first product"}</Button>}
+            action={!search && canManageRecords && <Button onClick={openCreate}>{isVietnamese ? "Thêm hàng hoá đầu tiên" : "Add first product"}</Button>}
           />
         ) : (
           <div className="space-y-4">
@@ -282,34 +289,38 @@ export default function ProductsPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setAdjustModalProduct(product)}
-                          title={isVietnamese ? "Điều chỉnh tồn kho" : "Adjust stock"}
-                          aria-label={`${isVietnamese ? "Điều chỉnh tồn kho" : "Adjust stock"} ${product.name}`}
-                        >
-                          <SlidersHorizontal size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(product)}
-                          title={isVietnamese ? "Sửa hàng hoá" : "Edit product"}
-                          aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${product.name}`}
-                        >
-                          <Pencil size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeletingProduct(product)}
-                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          title={isVietnamese ? "Xoá hàng hoá" : "Delete product"}
-                          aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${product.name}`}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
+                        {canManageRecords && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setAdjustModalProduct(product)}
+                              title={isVietnamese ? "Điều chỉnh tồn kho" : "Adjust stock"}
+                              aria-label={`${isVietnamese ? "Điều chỉnh tồn kho" : "Adjust stock"} ${product.name}`}
+                            >
+                              <SlidersHorizontal size={15} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(product)}
+                              title={isVietnamese ? "Sửa hàng hoá" : "Edit product"}
+                              aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${product.name}`}
+                            >
+                              <Pencil size={15} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingProduct(product)}
+                              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              title={isVietnamese ? "Xoá hàng hoá" : "Delete product"}
+                              aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${product.name}`}
+                            >
+                              <Trash2 size={15} />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -554,44 +565,15 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deletingProduct} onOpenChange={(open) => !open && !remove.isPending && setDeletingProduct(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{isVietnamese ? "Xoá hàng hoá?" : "Delete product?"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              {isVietnamese
-                ? `Bạn có chắc muốn xoá “${deletingProduct?.name ?? ""}”?`
-                : `Are you sure you want to delete “${deletingProduct?.name ?? ""}”?`}
-            </p>
-            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-foreground">
-              {isVietnamese
-                ? "Nếu hàng hoá đã xuất hiện trong đơn bán, đơn mua hoặc điều chỉnh kho, hệ thống sẽ lưu trữ thay vì xoá để bảo toàn lịch sử tài chính."
-                : "If this product appears in sales, purchases, or stock adjustments, it will be archived instead of erased so your financial history remains accurate."}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDeletingProduct(null)} disabled={remove.isPending}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!deletingProduct || remove.isPending}
-              onClick={() => deletingProduct && remove.mutate(deletingProduct)}
-            >
-              {remove.isPending
-                ? isVietnamese
-                  ? "Đang xoá…"
-                  : "Deleting…"
-                : isVietnamese
-                ? "Xoá hàng hoá"
-                : "Delete product"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SafeDeleteDialog
+        open={!!deletingProduct}
+        onOpenChange={(open) => !open && setDeletingProduct(null)}
+        recordType={isVietnamese ? "hàng hoá" : "product"}
+        recordName={deletingProduct?.name ?? ""}
+        historyAware
+        isPending={remove.isPending}
+        onConfirm={() => deletingProduct && remove.mutate(deletingProduct)}
+      />
 
       {/* Stock Adjustment Modal */}
       <StockAdjustmentModal

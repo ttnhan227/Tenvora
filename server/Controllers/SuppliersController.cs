@@ -25,4 +25,6 @@ public sealed class SuppliersController(IBusinessService service) : ControllerBa
         (await service.CreateSupplierAsync(User.GetTenantId(), request)).ToActionResult();
     [HttpPut("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")] public async Task<IActionResult> Update(Guid id, UpdateSupplierRequest request) =>
         (await service.UpdateSupplierAsync(User.GetTenantId(), id, request)).ToActionResult();
+    [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")] public async Task<IActionResult> Delete(Guid id) =>
+        (await service.DeleteSupplierAsync(User.GetTenantId(), id)).ToActionResult();
 }

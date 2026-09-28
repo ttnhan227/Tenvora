@@ -59,6 +59,31 @@ public sealed partial class BusinessService
         return ApiResult<SupplierDto>.Ok(MapSupplier(supplier, await Currency(tenantId)));
     }
 
+    public async Task<ApiResult<RecordDeletionResultDto>> DeleteSupplierAsync(Guid tenantId, Guid supplierId)
+    {
+        var supplier = await db.Suppliers.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Id == supplierId);
+        if (supplier == null) return ApiResult<RecordDeletionResultDto>.Fail("Supplier not found.");
+
+        var hasHistory = await db.Purchases.AnyAsync(p => p.TenantId == tenantId && p.SupplierId == supplierId)
+            || await db.PurchasePayments.AnyAsync(p => p.TenantId == tenantId && p.SupplierId == supplierId);
+
+        if (hasHistory)
+        {
+            supplier.Status = "Archived";
+            supplier.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return ApiResult<RecordDeletionResultDto>.Ok(
+                new(supplier.Id, supplier.Name, DeletedPermanently: false, Archived: true),
+                "Supplier archived because it is linked to financial history.");
+        }
+
+        db.Suppliers.Remove(supplier);
+        await db.SaveChangesAsync();
+        return ApiResult<RecordDeletionResultDto>.Ok(
+            new(supplier.Id, supplier.Name, DeletedPermanently: true, Archived: false),
+            "Supplier deleted permanently.");
+    }
+
     public async Task<ApiResult<List<PurchaseDto>>> GetPurchasesAsync(Guid tenantId, string? search, Guid? supplierId, DateTime? from, DateTime? to)
     {
         var query = db.Purchases.AsNoTracking().Where(p => p.TenantId == tenantId)

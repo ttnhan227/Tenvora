@@ -30,12 +30,22 @@ describe("Tenvora 2.0 business API contracts", () => {
   });
 
   it("deletes a product through the product endpoint", async () => {
-    vi.mocked(apiClient.delete).mockResolvedValue({ data: { data: { productId: "product-1", deletedPermanently: true, archived: false } } });
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: { data: { recordId: "product-1", deletedPermanently: true, archived: false } } });
 
     const result = await businessService.deleteProduct("product-1");
 
     expect(apiClient.delete).toHaveBeenCalledWith("/products/product-1");
     expect(result.deletedPermanently).toBe(true);
+  });
+
+  it("uses consistent safe-delete endpoints for customers and suppliers", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: { data: { deletedPermanently: false, archived: true } } });
+
+    await businessService.deleteCustomer("customer-1");
+    await businessService.deleteSupplier("supplier-1");
+
+    expect(apiClient.delete).toHaveBeenNthCalledWith(1, "/customers/customer-1");
+    expect(apiClient.delete).toHaveBeenNthCalledWith(2, "/suppliers/supplier-1");
   });
 
   it("records customer account lump-sum payment with idempotency key", async () => {

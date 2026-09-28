@@ -4,7 +4,7 @@ import { ArrowRight, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-export function PageHeader({ eyebrow, title, description, actions, actionsFullWidth = false }: { eyebrow?: string; title: string; description: string; actions?: ReactNode; actionsFullWidth?: boolean }) {
+export function PageHeader({ eyebrow, title, description, actions, actionsFullWidth = true }: { eyebrow?: string; title: string; description: string; actions?: ReactNode; actionsFullWidth?: boolean }) {
   return (
     <header className={cn("flex flex-col justify-between gap-5", !actionsFullWidth && "sm:flex-row sm:items-end")}>
       <div className="max-w-2xl">
@@ -12,7 +12,14 @@ export function PageHeader({ eyebrow, title, description, actions, actionsFullWi
         <h1 className="page-title mt-3 text-foreground">{title}</h1>
         <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-muted-foreground">{description}</p>
       </div>
-      {actions && <div className={cn("flex flex-wrap gap-2", actionsFullWidth && "w-full")}>{actions}</div>}
+      {actions && (
+        <div className={cn(
+          "flex flex-wrap items-center gap-2 [&_button]:h-10 [&_a]:h-10",
+          actionsFullWidth && "w-full [&>div]:flex [&>div]:w-full [&>div]:flex-wrap [&>div]:items-center [&>div]:gap-2 lg:[&>div]:flex-nowrap lg:[&>div>*:last-child]:ml-auto lg:[&>*:last-child]:ml-auto"
+        )}>
+          {actions}
+        </div>
+      )}
     </header>
   );
 }

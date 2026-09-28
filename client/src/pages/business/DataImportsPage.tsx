@@ -14,6 +14,7 @@ import {
   Truck,
   ReceiptText,
   PackageOpen,
+  ShieldAlert,
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageHeader } from "@/components/business/BusinessUI";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import {
   ImportKind,
   ParsedImportRow,
@@ -100,6 +102,7 @@ function matchProduct(products: Product[], name: string, sku: string): Product |
 
 export default function DataImportsPage() {
   const { isVietnamese } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [params, setParams] = useSearchParams();
@@ -114,11 +117,11 @@ export default function DataImportsPage() {
   const [rowResults, setRowResults] = useState<Record<number, RowState>>({});
   const [runResult, setRunResult] = useState<ImportRunResult | null>(null);
 
-  const { data: customers = [] } = useQuery({ queryKey: ["customers", "import-all"], queryFn: () => businessService.getCustomers("", "Active") });
-  const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers", "import-all"], queryFn: () => businessService.getSuppliers("", "Active") });
-  const { data: products = [] } = useQuery({ queryKey: ["products", "import-all"], queryFn: () => businessService.getProducts("", true) });
-  const { data: sales = [] } = useQuery({ queryKey: ["sales", "import-existing"], queryFn: () => businessService.getSales() });
-  const { data: purchases = [] } = useQuery({ queryKey: ["purchases", "import-existing"], queryFn: () => businessService.getPurchases() });
+  const { data: customers = [] } = useQuery({ queryKey: ["customers", "import-all"], queryFn: () => businessService.getCustomers("", "Active"), enabled: canManageRecords });
+  const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers", "import-all"], queryFn: () => businessService.getSuppliers("", "Active"), enabled: canManageRecords });
+  const { data: products = [] } = useQuery({ queryKey: ["products", "import-all"], queryFn: () => businessService.getProducts("", true), enabled: canManageRecords });
+  const { data: sales = [] } = useQuery({ queryKey: ["sales", "import-existing"], queryFn: () => businessService.getSales(), enabled: canManageRecords });
+  const { data: purchases = [] } = useQuery({ queryKey: ["purchases", "import-existing"], queryFn: () => businessService.getPurchases(), enabled: canManageRecords });
 
   const copy = (english: string, vietnamese: string) => isVietnamese ? vietnamese : english;
   const definition = importDefinitions[kind];
@@ -411,6 +414,34 @@ export default function DataImportsPage() {
     if (kind === "expenses") return `${text(row.data.category)} · ${text(row.data.amount)}`;
     return `${text(row.data.documentRef)} · ${text(row.data[kind === "sales" ? "customer" : "supplier"])} · ${text(row.data.product) || text(row.data.description)}`;
   };
+
+  if (!canManageRecords) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <PageHeader
+            eyebrow={copy("Protected workspace", "Khu vực được bảo vệ")}
+            title={copy("Data Import Center", "Trung tâm nhập dữ liệu")}
+            description={copy(
+              "Imports can create or change many financial records at once, so this page is available only to Tenant Admins and Operations Managers.",
+              "Nhập dữ liệu có thể tạo hoặc thay đổi nhiều bản ghi tài chính cùng lúc, vì vậy trang này chỉ dành cho Quản trị viên doanh nghiệp và Quản lý vận hành."
+            )}
+          />
+          <section className="paper-card flex items-start gap-4 p-6">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
+              <ShieldAlert className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="font-bold">{copy("Import access is restricted", "Quyền nhập dữ liệu bị giới hạn")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {copy("You can continue viewing and exporting business records. Ask an administrator or operations manager to run an import.", "Bạn vẫn có thể xem và xuất dữ liệu kinh doanh. Hãy nhờ quản trị viên hoặc quản lý vận hành thực hiện nhập dữ liệu.")}
+              </p>
+            </div>
+          </section>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

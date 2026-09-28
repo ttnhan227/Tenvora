@@ -40,9 +40,9 @@ export interface Product {
   createdAt: string;
 }
 
-export interface ProductDeletionResult {
-  productId: string;
-  productName: string;
+export interface RecordDeletionResult {
+  recordId: string;
+  recordName: string;
   deletedPermanently: boolean;
   archived: boolean;
 }
@@ -266,6 +266,11 @@ export const businessService = {
     return response.data.data;
   },
 
+  async deleteCustomer(id: string): Promise<RecordDeletionResult> {
+    const response = await apiClient.delete(`/customers/${id}`);
+    return response.data.data;
+  },
+
   async recordCustomerAccountPayment(customerId: string, input: CustomerAccountPaymentInput): Promise<CustomerAccountPaymentResult> {
     const response = await apiClient.post(`/customers/${customerId}/payments`, input, { headers: mutationHeaders() });
     return response.data.data;
@@ -296,7 +301,7 @@ export const businessService = {
     return response.data.data;
   },
 
-  async deleteProduct(id: string): Promise<ProductDeletionResult> {
+  async deleteProduct(id: string): Promise<RecordDeletionResult> {
     const response = await apiClient.delete(`/products/${id}`);
     return response.data.data;
   },
@@ -368,6 +373,11 @@ export const businessService = {
 
   async updateSupplier(id: string, input: { name: string; phone?: string; email?: string; address?: string; notes?: string; status?: string }): Promise<Supplier> {
     const response = await apiClient.put(`/suppliers/${id}`, { ...input, status: input.status ?? "Active" });
+    return response.data.data;
+  },
+
+  async deleteSupplier(id: string): Promise<RecordDeletionResult> {
+    const response = await apiClient.delete(`/suppliers/${id}`);
     return response.data.data;
   },
 

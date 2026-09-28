@@ -59,6 +59,7 @@ import {
   Sale,
 } from "@/services/businessService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
 
 type DraftItem = { productId: string; quantity: number; unitPrice: number };
@@ -115,6 +116,7 @@ function playCashierSound(type: "scan" | "success" | "park" = "scan") {
 
 export default function SalesPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const methodLabel = (method: string) => isVietnamese ? ({ Cash: "Tiền mặt", "Bank transfer": "Chuyển khoản", Card: "Thẻ", Other: "Khác" }[method] ?? method) : method;
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
@@ -122,7 +124,7 @@ export default function SalesPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const [createOpen, setCreateOpen] = useState(params.get("create") === "1");
+  const [createOpen, setCreateOpen] = useState(canManageRecords && params.get("create") === "1");
   const [customerId, setCustomerId] = useState(params.get("customer") ?? "");
   const [items, setItems] = useState<DraftItem[]>([newItem()]);
   const [paymentAmount, setPaymentAmount] = useState(0);
@@ -474,8 +476,8 @@ export default function SalesPage() {
           }
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=sales"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import invoices"}</Link></Button>
-              {heldOrders.length > 0 && (
+              {canManageRecords && <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=sales"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import invoices"}</Link></Button>}
+              {canManageRecords && heldOrders.length > 0 && (
                 <Button
                   variant="outline"
                   onClick={() => setHeldOrdersOpen(true)}
@@ -491,10 +493,12 @@ export default function SalesPage() {
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={() => setCreateOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {isVietnamese ? "Đơn bán mới" : "New sale"}
-              </Button>
+              {canManageRecords && (
+                <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  {isVietnamese ? "Đơn bán mới" : "New sale"}
+                </Button>
+              )}
             </div>
           }
         />
@@ -513,7 +517,7 @@ export default function SalesPage() {
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ bán hàng…" : "Opening your sales book…"} />
         ) : sales.length === 0 ? (
-          <EmptyState icon={ReceiptText} title={search ? (isVietnamese ? "Không tìm thấy đơn bán phù hợp" : "No sales match that search") : (isVietnamese ? "Chưa có đơn bán" : "No sales yet")} description={search ? (isVietnamese ? "Hãy thử tên khách hàng, hàng hoá hoặc mã đơn khác." : "Try a customer name, product, or sale number.") : (isVietnamese ? "Đơn bán sẽ xuất hiện tại đây sau khi bạn ghi đơn đầu tiên. Hãy thêm khách hàng và hàng hoá trước nếu cần." : "Your sales will appear here after you record the first one. Add a customer and product first if you haven't already.")} action={!search && <Button onClick={() => setCreateOpen(true)}>{isVietnamese ? "Ghi đơn bán đầu tiên" : "Record first sale"}</Button>} />
+          <EmptyState icon={ReceiptText} title={search ? (isVietnamese ? "Không tìm thấy đơn bán phù hợp" : "No sales match that search") : (isVietnamese ? "Chưa có đơn bán" : "No sales yet")} description={search ? (isVietnamese ? "Hãy thử tên khách hàng, hàng hoá hoặc mã đơn khác." : "Try a customer name, product, or sale number.") : (isVietnamese ? "Đơn bán sẽ xuất hiện tại đây sau khi bạn ghi đơn đầu tiên. Hãy thêm khách hàng và hàng hoá trước nếu cần." : "Your sales will appear here after you record the first one. Add a customer and product first if you haven't already.")} action={!search && canManageRecords ? <Button onClick={() => setCreateOpen(true)}>{isVietnamese ? "Ghi đơn bán đầu tiên" : "Record first sale"}</Button> : undefined} />
         ) : (
           <div className="space-y-4">
             <div className="space-y-3">
@@ -578,7 +582,7 @@ export default function SalesPage() {
                             <Printer className="h-4 w-4" />
                             {isVietnamese ? "In phiếu" : "Receipt"}
                           </Button>
-                          {sale.outstandingBalance > 0 && !isVoided && (
+                          {canManageRecords && sale.outstandingBalance > 0 && !isVoided && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -589,7 +593,7 @@ export default function SalesPage() {
                               {isVietnamese ? "Nhận thanh toán" : "Receive payment"}
                             </Button>
                           )}
-                          {!isVoided && (
+                          {canManageRecords && !isVoided && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -627,7 +631,7 @@ export default function SalesPage() {
                                 <span className="no-underline rounded bg-destructive/20 px-1 py-0.5 text-[10px] font-semibold text-destructive">
                                   {isVietnamese ? "Đã hoàn tác" : "Reversed"}
                                 </span>
-                              ) : !isVoided ? (
+                              ) : canManageRecords && !isVoided ? (
                                 <button
                                   type="button"
                                   onClick={() =>

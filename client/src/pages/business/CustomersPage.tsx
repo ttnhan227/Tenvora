@@ -1,11 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Users, WalletCards } from "lucide-react";
+import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Trash2, Users, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
+import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
 import {
   apiError,
@@ -46,6 +48,7 @@ const emptyCustomer: CustomerInput = {
 
 export default function CustomersPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -57,6 +60,7 @@ export default function CustomersPage() {
   const [debtFilter, setDebtFilter] = useState<"all" | "has_debt" | "zero_balance">("all");
   const [dialogOpen, setDialogOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<BusinessCustomer | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState<BusinessCustomer | null>(null);
   const [form, setForm] = useState<CustomerInput>(emptyCustomer);
 
   const { data: pagedData, isLoading } = useQuery({
@@ -104,6 +108,20 @@ export default function CustomersPage() {
     },
     onError: (error) =>
       toast.error(apiError(error, isVietnamese ? "Không thể lưu khách hàng." : "Could not save the customer.")),
+  });
+
+  const remove = useMutation({
+    mutationFn: (customer: BusinessCustomer) => businessService.deleteCustomer(customer.id),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
+      queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+      setDeletingCustomer(null);
+      toast.success(result.deletedPermanently
+        ? isVietnamese ? "Đã xoá khách hàng" : "Customer deleted"
+        : isVietnamese ? "Đã lưu trữ khách hàng để bảo toàn lịch sử giao dịch" : "Customer archived to preserve transaction history");
+    },
+    onError: (error) => toast.error(apiError(error, isVietnamese ? "Không thể xoá khách hàng." : "Could not delete the customer.")),
   });
 
   const openCreate = () => {
@@ -162,17 +180,17 @@ export default function CustomersPage() {
           }
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=customers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>
+              {canManageRecords && <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=customers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>}
               {rawCustomers.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={openCreate} className="gap-2">
+              {canManageRecords && <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" />
                 {isVietnamese ? "Thêm khách hàng" : "Add customer"}
-              </Button>
+              </Button>}
             </div>
           }
         />
@@ -288,7 +306,7 @@ export default function CustomersPage() {
             }
             action={
               !search && debtFilter === "all" && (
-                <Button onClick={openCreate}>{isVietnamese ? "Thêm khách hàng đầu tiên" : "Add first customer"}</Button>
+                canManageRecords && <Button onClick={openCreate}>{isVietnamese ? "Thêm khách hàng đầu tiên" : "Add first customer"}</Button>
               )
             }
           />
@@ -296,11 +314,12 @@ export default function CustomersPage() {
           <div className="paper-card overflow-hidden">
             <div className="divide-y">
               {filteredCustomers.map((customer) => (
-                <div key={customer.id} className="grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center hover:bg-muted/20 transition-colors">
+                <div key={customer.id} className={`grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center hover:bg-muted/20 transition-colors ${customer.status === "Archived" ? "opacity-60" : ""}`}>
                   <div className="min-w-0">
-                    <Link to={`/customers/${customer.id}`} className="font-semibold text-foreground hover:text-primary">
-                      {customer.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link to={`/customers/${customer.id}`} className="font-semibold text-foreground hover:text-primary">{customer.name}</Link>
+                      {customer.status === "Archived" && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">{isVietnamese ? "Đã lưu trữ" : "Archived"}</span>}
+                    </div>
                     <p className="mt-1 truncate text-sm text-muted-foreground">
                       {[customer.phone, customer.email].filter(Boolean).join(" · ") ||
                         (isVietnamese ? "Chưa có thông tin liên hệ" : "No contact details")}
@@ -327,14 +346,8 @@ export default function CustomersPage() {
                     </p>
                   </div>
                   <div className="flex gap-1 sm:justify-end">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${customer.name}`}
-                      onClick={() => openEdit(customer)}
-                    >
-                      <Pencil size={16} />
-                    </Button>
+                    {canManageRecords && <Button variant="ghost" size="icon" aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${customer.name}`} onClick={() => openEdit(customer)}><Pencil size={16} /></Button>}
+                    {canManageRecords && <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${customer.name}`} onClick={() => setDeletingCustomer(customer)}><Trash2 size={16} /></Button>}
                     <Button variant="ghost" size="icon" asChild>
                       <Link
                         aria-label={`${isVietnamese ? "Xem" : "View"} ${customer.name}`}
@@ -389,6 +402,13 @@ export default function CustomersPage() {
                 placeholder={isVietnamese ? "Tên khách hàng hoặc tên công ty" : "Customer or company name"}
               />
             </div>
+
+            {editing && (
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm hover:bg-muted/40">
+                <input type="checkbox" checked={form.status === "Active"} onChange={(e) => setForm({ ...form, status: e.target.checked ? "Active" : "Archived" })} />
+                {isVietnamese ? "Đang giao dịch (có sẵn cho đơn bán mới)" : "Active and available for new sales"}
+              </label>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="customer-phone">{isVietnamese ? "Điện thoại" : "Phone"}</Label>
@@ -444,6 +464,15 @@ export default function CustomersPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <SafeDeleteDialog
+        open={!!deletingCustomer}
+        onOpenChange={(open) => !open && setDeletingCustomer(null)}
+        recordType={isVietnamese ? "khách hàng" : "customer"}
+        recordName={deletingCustomer?.name ?? ""}
+        historyAware
+        isPending={remove.isPending}
+        onConfirm={() => deletingCustomer && remove.mutate(deletingCustomer)}
+      />
     </DashboardLayout>
   );
 }

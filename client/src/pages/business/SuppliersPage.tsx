@@ -1,11 +1,12 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileUp, Pencil, Plus, Search, Truck } from "lucide-react";
+import { Download, FileUp, Pencil, Plus, Search, Trash2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
+import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { Button } from "@/components/ui/button";
 import { exportToCsv } from "@/lib/csvExport";
 import {
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import {
   apiError,
   businessMoney,
@@ -38,6 +40,7 @@ const empty = {
 
 export default function SuppliersPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -49,6 +52,7 @@ export default function SuppliersPage() {
 
   const [open, setOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<Supplier | null>(null);
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
   const [form, setForm] = useState(empty);
 
   const { data: pagedData, isLoading } = useQuery({
@@ -78,6 +82,20 @@ export default function SuppliersPage() {
       if (!editing && returnTo?.startsWith("/") && !returnTo.startsWith("//")) navigate(returnTo);
     },
     onError: (e) => toast.error(apiError(e, isVietnamese ? "Không thể lưu nhà cung cấp." : "Could not save the supplier.")),
+  });
+
+  const remove = useMutation({
+    mutationFn: (supplier: Supplier) => businessService.deleteSupplier(supplier.id),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers-paged"] });
+      queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+      setDeletingSupplier(null);
+      toast.success(result.deletedPermanently
+        ? isVietnamese ? "Đã xoá nhà cung cấp" : "Supplier deleted"
+        : isVietnamese ? "Đã lưu trữ nhà cung cấp để bảo toàn lịch sử giao dịch" : "Supplier archived to preserve transaction history");
+    },
+    onError: (error) => toast.error(apiError(error, isVietnamese ? "Không thể xoá nhà cung cấp." : "Could not delete the supplier.")),
   });
   const edit = (s: Supplier) => {
     setEditing(s);
@@ -127,17 +145,17 @@ export default function SuppliersPage() {
           }
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=suppliers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>
+              {canManageRecords && <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=suppliers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>}
               {suppliers.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={create} className="gap-2">
+              {canManageRecords && <Button onClick={create} className="gap-2">
                 <Plus className="h-4 w-4" />
                 {isVietnamese ? "Thêm nhà cung cấp" : "Add supplier"}
-              </Button>
+              </Button>}
             </div>
           }
         />
@@ -203,48 +221,53 @@ export default function SuppliersPage() {
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở danh sách nhà cung cấp…" : "Opening your supplier list…"} />
         ) : suppliers.length === 0 ? (
-          <EmptyState icon={Truck} title={search ? (isVietnamese ? "Không tìm thấy nhà cung cấp phù hợp" : "No suppliers match that search") : (isVietnamese ? "Chưa có nhà cung cấp" : "No suppliers yet")} description={search ? (isVietnamese ? "Hãy thử tên, số điện thoại hoặc email khác." : "Try a name, phone number, or email address.") : (isVietnamese ? "Thêm người hoặc doanh nghiệp bạn nhập hàng. Số dư sẽ tự cập nhật theo các lần nhập hàng và thanh toán." : "Add the people and businesses you buy from. Their balance will update automatically when you record purchases and payments.")} action={!search && <Button onClick={create}>{isVietnamese ? "Thêm nhà cung cấp đầu tiên" : "Add first supplier"}</Button>} />
+          <EmptyState icon={Truck} title={search ? (isVietnamese ? "Không tìm thấy nhà cung cấp phù hợp" : "No suppliers match that search") : (isVietnamese ? "Chưa có nhà cung cấp" : "No suppliers yet")} description={search ? (isVietnamese ? "Hãy thử tên, số điện thoại hoặc email khác." : "Try a name, phone number, or email address.") : (isVietnamese ? "Thêm người hoặc doanh nghiệp bạn nhập hàng. Số dư sẽ tự cập nhật theo các lần nhập hàng và thanh toán." : "Add the people and businesses you buy from. Their balance will update automatically when you record purchases and payments.")} action={!search && canManageRecords && <Button onClick={create}>{isVietnamese ? "Thêm nhà cung cấp đầu tiên" : "Add first supplier"}</Button>} />
         ) : (
           <div className="space-y-4">
-            <div className="paper-card overflow-hidden">
-              <div className="divide-y">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {suppliers.map((s) => (
-                  <div
+                  <article
                     key={s.id}
-                    className="grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+                    className={`paper-card group relative flex min-h-52 flex-col overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md ${s.status === "Archived" ? "opacity-60" : ""}`}
                   >
-                    <div>
-                      <p className="font-semibold">{s.name}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500/70 via-primary/50 to-transparent" />
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{isVietnamese ? "Đối tác cung ứng" : "Supply partner"}</p>
+                        <p className="mt-2 truncate text-lg font-bold">{s.name}</p>
+                      </div>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300"><Truck size={18} /></span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {s.status === "Archived" && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">{isVietnamese ? "Đã lưu trữ" : "Archived"}</span>}
+                      <p className="text-sm text-muted-foreground">
                         {[s.phone, s.email].filter(Boolean).join(" · ") ||
                           (isVietnamese ? "Chưa có thông tin liên hệ" : "No contact details")}
                       </p>
                     </div>
-                    <div className="sm:text-right">
+                    <div className="mt-auto flex items-end justify-between gap-4 border-t pt-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{isVietnamese ? "Phải trả" : "Amount payable"}</p>
                       <p
-                        className={
+                          className={`mt-1 text-xl font-bold tabular-nums ${
                           s.outstandingBalance > 0
-                            ? "font-semibold text-amber-600"
-                            : "font-semibold"
-                        }
+                              ? "text-amber-700 dark:text-amber-300"
+                              : "text-foreground"
+                          }`}
                       >
                         {businessMoney(s.outstandingBalance, s.currency)}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {isVietnamese ? `còn nợ · ${s.purchaseCount} lần nhập` : `owed · ${s.purchaseCount} purchases`}
+                          {isVietnamese ? `${s.purchaseCount} lần nhập hàng` : `${s.purchaseCount} purchases`}
                       </p>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        {canManageRecords && <Button variant="ghost" size="icon" aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${s.name}`} onClick={() => edit(s)}><Pencil size={16} /></Button>}
+                        {canManageRecords && <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${s.name}`} onClick={() => setDeletingSupplier(s)}><Trash2 size={16} /></Button>}
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${s.name}`}
-                      onClick={() => edit(s)}
-                    >
-                      <Pencil size={16} />
-                    </Button>
-                  </div>
+                  </article>
                 ))}
-              </div>
             </div>
             <PaginationBar
               currentPage={page}
@@ -280,6 +303,12 @@ export default function SuppliersPage() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
+            {editing && (
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm hover:bg-muted/40">
+                <input type="checkbox" checked={form.status === "Active"} onChange={(e) => setForm({ ...form, status: e.target.checked ? "Active" : "Archived" })} />
+                {isVietnamese ? "Đang giao dịch (có sẵn cho lần nhập hàng mới)" : "Active and available for new purchases"}
+              </label>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="supplier-phone">{isVietnamese ? "Điện thoại" : "Phone"}</Label>
@@ -330,6 +359,15 @@ export default function SuppliersPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <SafeDeleteDialog
+        open={!!deletingSupplier}
+        onOpenChange={(open) => !open && setDeletingSupplier(null)}
+        recordType={isVietnamese ? "nhà cung cấp" : "supplier"}
+        recordName={deletingSupplier?.name ?? ""}
+        historyAware
+        isPending={remove.isPending}
+        onConfirm={() => deletingSupplier && remove.mutate(deletingSupplier)}
+      />
     </DashboardLayout>
   );
 }

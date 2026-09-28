@@ -6,16 +6,9 @@ import {
   FileSpreadsheet,
   FileText,
   Printer,
-  ReceiptText,
-  TrendingUp,
-  WalletCards,
-  ArrowDownToLine,
-  ChevronRight,
-  Filter,
-  CheckCircle2,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { EmptyState, LoadingState, MoneyCard, PageHeader } from "@/components/business/BusinessUI";
+import { EmptyState, LoadingState } from "@/components/business/BusinessUI";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -191,17 +184,25 @@ export default function ReportsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-7">
-        <PageHeader
-          eyebrow={isVietnamese ? "Sổ sách & Báo cáo" : "Records & Statements"}
-          title={isVietnamese ? "Báo cáo kinh doanh" : "Business Statements"}
-          description={
-            isVietnamese
-              ? "Tổng kết doanh thu, chi phí vận hành, nhập hàng và lợi nhuận theo tháng hoặc toàn thời gian."
-              : "Review revenue, operating expenses, supplier purchases, and net profit by month or all time."
-          }
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-6">
+        <section className="relative overflow-hidden rounded-[28px] border bg-card shadow-sm">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-[38px] border-primary/5" />
+          <div className="relative grid gap-7 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                <FileText className="h-4 w-4" />
+                <span>{isVietnamese ? "Báo cáo quản trị" : "Management report"}</span>
+              </div>
+              <h1 className="mt-4 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+                {isVietnamese ? "Báo cáo kinh doanh" : "Business Statement"}
+              </h1>
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                <strong className="text-foreground">{user?.companyName || "Tenvora Store"}</strong>
+                <span>{dateRange.label}</span>
+                <span>{dateRange.rangeLabel}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <Button
                 variant="outline"
                 onClick={handleExportCsv}
@@ -229,50 +230,47 @@ export default function ReportsPage() {
                 <span>{isVietnamese ? "In / Lưu PDF" : "Print / Save PDF"}</span>
               </Button>
             </div>
-          }
-        />
-
-        {/* Period Selector Bar */}
-        <div className="flex items-center justify-between flex-wrap gap-3 paper-card p-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-            <Calendar className="h-4 w-4 text-primary" />
-            <span>{isVietnamese ? "Kỳ báo cáo:" : "Reporting period:"}</span>
           </div>
-          <div className="inline-flex rounded-xl border bg-muted/40 p-1 flex-wrap">
-            {(
-              [
-                { key: "month", vi: "Tháng này", en: "This Month" },
-                { key: "last_month", vi: "Tháng trước", en: "Last Month" },
-                { key: "quarter", vi: "Quý này", en: "This Quarter" },
-                { key: "year", vi: "Năm nay", en: "This Year" },
-                { key: "all", vi: "Tất cả (Tổng thể)", en: "All Time (Overall)" },
-              ] as const
-            ).map((p) => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => setSelectedPeriod(p.key)}
-                className={cn(
-                  "rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all",
-                  selectedPeriod === p.key
-                    ? "bg-card text-foreground shadow-sm font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {isVietnamese ? p.vi : p.en}
-              </button>
-            ))}
+          <div className="relative flex flex-col gap-3 border-t bg-muted/20 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span>{isVietnamese ? "Chọn kỳ báo cáo" : "Select reporting period"}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  { key: "month", vi: "Tháng này", en: "This Month" },
+                  { key: "last_month", vi: "Tháng trước", en: "Last Month" },
+                  { key: "quarter", vi: "Quý này", en: "This Quarter" },
+                  { key: "year", vi: "Năm nay", en: "This Year" },
+                  { key: "all", vi: "Tất cả", en: "All Time" },
+                ] as const
+              ).map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setSelectedPeriod(p.key)}
+                  className={cn(
+                    "rounded-full border px-3.5 py-2 text-xs font-semibold transition-all",
+                    selectedPeriod === p.key
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-transparent bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  )}
+                >
+                  {isVietnamese ? p.vi : p.en}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
 
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang chuẩn bị báo cáo..." : "Compiling financial statements..."} />
         ) : (
           <div className="space-y-6">
-            {/* KPI Summary Cards */}
-            <section aria-label="Executive Totals" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <MoneyCard
-                featured
+            <section aria-label="Executive Totals" className="grid overflow-hidden rounded-2xl border bg-card sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
+              <ReportMetric
+                index="01"
                 label={isVietnamese ? "Tổng doanh thu bán hàng" : "Gross Revenue"}
                 value={money(totalSales)}
                 detail={
@@ -280,10 +278,10 @@ export default function ReportsPage() {
                     ? `${salesList.length} ${isVietnamese ? "đơn hàng ghi nhận" : "sales completed"}`
                     : isVietnamese ? "Chưa có đơn bán trong kỳ" : "No sales in this period"
                 }
-                icon={ReceiptText}
                 tone="good"
               />
-              <MoneyCard
+              <ReportMetric
+                index="02"
                 label={isVietnamese ? "Lợi nhuận kinh doanh" : "Net Profit"}
                 value={money(netProfit)}
                 detail={
@@ -291,10 +289,10 @@ export default function ReportsPage() {
                     ? "Doanh thu - Giá vốn - Chi phí"
                     : "Sales - COGS - Expenses"
                 }
-                icon={TrendingUp}
                 tone={netProfit >= 0 ? "good" : "out"}
               />
-              <MoneyCard
+              <ReportMetric
+                index="03"
                 label={isVietnamese ? "Tiền mặt thực thu" : "Cash Inflow"}
                 value={money(totalCollected)}
                 detail={
@@ -302,20 +300,19 @@ export default function ReportsPage() {
                     ? isVietnamese ? "Thực nhận từ khách hàng" : "Collected from customers"
                     : isVietnamese ? "Chưa thu tiền" : "No payments received"
                 }
-                icon={ArrowDownToLine}
                 tone="good"
               />
-              <MoneyCard
+              <ReportMetric
+                index="04"
                 label={isVietnamese ? "Tổng chi tiêu & nhập hàng" : "Spend & Purchases"}
                 value={money(totalExpenses + totalPurchases)}
                 detail={`${money(totalExpenses)} chi + ${money(totalPurchases)} nhập`}
-                icon={WalletCards}
                 tone="out"
               />
             </section>
 
             {/* P&L Statement Card */}
-            <div className="paper-card p-6">
+            <div className="rounded-[28px] border bg-card p-5 shadow-sm sm:p-8">
               <div className="flex items-center justify-between border-b pb-4 mb-4">
                 <div>
                   <h2 className="text-lg font-bold font-serif">
@@ -519,5 +516,31 @@ export default function ReportsPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+function ReportMetric({
+  index,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  index: string;
+  label: string;
+  value: string;
+  detail: string;
+  tone: "good" | "out";
+}) {
+  return (
+    <article className="relative border-b p-5 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:[&:nth-child(odd)]:border-r-0">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-muted-foreground">{index}</span>
+        <span className={cn("h-2 w-2 rounded-full", tone === "good" ? "bg-emerald-500" : "bg-rose-500")} />
+      </div>
+      <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className={cn("mt-2 text-2xl font-bold tabular-nums", tone === "good" ? "text-foreground" : "text-rose-700 dark:text-rose-300")}>{value}</p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+    </article>
   );
 }

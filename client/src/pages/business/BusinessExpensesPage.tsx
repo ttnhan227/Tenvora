@@ -5,6 +5,7 @@ import { Download, FileUp, Pencil, Plus, Receipt, Search, Trash2 } from "lucide-
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
+import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +32,7 @@ import {
   BusinessExpense,
 } from "@/services/businessService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
 
 const categories = [
@@ -46,6 +48,7 @@ const categories = [
 
 export default function BusinessExpensesPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const categoryLabel = (value: string) =>
     isVietnamese
       ? ({
@@ -66,6 +69,7 @@ export default function BusinessExpensesPage() {
   const [category, setCategory] = useState("all");
   const [open, setOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<BusinessExpense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<BusinessExpense | null>(null);
 
   const [form, setForm] = useState({
     category: "Transportation",
@@ -88,6 +92,7 @@ export default function BusinessExpensesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["business-expenses"] });
       qc.invalidateQueries({ queryKey: ["business-dashboard"] });
+      setDeletingExpense(null);
       setOpen(false);
       setEditing(null);
       setForm({
@@ -143,15 +148,6 @@ export default function BusinessExpensesPage() {
     setOpen(true);
   };
 
-  const handleDelete = (expense: BusinessExpense) => {
-    const confirmMsg = isVietnamese
-      ? `Bạn có chắc muốn xoá khoản chi ${businessMoney(expense.amount, expense.currency)} (${categoryLabel(expense.category)})?`
-      : `Are you sure you want to delete expense ${businessMoney(expense.amount, expense.currency)} (${expense.category})?`;
-    if (window.confirm(confirmMsg)) {
-      deleteMutation.mutate(expense.id);
-    }
-  };
-
   const handleExportCsv = () => {
     const expenses = query.data ?? [];
     if (expenses.length === 0) return;
@@ -184,17 +180,17 @@ export default function BusinessExpensesPage() {
           }
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=expenses"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập chi phí" : "Import expenses"}</Link></Button>
+              {canManageRecords && <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=expenses"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập chi phí" : "Import expenses"}</Link></Button>}
               {(query.data ?? []).length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
                 </Button>
               )}
-              <Button onClick={openCreate} className="gap-2">
+              {canManageRecords && <Button onClick={openCreate} className="gap-2">
                 <Plus className="h-4 w-4" />
                 {isVietnamese ? "Thêm khoản chi" : "Add expense"}
-              </Button>
+              </Button>}
             </div>
           }
         />
@@ -259,15 +255,18 @@ export default function BusinessExpensesPage() {
             action={!search && category === "all" && <Button onClick={openCreate}>{isVietnamese ? "Thêm khoản chi đầu tiên" : "Add first expense"}</Button>}
           />
         ) : (
-          <div className="paper-card overflow-hidden">
+          <div className="overflow-hidden rounded-[28px] border bg-card p-2 shadow-sm">
             <div className="divide-y">
               {query.data!.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-4 p-5 hover:bg-muted/20 transition-colors">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-foreground">{categoryLabel(e.category)}</p>
-                    <p className="mt-1 text-sm text-muted-foreground truncate">
-                      {e.description || (isVietnamese ? "Không có mô tả" : "No description")} ·{" "}
-                      {new Date(e.expenseDate).toLocaleDateString()}
+                <div key={e.id} className="grid gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/25 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center">
+                  <div className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                    {new Date(e.expenseDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
+                    <span className="mt-1 block text-[10px] font-medium tracking-normal opacity-70">{new Date(e.expenseDate).getFullYear()}</span>
+                  </div>
+                  <div className="min-w-0 border-l-2 border-rose-500/25 pl-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-700 dark:text-rose-300">{categoryLabel(e.category)}</p>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">
+                      {e.description || (isVietnamese ? "Không có mô tả" : "No description")}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -275,23 +274,23 @@ export default function BusinessExpensesPage() {
                       {businessMoney(e.amount, e.currency)}
                     </p>
                     <div className="flex items-center gap-1">
-                      <Button
+                      {canManageRecords && <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(e)}
                         aria-label={isVietnamese ? "Sửa" : "Edit"}
                       >
                         <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
+                      </Button>}
+                      {canManageRecords && <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(e)}
+                        onClick={() => setDeletingExpense(e)}
                         className="text-destructive hover:text-destructive"
                         aria-label={isVietnamese ? "Xoá" : "Delete"}
                       >
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 </div>
@@ -414,6 +413,14 @@ export default function BusinessExpensesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <SafeDeleteDialog
+        open={!!deletingExpense}
+        onOpenChange={(open) => !open && setDeletingExpense(null)}
+        recordType={isVietnamese ? "khoản chi" : "expense"}
+        recordName={deletingExpense ? `${businessMoney(deletingExpense.amount, deletingExpense.currency)} · ${categoryLabel(deletingExpense.category)}` : ""}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => deletingExpense && deleteMutation.mutate(deletingExpense.id)}
+      />
     </DashboardLayout>
   );
 }

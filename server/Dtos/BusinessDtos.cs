@@ -57,9 +57,9 @@ public record ProductDto(
     bool TrackInventory = false
 );
 
-public record ProductDeletionResultDto(
-    Guid ProductId,
-    string ProductName,
+public record RecordDeletionResultDto(
+    Guid RecordId,
+    string RecordName,
     bool DeletedPermanently,
     bool Archived
 );

@@ -656,4 +656,62 @@ public sealed class BusinessWorkflowTests
         Assert.False((await db.Products.SingleAsync(p => p.Id == productId, TestContext.Current.CancellationToken)).IsActive);
         Assert.Single(await db.SaleItems.Where(i => i.ProductId == productId).ToListAsync(TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public async Task DeleteCustomerPermanentlyRemovesUnusedCustomer()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var customer = (await service.CreateCustomerAsync(tenantId, new("Unused customer", null, null, null, null))).Data!;
+
+        var result = await service.DeleteCustomerAsync(tenantId, customer.Id);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data!.DeletedPermanently);
+        Assert.False(await db.Customers.AnyAsync(c => c.Id == customer.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DeleteCustomerArchivesCustomerReferencedByFinancialHistory()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var (customerId, productId) = await SeedCustomerAndProduct(service, tenantId);
+        Assert.True((await service.CreateSaleAsync(tenantId, "customer-delete-history", new(customerId, [new(productId, 1m, 10m)]))).Success);
+
+        var result = await service.DeleteCustomerAsync(tenantId, customerId);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data!.Archived);
+        Assert.Equal("Archived", (await db.Customers.SingleAsync(c => c.Id == customerId, TestContext.Current.CancellationToken)).Status);
+    }
+
+    [Fact]
+    public async Task DeleteSupplierPermanentlyRemovesUnusedSupplier()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var supplier = (await service.CreateSupplierAsync(tenantId, new("Unused supplier", null, null, null, null))).Data!;
+
+        var result = await service.DeleteSupplierAsync(tenantId, supplier.Id);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data!.DeletedPermanently);
+        Assert.False(await db.Suppliers.AnyAsync(s => s.Id == supplier.Id, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DeleteSupplierArchivesSupplierReferencedByFinancialHistory()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var supplier = (await service.CreateSupplierAsync(tenantId, new("History supplier", null, null, null, null))).Data!;
+        Assert.True((await service.CreatePurchaseAsync(tenantId, "supplier-delete-history", new(supplier.Id, [new("Stock", "pcs", 1m, 10m)]))).Success);
+
+        var result = await service.DeleteSupplierAsync(tenantId, supplier.Id);
+
+        Assert.True(result.Success);
+        Assert.True(result.Data!.Archived);
+        Assert.Equal("Archived", (await db.Suppliers.SingleAsync(s => s.Id == supplier.Id, TestContext.Current.CancellationToken)).Status);
+    }
 }

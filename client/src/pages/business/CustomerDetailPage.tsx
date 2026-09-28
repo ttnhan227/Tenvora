@@ -17,9 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { apiError, businessMoney, businessService, Sale } from "@/services/businessService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 
 export default function CustomerDetailPage() {
   const { isVietnamese, t } = useLanguage();
+  const { canManageRecords } = useBusinessPermissions();
   const methodLabel = (method: string) =>
     isVietnamese
       ? ({ Cash: "Tiền mặt", "Bank transfer": "Chuyển khoản", Card: "Thẻ", Other: "Khác" }[method] ?? method)
@@ -171,7 +173,7 @@ export default function CustomerDetailPage() {
           </Link>
         </Button>
 
-        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <header className="flex flex-col gap-5">
           <div>
             <span className="notebook-label">{isVietnamese ? "Sổ khách hàng" : "Customer record"}</span>
             <h1 className="page-title mt-3">{customer.name}</h1>
@@ -196,7 +198,7 @@ export default function CustomerDetailPage() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 [&_button]:h-10 [&_a]:h-10">
             <Button
               variant="outline"
               onClick={() => setStatementOpen(true)}
@@ -215,18 +217,22 @@ export default function CustomerDetailPage() {
                   <MessageCircle className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                   {isVietnamese ? "Nhắc nợ Zalo / SMS" : "Remind via Zalo/SMS"}
                 </Button>
-                <Button variant="outline" onClick={openAccountPayment} className="gap-2">
-                  <WalletCards className="h-4 w-4" />
-                  {isVietnamese ? "Thu nợ tổng thể" : "Pay on Account"}
-                </Button>
+                {canManageRecords && (
+                  <Button variant="outline" onClick={openAccountPayment} className="gap-2">
+                    <WalletCards className="h-4 w-4" />
+                    {isVietnamese ? "Thu nợ tổng thể" : "Pay on Account"}
+                  </Button>
+                )}
               </>
             )}
-            <Button asChild className="gap-2">
-              <Link to={`/sales?create=1&customer=${customer.id}`}>
-                <Plus className="h-4 w-4" />
-                {isVietnamese ? "Đơn bán mới" : "New sale"}
-              </Link>
-            </Button>
+            {canManageRecords && (
+              <Button asChild className="gap-2 lg:ml-auto">
+                <Link to={`/sales?create=1&customer=${customer.id}`}>
+                  <Plus className="h-4 w-4" />
+                  {isVietnamese ? "Đơn bán mới" : "New sale"}
+                </Link>
+              </Button>
+            )}
           </div>
         </header>
 
@@ -279,11 +285,11 @@ export default function CustomerDetailPage() {
               icon={ReceiptText}
               title={isVietnamese ? "Khách hàng này chưa có đơn bán" : "No sales for this customer"}
               description={isVietnamese ? "Đơn bán và khoản thanh toán sẽ xuất hiện tại đây." : "Their sales and payments will appear here."}
-              action={
+              action={canManageRecords ? (
                 <Button asChild>
                   <Link to={`/sales?create=1&customer=${customer.id}`}>{isVietnamese ? "Ghi đơn bán" : "Record a sale"}</Link>
                 </Button>
-              }
+              ) : undefined}
             />
           ) : (
             <div className="relative space-y-4 before:absolute before:bottom-5 before:left-5 before:top-5 before:w-px before:bg-border sm:before:left-6">
@@ -313,7 +319,7 @@ export default function CustomerDetailPage() {
                           <Printer className="h-3.5 w-3.5" />
                           {isVietnamese ? "In phiếu" : "Receipt"}
                         </Button>
-                        {entry.outstandingBalance > 0 && (
+                        {canManageRecords && entry.outstandingBalance > 0 && (
                           <Button size="sm" variant="outline" onClick={() => openPayment(entry)} className="gap-1.5">
                             <WalletCards className="h-3.5 w-3.5" />
                             {isVietnamese ? "Nhận thanh toán" : "Receive payment"}
@@ -341,7 +347,7 @@ export default function CustomerDetailPage() {
                                 <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">
                                   {isVietnamese ? "Đã hoàn tác" : "Reversed"}
                                 </span>
-                              ) : (
+                              ) : canManageRecords ? (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -359,7 +365,7 @@ export default function CustomerDetailPage() {
                                 >
                                   <Undo2 className="h-3.5 w-3.5" />
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         ))}
