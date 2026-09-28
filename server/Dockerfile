@@ -5,29 +5,21 @@ WORKDIR /src
 # Copy only project file first for better layer caching
 COPY Tenvora.Api.csproj ./
 
-# Restore dependencies (cached if csproj unchanged)
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore Tenvora.Api.csproj
+# Keep restored packages in this image layer. A transient BuildKit cache mount can
+# be incomplete even when the restore command layer itself is reused.
+RUN dotnet restore Tenvora.Api.csproj
 
 # Copy source code
 COPY . ./
 
 # Build and publish
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish -c Release -o /app/publish \
+RUN dotnet publish -c Release -o /app/publish \
     --no-restore \
     --self-contained false \
     -p:UseAppHost=false
 
 # ===== RUNTIME STAGE =====
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
-
-# Install required runtime utilities
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -40,6 +32,6 @@ USER app
 EXPOSE 5000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5000/api/health || exit 1
+    CMD ["/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/5000"]
 
 ENTRYPOINT ["dotnet", "Tenvora.Api.dll"]
