@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Download, Filter, Pencil, Plus, Search, Users, WalletCards } from "lucide-react";
+import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Users, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
@@ -147,7 +147,8 @@ export default function CustomersPage() {
               : "Keep names, contact details, sales, payments, and current balances together."
           }
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=customers"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập danh sách" : "Import list"}</Link></Button>
               {data.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />

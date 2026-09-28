@@ -72,7 +72,8 @@ public sealed class AiActionService(
         Guid actionId,
         bool confirmed,
         string userRole = "TenantAdmin",
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        AiActionInputOverrides? input = null)
     {
         var action = await db.AiActions.FirstOrDefaultAsync(
             a => a.Id == actionId && a.TenantId == tenantId && a.UserId == userId, ct);
@@ -103,6 +104,7 @@ public sealed class AiActionService(
         if (!confirmed)
         {
             action.Status = AiActionStatuses.Cancelled;
+            action.RequiresConfirmation = false;
             action.CancelledAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
@@ -113,25 +115,55 @@ public sealed class AiActionService(
         if (action.ExpiresAt <= DateTime.UtcNow)
         {
             action.Status = AiActionStatuses.Expired;
+            action.RequiresConfirmation = false;
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
             return ApiResult<AiActionExecutionResponse>.Fail("This proposal expired. Ask Tenvora to prepare it again.");
         }
 
-        // Keep the confirmation state, business mutation, audit rows, and final
-        // action result in one relational transaction. Financial services reuse
-        // this transaction and retain their tenant advisory lock.
+        ActionPayload payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ActionPayload>(action.PayloadJson, JsonOptions)
+                ?? throw new InvalidOperationException("The action payload is invalid.");
+            if (input != null)
+            {
+                payload = ApplyInputOverrides(action.Intent, payload, input);
+                action.PayloadJson = JsonSerializer.Serialize(payload, JsonOptions);
+            }
+            else if (SupportsEditableInput(action.Intent))
+            {
+                // A typed "yes" still validates draft actions before they can leave
+                // PendingConfirmation. Incomplete drafts remain editable in the UI.
+                payload = ApplyInputOverrides(action.Intent, payload, new AiActionInputOverrides(
+                    payload.Name,
+                    payload.Phone,
+                    payload.Email,
+                    payload.Address,
+                    payload.Unit,
+                    payload.UnitPrice,
+                    payload.Category,
+                    payload.Amount,
+                    payload.Description));
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            if (write != null) await write.CommitAsync(ct);
+            return ApiResult<AiActionExecutionResponse>.Fail(ex.Message);
+        }
+
+        // Keep the confirmation state, bounded input overrides, business mutation,
+        // audit rows, and final action result in one relational transaction.
         action.ConfirmedAt = DateTime.UtcNow;
         action.Status = AiActionStatuses.Executing;
+        action.RequiresConfirmation = false;
         SetAiAuditContext(action.Id, action.UserId);
         await db.SaveChangesAsync(ct);
 
         ApiResult<AiActionExecutionResponse> execution;
         try
         {
-            var payload = JsonSerializer.Deserialize<ActionPayload>(action.PayloadJson, JsonOptions)
-                ?? throw new InvalidOperationException("The action payload is invalid.");
-
             execution = action.Intent switch
             {
                 "expense" => await ExecuteExpense(action, payload),
@@ -159,6 +191,7 @@ public sealed class AiActionService(
         if (!execution.Success || execution.Data == null)
         {
             action.Status = AiActionStatuses.Failed;
+            action.RequiresConfirmation = false;
             action.ResultJson = JsonSerializer.Serialize(new { error = execution.Message }, JsonOptions);
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
@@ -166,6 +199,7 @@ public sealed class AiActionService(
         }
 
         action.Status = AiActionStatuses.Executed;
+        action.RequiresConfirmation = false;
         action.ExecutedAt = DateTime.UtcNow;
         action.AffectedEntityType = execution.Data.RecordType;
         action.AffectedEntityId = execution.Data.RecordId;
@@ -188,13 +222,13 @@ public sealed class AiActionService(
             Category: string.IsNullOrWhiteSpace(parsed.Category) ? "Other" : parsed.Category.Trim(),
             Description: parsed.Notes);
         var summary = IsVietnamese(source)
-            ? $"Ghi khoản chi {parsed.Amount:N0} {currency} cho {payload.Category}?"
-            : $"Record {parsed.Amount:N0} {currency} for {payload.Category}?";
+            ? $"Ghi khoản chi {FormatAmount(parsed.Amount, currency)} cho {payload.Category}?"
+            : $"Record {FormatAmount(parsed.Amount, currency)} for {payload.Category}?";
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(
             tenantId, userId, "expense", source, uiContext, payload, summary,
             new Dictionary<string, string?>
             {
-                ["Amount"] = $"{parsed.Amount:N0} {currency}",
+                ["Amount"] = FormatAmount(parsed.Amount, currency),
                 ["Category"] = payload.Category,
                 ["Description"] = payload.Description
             }, ct));
@@ -235,7 +269,7 @@ public sealed class AiActionService(
                 "debt_payment", $"{match.Selected.Name} has no outstanding balance."));
         if (parsed.Amount > outstanding)
             return ApiResult<AiActionProposalResponse>.Ok(Clarification(
-                "debt_payment", $"{match.Selected.Name} owes {outstanding:N0} {currency}, which is less than the proposed payment of {parsed.Amount:N0} {currency}."));
+                "debt_payment", $"{match.Selected.Name} owes {FormatAmount(outstanding, currency)}, which is less than the proposed payment of {FormatAmount(parsed.Amount, currency)}."));
 
         var openSales = detail.Data.Sales
             .Where(s => s.Status == "Posted" && s.OutstandingBalance > 0)
@@ -257,16 +291,16 @@ public sealed class AiActionService(
             PreviousBalance: outstanding,
             Notes: parsed.Notes);
         var summary = IsVietnamese(source)
-            ? $"{match.Selected.Name} hiện còn nợ {outstanding:N0} {currency}. Ghi nhận thanh toán {parsed.Amount:N0} {currency}?"
-            : $"{match.Selected.Name} currently owes {outstanding:N0} {currency}. Record a payment of {parsed.Amount:N0} {currency}?";
+            ? $"{match.Selected.Name} hiện còn nợ {FormatAmount(outstanding, currency)}. Ghi nhận thanh toán {FormatAmount(parsed.Amount, currency)}?"
+            : $"{match.Selected.Name} currently owes {FormatAmount(outstanding, currency)}. Record a payment of {FormatAmount(parsed.Amount, currency)}?";
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(
             tenantId, userId, "debt_payment", source, uiContext, payload, summary,
             new Dictionary<string, string?>
             {
                 ["Customer"] = match.Selected.Name,
-                ["Amount"] = $"{parsed.Amount:N0} {currency}",
-                ["Current balance"] = $"{outstanding:N0} {currency}",
-                ["Balance after payment"] = $"{after:N0} {currency}"
+                ["Amount"] = FormatAmount(parsed.Amount, currency),
+                ["Current balance"] = FormatAmount(outstanding, currency),
+                ["Balance after payment"] = FormatAmount(after, currency)
             }, ct));
     }
 
@@ -274,12 +308,17 @@ public sealed class AiActionService(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext,
         AiInterpretedAction parsed, string currency, CancellationToken ct)
     {
-        if (parsed.Amount <= 0)
-            return ApiResult<AiActionProposalResponse>.Ok(Clarification("sale", "What is the sale amount?"));
-        if (parsed.PaidAmount < 0 || parsed.PaidAmount > parsed.Amount)
-            return ApiResult<AiActionProposalResponse>.Ok(Clarification("sale", "The paid amount must be between zero and the sale total."));
-
         var customerMatch = await ResolveCustomer(tenantId, source, parsed.CustomerName, uiContext, ct);
+        if (customerMatch.Selected == null && ReferencesRecentCustomer(source))
+        {
+            var recentId = await RecentAffectedEntityId(tenantId, userId, "create_customer", "Customer", ct);
+            if (recentId.HasValue)
+            {
+                var recent = await db.Customers.AsNoTracking().FirstOrDefaultAsync(
+                    customer => customer.TenantId == tenantId && customer.Id == recentId && customer.Status == "Active", ct);
+                if (recent != null) customerMatch = EntityMatch<CustomerChoice>.One(new(recent.Id, recent.Name));
+            }
+        }
         if (customerMatch.Selected == null)
             return ApiResult<AiActionProposalResponse>.Ok(Clarification(
                 "sale",
@@ -290,16 +329,57 @@ public sealed class AiActionService(
 
         var productMatch = await ResolveProduct(tenantId, source, parsed.ProductName, uiContext, ct);
         if (productMatch.Selected == null)
+        {
+            if (productMatch.Candidates.Count == 0 && !string.IsNullOrWhiteSpace(parsed.ProductName))
+            {
+                var productName = parsed.ProductName.Trim();
+                var unit = string.IsNullOrWhiteSpace(parsed.Unit) ? "item" : parsed.Unit.Trim();
+                return ApiResult<AiActionProposalResponse>.Ok(new(
+                    null,
+                    "create_product",
+                    AiActionStatuses.NeedsClarification,
+                    "Low",
+                    false,
+                    $"I found {customerMatch.Selected.Name}, but {productName} is not in your product catalog yet. Add its selling price first, then Tenvora can prepare this sale.",
+                    new Dictionary<string, string?>
+                    {
+                        ["Product"] = productName,
+                        ["Unit"] = unit,
+                        ["Default price"] = $"0 {currency}",
+                        ["Price required"] = "true",
+                        ["Pending sale"] = source
+                    }));
+            }
+
             return ApiResult<AiActionProposalResponse>.Ok(Clarification(
                 "sale",
                 productMatch.Candidates.Count == 0
                     ? "I couldn't match an active product. Create or select the product first."
                     : "I found more than one possible product. Which one did you mean?",
                 productMatch.Candidates));
+        }
 
         var quantity = parsed.Quantity > 0 ? parsed.Quantity : ExtractQuantity(source);
         if (quantity <= 0) quantity = 1;
-        var unitPrice = parsed.UnitPrice > 0 ? parsed.UnitPrice : decimal.Round(parsed.Amount / quantity, 4, MidpointRounding.AwayFromZero);
+        var unitPrice = parsed.UnitPrice > 0
+            ? parsed.UnitPrice
+            : parsed.Amount > 0
+                ? decimal.Round(parsed.Amount / quantity, 4, MidpointRounding.AwayFromZero)
+                : productMatch.Selected.DefaultPrice;
+        var amount = parsed.Amount > 0
+            ? parsed.Amount
+            : decimal.Round(quantity * unitPrice, 4, MidpointRounding.AwayFromZero);
+        if (amount <= 0)
+            return ApiResult<AiActionProposalResponse>.Ok(Clarification(
+                "sale", $"What price should I use for {productMatch.Selected.Name}?"));
+
+        var explicitlyUnpaid = Regex.IsMatch(source,
+            @"\b(unpaid|not paid|hasn't paid|has not paid|on credit|chưa trả|chưa thanh toán|ghi nợ|nợ cả)\b",
+            RegexOptions.IgnoreCase);
+        var paidAmount = parsed.Amount <= 0 && !explicitlyUnpaid ? amount : parsed.PaidAmount;
+        if (paidAmount < 0 || paidAmount > amount)
+            return ApiResult<AiActionProposalResponse>.Ok(Clarification("sale", "The paid amount must be between zero and the sale total."));
+
         var payload = new ActionPayload(
             CustomerId: customerMatch.Selected.Id,
             CustomerName: customerMatch.Selected.Name,
@@ -307,12 +387,12 @@ public sealed class AiActionService(
             ProductName: productMatch.Selected.Name,
             Quantity: quantity,
             UnitPrice: unitPrice,
-            Amount: parsed.Amount,
-            PaidAmount: parsed.PaidAmount,
+            Amount: amount,
+            PaidAmount: paidAmount,
             Notes: parsed.Notes);
         var summary = IsVietnamese(source)
-            ? $"Ghi đơn bán {parsed.Amount:N0} {currency} cho {customerMatch.Selected.Name}?"
-            : $"Record a {parsed.Amount:N0} {currency} sale to {customerMatch.Selected.Name}?";
+            ? $"Ghi đơn bán {FormatAmount(amount, currency)} cho {customerMatch.Selected.Name}?"
+            : $"Record a {FormatAmount(amount, currency)} sale to {customerMatch.Selected.Name}?";
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(
             tenantId, userId, "sale", source, uiContext, payload, summary,
             new Dictionary<string, string?>
@@ -320,56 +400,64 @@ public sealed class AiActionService(
                 ["Customer"] = customerMatch.Selected.Name,
                 ["Product"] = productMatch.Selected.Name,
                 ["Quantity"] = $"{quantity:N2} {productMatch.Selected.Unit}".TrimEnd('0').TrimEnd('.'),
-                ["Unit price"] = $"{unitPrice:N0} {currency}",
-                ["Total"] = $"{parsed.Amount:N0} {currency}",
-                ["Paid"] = $"{parsed.PaidAmount:N0} {currency}",
-                ["Remaining"] = $"{parsed.Amount - parsed.PaidAmount:N0} {currency}"
+                ["Unit price"] = FormatAmount(unitPrice, currency),
+                ["Total"] = FormatAmount(amount, currency),
+                ["Paid"] = FormatAmount(paidAmount, currency),
+                ["Remaining"] = FormatAmount(amount - paidAmount, currency)
             }, ct));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeCreateCustomer(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext, AiInterpretedAction parsed, CancellationToken ct)
     {
-        var name = parsed.EntityName?.Trim();
-        if (string.IsNullOrWhiteSpace(name))
-            return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_customer",
-                IsVietnamese(source) ? "Bạn muốn đặt tên khách hàng là gì và số điện thoại nào?" : "What is the customer's name and phone number?"));
-        if (await db.Customers.AnyAsync(c => c.TenantId == tenantId && c.Name.ToLower() == name.ToLower(), ct))
+        var name = NormalizeDraftName(parsed.EntityName);
+        if (!string.IsNullOrWhiteSpace(name) &&
+            await db.Customers.AnyAsync(c => c.TenantId == tenantId && c.Name.ToLower() == name.ToLower(), ct))
             return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_customer", $"A customer named {name} already exists."));
         var payload = new ActionPayload(Name: name, Phone: parsed.Phone, Email: parsed.Email, Address: parsed.Address, Notes: parsed.Notes);
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "create_customer", source, uiContext,
-            payload, IsVietnamese(source) ? $"Tạo khách hàng {name}?" : $"Create customer {name}?",
+            payload, IsVietnamese(source)
+                ? (string.IsNullOrWhiteSpace(name) ? "Tạo khách hàng mới?" : $"Tạo khách hàng {name}?")
+                : (string.IsNullOrWhiteSpace(name) ? "Create a customer?" : $"Create customer {name}?"),
             ContactDetails(name, parsed.Phone, parsed.Email, parsed.Address), ct, "Low"));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeCreateProduct(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext, AiInterpretedAction parsed, string currency, CancellationToken ct)
     {
-        var name = parsed.EntityName?.Trim();
-        if (string.IsNullOrWhiteSpace(name))
-            return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_product",
-                IsVietnamese(source) ? "Bạn muốn đặt tên sản phẩm là gì và giá bán bao nhiêu?" : "What is the product name and price?"));
-        if (await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Name.ToLower() == name.ToLower() && p.IsActive, ct))
+        var name = NormalizeDraftName(parsed.EntityName);
+        if (!string.IsNullOrWhiteSpace(name) &&
+            await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Name.ToLower() == name.ToLower() && p.IsActive, ct))
             return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_product", $"An active product named {name} already exists."));
         var unit = string.IsNullOrWhiteSpace(parsed.Unit) ? "item" : parsed.Unit.Trim();
         var payload = new ActionPayload(Name: name, Unit: unit, UnitPrice: Math.Max(0, parsed.Amount), Notes: parsed.Notes);
+        var pendingSaleMatch = Regex.Match(source, @"continue pending sale:\s*(.+)$", RegexOptions.IgnoreCase);
+        var details = new Dictionary<string, string?>
+        {
+            ["Product"] = name,
+            ["Unit"] = unit,
+            ["Default price"] = FormatAmount(payload.UnitPrice, currency)
+        };
+        if (pendingSaleMatch.Success) details["Pending sale"] = pendingSaleMatch.Groups[1].Value.Trim();
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "create_product", source, uiContext,
-            payload, IsVietnamese(source) ? $"Tạo sản phẩm {name}?" : $"Create product {name}?",
-            new Dictionary<string, string?> { ["Product"] = name, ["Unit"] = unit, ["Default price"] = $"{payload.UnitPrice:N0} {currency}" }, ct, "Low"));
+            payload, IsVietnamese(source)
+                ? (string.IsNullOrWhiteSpace(name) ? "Tạo sản phẩm mới?" : $"Tạo sản phẩm {name}?")
+                : (string.IsNullOrWhiteSpace(name) ? "Create a product?" : $"Create product {name}?"),
+            details, ct, "Low"));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeCreateSupplier(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext, AiInterpretedAction parsed, CancellationToken ct)
     {
-        var name = parsed.EntityName?.Trim();
-        if (string.IsNullOrWhiteSpace(name))
-            return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_supplier",
-                IsVietnamese(source) ? "Bạn muốn đặt tên nhà cung cấp là gì?" : "What is the supplier's name?"));
-        if (await db.Suppliers.AnyAsync(s => s.TenantId == tenantId && s.Name.ToLower() == name.ToLower(), ct))
+        var name = NormalizeDraftName(parsed.EntityName);
+        if (!string.IsNullOrWhiteSpace(name) &&
+            await db.Suppliers.AnyAsync(s => s.TenantId == tenantId && s.Name.ToLower() == name.ToLower(), ct))
             return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_supplier", $"A supplier named {name} already exists."));
         var payload = new ActionPayload(Name: name, Phone: parsed.Phone, Email: parsed.Email, Address: parsed.Address, Notes: parsed.Notes);
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "create_supplier", source, uiContext,
-            payload, IsVietnamese(source) ? $"Tạo nhà cung cấp {name}?" : $"Create supplier {name}?",
+            payload, IsVietnamese(source)
+                ? (string.IsNullOrWhiteSpace(name) ? "Tạo nhà cung cấp mới?" : $"Tạo nhà cung cấp {name}?")
+                : (string.IsNullOrWhiteSpace(name) ? "Create a supplier?" : $"Create supplier {name}?"),
             ContactDetails(name, parsed.Phone, parsed.Email, parsed.Address), ct, "Low"));
     }
 
@@ -412,7 +500,7 @@ public sealed class AiActionService(
             if (recentId.HasValue)
             {
                 var recent = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == recentId, ct);
-                if (recent != null) match = EntityMatch<ProductChoice>.One(new(recent.Id, recent.Name, recent.Unit));
+                if (recent != null) match = EntityMatch<ProductChoice>.One(new(recent.Id, recent.Name, recent.Unit, recent.DefaultPrice));
             }
         }
         if (match.Selected == null) return ApiResult<AiActionProposalResponse>.Ok(EntityClarification(parsed.Intent, "product", match.Candidates));
@@ -427,7 +515,7 @@ public sealed class AiActionService(
             Notes: product.Notes, Status: archive ? "Inactive" : "Active");
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, parsed.Intent, source, uiContext,
             payload, archive ? $"Deactivate product {product.Name}?" : $"Update product {product.Name}?",
-            new Dictionary<string, string?> { ["Product"] = product.Name, ["Unit"] = payload.Unit, ["Price"] = $"{payload.UnitPrice:N0} {currency}", ["Status"] = payload.Status },
+            new Dictionary<string, string?> { ["Product"] = product.Name, ["Unit"] = payload.Unit, ["Price"] = FormatAmount(payload.UnitPrice, currency), ["Status"] = payload.Status },
             ct, archive ? "Destructive" : "Moderate"));
     }
 
@@ -477,8 +565,8 @@ public sealed class AiActionService(
             ProductId: product.Selected?.Id, ProductName: description, Quantity: quantity, UnitPrice: unitCost,
             Unit: unit, Amount: parsed.Amount, PaidAmount: parsed.PaidAmount, Notes: parsed.Notes);
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "purchase", source, uiContext,
-            payload, $"Record a {parsed.Amount:N0} {currency} purchase from {match.Selected.Name}?",
-            new Dictionary<string, string?> { ["Supplier"] = match.Selected.Name, ["Item"] = description, ["Quantity"] = $"{quantity:N2} {unit}", ["Total"] = $"{parsed.Amount:N0} {currency}", ["Paid"] = $"{parsed.PaidAmount:N0} {currency}" }, ct));
+            payload, $"Record a {FormatAmount(parsed.Amount, currency)} purchase from {match.Selected.Name}?",
+            new Dictionary<string, string?> { ["Supplier"] = match.Selected.Name, ["Item"] = description, ["Quantity"] = $"{quantity:N2} {unit}", ["Total"] = FormatAmount(parsed.Amount, currency), ["Paid"] = FormatAmount(parsed.PaidAmount, currency) }, ct));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeSupplierPayment(
@@ -501,7 +589,7 @@ public sealed class AiActionService(
         var detail = await business.GetSupplierAsync(tenantId, match.Selected.Id);
         if (!detail.Success || detail.Data == null) return ApiResult<AiActionProposalResponse>.Fail(detail.Message);
         var balance = detail.Data.Supplier.OutstandingBalance;
-        if (parsed.Amount > balance) return ApiResult<AiActionProposalResponse>.Ok(Clarification("supplier_payment", $"{match.Selected.Name} is owed only {balance:N0} {currency}."));
+        if (parsed.Amount > balance) return ApiResult<AiActionProposalResponse>.Ok(Clarification("supplier_payment", $"{match.Selected.Name} is owed only {FormatAmount(balance, currency)}."));
         var purchase = targetPurchaseId.HasValue
             ? detail.Data.Purchases.FirstOrDefault(p => p.Id == targetPurchaseId.Value && p.Status == "Posted")
             : detail.Data.Purchases.Where(p => p.Status == "Posted" && p.OutstandingBalance >= parsed.Amount).OrderBy(p => p.PurchasedAt).FirstOrDefault();
@@ -509,8 +597,8 @@ public sealed class AiActionService(
         var payload = new ActionPayload(SupplierId: match.Selected.Id, SupplierName: match.Selected.Name,
             PurchaseId: purchase.Id, Amount: parsed.Amount, PreviousBalance: balance, Notes: parsed.Notes);
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "supplier_payment", source, uiContext,
-            payload, $"Record a {parsed.Amount:N0} {currency} payment to {match.Selected.Name}?",
-            new Dictionary<string, string?> { ["Supplier"] = match.Selected.Name, ["Amount"] = $"{parsed.Amount:N0} {currency}", ["Current balance"] = $"{balance:N0} {currency}", ["Balance after payment"] = $"{balance - parsed.Amount:N0} {currency}" }, ct));
+            payload, $"Record a {FormatAmount(parsed.Amount, currency)} payment to {match.Selected.Name}?",
+            new Dictionary<string, string?> { ["Supplier"] = match.Selected.Name, ["Amount"] = FormatAmount(parsed.Amount, currency), ["Current balance"] = FormatAmount(balance, currency), ["Balance after payment"] = FormatAmount(balance - parsed.Amount, currency) }, ct));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeVoid(
@@ -527,7 +615,7 @@ public sealed class AiActionService(
             if (!sale.Success || sale.Data == null) return ApiResult<AiActionProposalResponse>.Fail(sale.Message);
             var payload = new ActionPayload(SaleId: sale.Data.Id, Amount: sale.Data.TotalAmount);
             return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, parsed.Intent, source, uiContext, payload,
-                $"Void sale {sale.Data.SaleNumber}?", new Dictionary<string, string?> { ["Sale"] = sale.Data.SaleNumber, ["Total"] = $"{sale.Data.TotalAmount:N0} {currency}", ["Customer"] = sale.Data.CustomerName }, ct, "Destructive"));
+                $"Void sale {sale.Data.SaleNumber}?", new Dictionary<string, string?> { ["Sale"] = sale.Data.SaleNumber, ["Total"] = FormatAmount(sale.Data.TotalAmount, currency), ["Customer"] = sale.Data.CustomerName }, ct, "Destructive"));
         }
         var purchaseId = uiContext?.Entity?.Equals("purchase", StringComparison.OrdinalIgnoreCase) == true ? uiContext.EntityId : null;
         if (!purchaseId.HasValue && ReferencesRecent(source))
@@ -538,7 +626,7 @@ public sealed class AiActionService(
         if (!purchase.Success || purchase.Data == null) return ApiResult<AiActionProposalResponse>.Fail(purchase.Message);
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, parsed.Intent, source, uiContext,
             new ActionPayload(PurchaseId: purchase.Data.Id, Amount: purchase.Data.TotalAmount), $"Void purchase {purchase.Data.PurchaseNumber}?",
-            new Dictionary<string, string?> { ["Purchase"] = purchase.Data.PurchaseNumber, ["Total"] = $"{purchase.Data.TotalAmount:N0} {currency}", ["Supplier"] = purchase.Data.SupplierName }, ct, "Destructive"));
+            new Dictionary<string, string?> { ["Purchase"] = purchase.Data.PurchaseNumber, ["Total"] = FormatAmount(purchase.Data.TotalAmount, currency), ["Supplier"] = purchase.Data.SupplierName }, ct, "Destructive"));
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeSettings(
@@ -590,8 +678,8 @@ public sealed class AiActionService(
             new CreateBusinessExpenseRequest(payload.Category ?? "Other", payload.Amount, DateTime.UtcNow, payload.Description));
         if (!result.Success || result.Data == null) return ApiResult<AiActionExecutionResponse>.Fail(result.Message);
         var message = IsVietnamese(action.SourceText)
-            ? $"✓ Đã ghi khoản chi {result.Data.Amount:N0} {result.Data.Currency} ({result.Data.Category})."
-            : $"Expense recorded: {result.Data.Amount:N0} {result.Data.Currency} for {result.Data.Category}.";
+            ? $"✓ Đã ghi khoản chi {FormatAmount(result.Data.Amount, result.Data.Currency)} ({result.Data.Category})."
+            : $"Expense recorded: {FormatAmount(result.Data.Amount, result.Data.Currency)} for {result.Data.Category}.";
         return ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status, message,
             "BusinessExpense", result.Data.Id));
     }
@@ -613,8 +701,8 @@ public sealed class AiActionService(
         var after = await business.GetCustomerAsync(action.TenantId, payload.CustomerId.Value);
         var newBalance = after.Data?.Customer.OutstandingBalance;
         var message = IsVietnamese(action.SourceText)
-            ? $"✓ Đã ghi nhận thanh toán. {payload.CustomerName} hiện còn nợ {newBalance.GetValueOrDefault():N0} {result.Data.Currency}."
-            : $"Payment recorded. {payload.CustomerName} now owes {newBalance.GetValueOrDefault():N0} {result.Data.Currency}.";
+            ? $"✓ Đã ghi nhận thanh toán. {payload.CustomerName} hiện còn nợ {FormatAmount(newBalance.GetValueOrDefault(), result.Data.Currency)}."
+            : $"Payment recorded. {payload.CustomerName} now owes {FormatAmount(newBalance.GetValueOrDefault(), result.Data.Currency)}.";
         return ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status, message,
             "Payment", result.Data.Payments.FirstOrDefault(p => p.Reference == $"AI action {action.Id:N}")?.Id ?? result.Data.Id,
             before.Data.Customer.OutstandingBalance, newBalance));
@@ -631,8 +719,8 @@ public sealed class AiActionService(
                 payload.PaidAmount, "Cash", payload.Notes, DateTime.UtcNow));
         if (!result.Success || result.Data == null) return ApiResult<AiActionExecutionResponse>.Fail(result.Message);
         var message = IsVietnamese(action.SourceText)
-            ? $"✓ Đã ghi đơn bán. Tổng: {result.Data.TotalAmount:N0} {result.Data.Currency}; còn lại: {result.Data.OutstandingBalance:N0} {result.Data.Currency}."
-            : $"Sale recorded. Total: {result.Data.TotalAmount:N0} {result.Data.Currency}; remaining: {result.Data.OutstandingBalance:N0} {result.Data.Currency}.";
+            ? $"✓ Đã ghi đơn bán. Tổng: {FormatAmount(result.Data.TotalAmount, result.Data.Currency)}; còn lại: {FormatAmount(result.Data.OutstandingBalance, result.Data.Currency)}."
+            : $"Sale recorded. Total: {FormatAmount(result.Data.TotalAmount, result.Data.Currency)}; remaining: {FormatAmount(result.Data.OutstandingBalance, result.Data.Currency)}.";
         return ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status, message,
             "Sale", result.Data.Id, null, result.Data.OutstandingBalance));
     }
@@ -713,7 +801,7 @@ public sealed class AiActionService(
                 payload.PaidAmount, "Cash", payload.Notes, DateTime.UtcNow));
         return result.Success && result.Data != null
             ? ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status,
-                $"Purchase recorded. Total: {result.Data.TotalAmount:N0} {result.Data.Currency}; remaining: {result.Data.OutstandingBalance:N0} {result.Data.Currency}.",
+                $"Purchase recorded. Total: {FormatAmount(result.Data.TotalAmount, result.Data.Currency)}; remaining: {FormatAmount(result.Data.OutstandingBalance, result.Data.Currency)}.",
                 "Purchase", result.Data.Id, null, result.Data.OutstandingBalance))
             : ApiResult<AiActionExecutionResponse>.Fail(result.Message);
     }
@@ -732,7 +820,7 @@ public sealed class AiActionService(
         var after = await business.GetSupplierAsync(action.TenantId, payload.SupplierId.Value);
         var remaining = after.Data?.Supplier.OutstandingBalance ?? 0m;
         return ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status,
-            $"Supplier payment recorded. Remaining balance: {remaining:N0} {result.Data.Currency}.",
+            $"Supplier payment recorded. Remaining balance: {FormatAmount(remaining, result.Data.Currency)}.",
             "PurchasePayment", result.Data.Payments.FirstOrDefault(p => p.Reference == $"AI action {action.Id:N}")?.Id ?? result.Data.Id,
             before.Data.Supplier.OutstandingBalance, remaining));
     }
@@ -800,11 +888,11 @@ public sealed class AiActionService(
         {
             var contextual = await db.Products.AsNoTracking().FirstOrDefaultAsync(
                 p => p.TenantId == tenantId && p.Id == uiContext.EntityId && p.IsActive, ct);
-            if (contextual != null) return EntityMatch<ProductChoice>.One(new(contextual.Id, contextual.Name, contextual.Unit));
+            if (contextual != null) return EntityMatch<ProductChoice>.One(new(contextual.Id, contextual.Name, contextual.Unit, contextual.DefaultPrice));
         }
 
         var products = await db.Products.AsNoTracking().Where(p => p.TenantId == tenantId && p.IsActive)
-            .Select(p => new ProductChoice(p.Id, p.Name, p.Unit)).ToListAsync(ct);
+            .Select(p => new ProductChoice(p.Id, p.Name, p.Unit, p.DefaultPrice)).ToListAsync(ct);
         var sourceKey = SearchKey(source);
         var extractedKey = SearchKey(extractedName);
         var matches = products.Where(p =>
@@ -858,7 +946,7 @@ public sealed class AiActionService(
             candidates);
 
     private static IReadOnlyDictionary<string, string?> ContactDetails(
-        string name, string? phone, string? email, string? address) =>
+        string? name, string? phone, string? email, string? address) =>
         new Dictionary<string, string?> { ["Name"] = name, ["Phone"] = phone, ["Email"] = email, ["Address"] = address };
 
     private static decimal ExtractQuantity(string text)
@@ -897,8 +985,93 @@ public sealed class AiActionService(
             .Select(a => a.AffectedEntityId)
             .FirstOrDefaultAsync(ct);
 
+    private static ActionPayload ApplyInputOverrides(
+        string intent,
+        ActionPayload payload,
+        AiActionInputOverrides input)
+    {
+        static string Required(string? value, string field)
+        {
+            var normalized = value?.Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+                throw new InvalidOperationException($"{field} is required.");
+            return normalized;
+        }
+
+        static string? Optional(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        return intent switch
+        {
+            "create_customer" or "update_customer" => payload with
+            {
+                Name = Required(input.Name, "Customer name"),
+                Phone = Optional(input.Phone),
+                Email = Optional(input.Email),
+                Address = Optional(input.Address)
+            },
+            "create_product" or "update_product" => payload with
+            {
+                Name = Required(input.Name, "Product name"),
+                Unit = Required(input.Unit, "Product unit"),
+                UnitPrice = input.UnitPrice is >= 0
+                    ? input.UnitPrice.Value
+                    : throw new InvalidOperationException("Product price cannot be negative.")
+            },
+            "create_supplier" or "update_supplier" => payload with
+            {
+                Name = Required(input.Name, "Supplier name"),
+                Phone = Optional(input.Phone),
+                Email = Optional(input.Email),
+                Address = Optional(input.Address)
+            },
+            "expense" => payload with
+            {
+                Category = Required(input.Category, "Expense category"),
+                Amount = input.Amount is > 0
+                    ? input.Amount.Value
+                    : throw new InvalidOperationException("Expense amount must be greater than zero."),
+                Description = Optional(input.Description)
+            },
+            _ => throw new InvalidOperationException("Editable input is not supported for this action type.")
+        };
+    }
+
+    private static bool SupportsEditableInput(string intent) => intent is
+        "create_customer" or "update_customer" or
+        "create_product" or "update_product" or
+        "create_supplier" or "update_supplier" or
+        "expense";
+
+    private static string? NormalizeDraftName(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized)) return null;
+        return Regex.IsMatch(normalized, @"^(a|an|the|one|new|một|mot|mới|moi)$", RegexOptions.IgnoreCase)
+            ? null
+            : normalized;
+    }
+
     private static bool ReferencesRecent(string source) => Regex.IsMatch(source,
         @"\b(just|last|recent|previous|mới|vừa|gần nhất|trước đó)\b", RegexOptions.IgnoreCase);
+
+    private static bool ReferencesRecentCustomer(string source) => Regex.IsMatch(source,
+        @"\b(they|them|their|he|him|his|she|her|that customer|this customer|khách đó|người đó|anh ấy|chị ấy|họ)\b",
+        RegexOptions.IgnoreCase);
+
+    private static string FormatAmount(decimal amount, string currency)
+    {
+        var cur = currency?.ToUpperInvariant() ?? "USD";
+        if (cur == "VND")
+        {
+            return $"{amount:N0} VND";
+        }
+        if (amount % 1m != 0m)
+        {
+            return $"{amount:N2} {cur}";
+        }
+        return $"{amount:N0} {cur}";
+    }
 
     private sealed record ActionPayload(
         Guid? CustomerId = null,
@@ -926,7 +1099,7 @@ public sealed class AiActionService(
         string? Notes = null);
 
     private sealed record CustomerChoice(Guid Id, string Name);
-    private sealed record ProductChoice(Guid Id, string Name, string Unit);
+    private sealed record ProductChoice(Guid Id, string Name, string Unit, decimal DefaultPrice);
     private sealed record SupplierChoice(Guid Id, string Name);
 
     private sealed record EntityMatch<T>(T? Selected, IReadOnlyList<AiActionCandidate> Candidates) where T : class

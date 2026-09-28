@@ -197,8 +197,8 @@ export const businessService = {
     return response.data.data;
   },
 
-  async getSales(search = "", customerId?: string): Promise<Sale[]> {
-    const response = await apiClient.get("/sales", { params: { search: search || undefined, customerId } });
+  async getSales(search = "", customerId?: string, from?: string, to?: string): Promise<Sale[]> {
+    const response = await apiClient.get("/sales", { params: { search: search || undefined, customerId, from, to } });
     return response.data.data;
   },
 
@@ -222,17 +222,17 @@ export const businessService = {
   async updateSupplier(id: string, input: { name: string; phone?: string; email?: string; address?: string; notes?: string; status?: string }): Promise<Supplier> {
     const response = await apiClient.put(`/suppliers/${id}`, { ...input, status: input.status ?? "Active" }); return response.data.data;
   },
-  async getPurchases(search = "", supplierId?: string): Promise<Purchase[]> {
-    const response = await apiClient.get("/purchases", { params: { search: search || undefined, supplierId } }); return response.data.data;
+  async getPurchases(search = "", supplierId?: string, from?: string, to?: string): Promise<Purchase[]> {
+    const response = await apiClient.get("/purchases", { params: { search: search || undefined, supplierId, from, to } }); return response.data.data;
   },
-  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string }): Promise<Purchase> {
+  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string }): Promise<Purchase> {
     const response = await apiClient.post("/purchases", input, { headers: mutationHeaders() }); return response.data.data;
   },
   async recordPurchasePayment(id: string, input: { amount: number; method: string; reference?: string; notes?: string }): Promise<Purchase> {
     const response = await apiClient.post(`/purchases/${id}/payments`, input, { headers: mutationHeaders() }); return response.data.data;
   },
-  async getBusinessExpenses(search = "", category = ""): Promise<BusinessExpense[]> {
-    const response = await apiClient.get("/business-expenses", { params: { search: search || undefined, category: category || undefined } }); return response.data.data;
+  async getBusinessExpenses(search = "", category = "", from?: string, to?: string): Promise<BusinessExpense[]> {
+    const response = await apiClient.get("/business-expenses", { params: { search: search || undefined, category: category || undefined, from, to } }); return response.data.data;
   },
   async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string }): Promise<BusinessExpense> {
     const response = await apiClient.post("/business-expenses", input, { headers: mutationHeaders() }); return response.data.data;
@@ -250,12 +250,50 @@ export const businessService = {
   },
 };
 
-export const businessMoney = (amount: number, currency: string) =>
+export const USD_TO_VND_RATE = 25000;
+
+const CURRENCY_RATES_TO_USD: Record<string, number> = {
+  USD: 1.0,
+  VND: USD_TO_VND_RATE,
+  EUR: 0.92,
+  GBP: 0.79,
+  SGD: 1.34,
+};
+
+export const convertCurrency = (
+  amount: number = 0,
+  fromCurrency: string = "USD",
+  toCurrency: string = "VND"
+): number => {
+  if (!amount) return 0;
+  const from = (fromCurrency || "USD").toUpperCase();
+  const to = (toCurrency || "VND").toUpperCase();
+  if (from === to) return amount;
+
+  if (from === "VND" && to === "USD") {
+    return Math.round((amount / USD_TO_VND_RATE) * 10000) / 10000;
+  }
+  if (from === "USD" && to === "VND") {
+    return Math.round(amount * USD_TO_VND_RATE);
+  }
+
+  const fromRate = CURRENCY_RATES_TO_USD[from] || 1.0;
+  const toRate = CURRENCY_RATES_TO_USD[to] || 1.0;
+  const inUsd = amount / fromRate;
+  const result = inUsd * toRate;
+
+  if (to === "VND") {
+    return Math.round(result);
+  }
+  return Math.round(result * 10000) / 10000;
+};
+
+export const businessMoney = (amount: number = 0, currency: string = "VND") =>
   new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency,
+    currency: currency || "VND",
     maximumFractionDigits: currency === "VND" ? 0 : 2,
-  }).format(amount);
+  }).format(amount || 0);
 
 export function apiError(error: unknown, fallback: string) {
   const candidate = error as { response?: { data?: { message?: string; errors?: string[] } }; message?: string };

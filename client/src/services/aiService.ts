@@ -92,6 +92,42 @@ export interface AiActionExecutionResponse {
   newBalance?: number | null;
 }
 
+export interface AiActionInputOverrides {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  unit?: string | null;
+  unitPrice?: number | null;
+  category?: string | null;
+  amount?: number | null;
+  description?: string | null;
+}
+
+export function applyActionExecutionToProposal(
+  proposal: AiActionProposalResponse,
+  execution: AiActionExecutionResponse,
+  input?: AiActionInputOverrides,
+): AiActionProposalResponse {
+  const inputDetails = input
+    ? Object.fromEntries(
+        Object.entries(input).filter(([, value]) => value !== null && value !== undefined && value !== ""),
+      )
+    : {};
+
+  return {
+    ...proposal,
+    status: execution.status,
+    requiresConfirmation: false,
+    summary: execution.message,
+    details: {
+      ...proposal.details,
+      ...inputDetails,
+      Result: execution.message,
+    },
+  };
+}
+
 export interface AiStatusResponse {
   online: boolean;
   provider: string;
@@ -241,11 +277,15 @@ export const aiAssistantService = {
     }
   },
 
-  confirmAction: async (actionId: string, confirmed: boolean): Promise<ApiResponse<AiActionExecutionResponse>> => {
+  confirmAction: async (
+    actionId: string,
+    confirmed: boolean,
+    input?: AiActionInputOverrides,
+  ): Promise<ApiResponse<AiActionExecutionResponse>> => {
     try {
       const response = await apiClient.post<ApiResponse<AiActionExecutionResponse>>(
         `/ai/assistant/actions/${actionId}/confirm`,
-        { confirmed },
+        { confirmed, input },
       );
       return response.data;
     } catch (error: any) {

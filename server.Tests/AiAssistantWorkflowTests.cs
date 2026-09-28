@@ -495,4 +495,198 @@ public sealed class AiAssistantWorkflowTests
         Assert.Equal("cappuchino", product.Name);
         Assert.True(product.IsActive);
     }
+
+    [Theory]
+    [InlineData("Cong Huynh bought 1kg bag of Robusta coffee")]
+    [InlineData("Cong Huynh bougt 1kg bag of Robusta coffee")]
+    [InlineData("Cong Huynh bought/bougt 1kg bag of Robusta coffee")]
+    public async Task CustomerBoughtProductUsesSavedPriceAndCreatesSaleAfterConfirmation(string message)
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        var customer = (await business.CreateCustomerAsync(tenantId,
+            new("Cong Huynh", null, null, null, null))).Data!;
+        var product = (await business.CreateProductAsync(tenantId,
+            new("Robusta coffee", null, "kg", 180_000m, null))).Data!;
+
+        var proposed = await agent.AgentChatAsync(tenantId, userId, new(message));
+
+        Assert.True(proposed.Success);
+        Assert.NotNull(proposed.Data!.Proposal);
+        Assert.Equal("sale", proposed.Data.Proposal.Intent);
+        Assert.Equal(AiActionStatuses.PendingConfirmation, proposed.Data.Proposal.Status);
+        Assert.Equal("Cong Huynh", proposed.Data.Proposal.Details["Customer"]);
+        Assert.Equal("Robusta coffee", proposed.Data.Proposal.Details["Product"]);
+        Assert.Equal("180,000 VND", proposed.Data.Proposal.Details["Total"]);
+        Assert.Empty(db.Sales);
+
+        var confirmed = await agent.AgentChatAsync(tenantId, userId,
+            new("yes", proposed.Data.ConversationId));
+
+        Assert.True(confirmed.Success);
+        var sale = Assert.Single(db.Sales.Include(s => s.Items).Include(s => s.Payments));
+        Assert.Equal(customer.Id, sale.CustomerId);
+        Assert.Equal(180_000m, sale.TotalAmount);
+        Assert.Equal(180_000m, Assert.Single(sale.Payments).Amount);
+        var item = Assert.Single(sale.Items);
+        Assert.Equal(product.Id, item.ProductId);
+        Assert.Equal(1m, item.Quantity);
+    }
+
+    [Fact]
+    public async Task CustomerPurchasePronounResolvesTheCustomerJustCreatedByTheAgent()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        await business.CreateProductAsync(tenantId,
+            new("Robusta coffee", null, "kg", 180_000m, null));
+
+        var createCustomer = await actions.ProposeAsync(tenantId, userId,
+            new("Create customer Cong Huynh"));
+        await actions.ConfirmAsync(tenantId, userId, createCustomer.Data!.ActionId!.Value, true);
+
+        var proposed = await agent.AgentChatAsync(tenantId, userId,
+            new("They bought 1kg bag of Robusta coffee"));
+
+        Assert.True(proposed.Success);
+        Assert.NotNull(proposed.Data!.Proposal);
+        Assert.Equal("sale", proposed.Data.Proposal.Intent);
+        Assert.Equal("Cong Huynh", proposed.Data.Proposal.Details["Customer"]);
+        Assert.Equal("Robusta coffee", proposed.Data.Proposal.Details["Product"]);
+    }
+
+    [Fact]
+    public async Task MissingSaleProductBecomesAnInlineProductDraftAndFollowUpKeepsContext()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        await business.CreateCustomerAsync(tenantId,
+            new("Cong Huynh", null, null, null, null));
+
+        var first = await agent.AgentChatAsync(tenantId, userId,
+            new("Cong Huynh bougt 1kg bag of Robusta coffee"));
+
+        Assert.True(first.Success);
+        Assert.NotNull(first.Data!.Proposal);
+        Assert.Equal("create_product", first.Data.Proposal.Intent);
+        Assert.Equal(AiActionStatuses.NeedsClarification, first.Data.Proposal.Status);
+        Assert.Equal("Robusta coffee", first.Data.Proposal.Details["Product"]);
+        Assert.Equal("true", first.Data.Proposal.Details["Price required"]);
+        Assert.Contains("Cong Huynh", first.Data.Proposal.Details["Pending sale"]);
+        Assert.DoesNotContain("Tình hình kinh doanh", first.Data.Reply);
+
+        var followUp = await agent.AgentChatAsync(tenantId, userId,
+            new("1kg bag of Robusta coffee", first.Data.ConversationId));
+
+        Assert.True(followUp.Success);
+        Assert.NotNull(followUp.Data!.Proposal);
+        Assert.Equal("create_product", followUp.Data.Proposal.Intent);
+        Assert.Equal("Robusta coffee", followUp.Data.Proposal.Details["Product"]);
+        Assert.DoesNotContain("Tình hình kinh doanh", followUp.Data.Reply);
+    }
+
+    [Fact]
+    public async Task ProductPackageSizeIsNotMistakenForItsSellingPrice()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = Setup(db);
+
+        var proposal = await actions.ProposeAsync(tenantId, userId,
+            new("Create product 1kg bag of Robusta coffee, unit bag, price 180k"));
+
+        Assert.Equal("create_product", proposal.Data!.Intent);
+        Assert.Equal("1kg bag of Robusta coffee", proposal.Data.Details["Product"]);
+        Assert.Equal("180,000 VND", proposal.Data.Details["Default price"]);
+    }
+
+    [Fact]
+    public async Task MissingProductCreationCarriesThePendingSaleForAutomaticResume()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = Setup(db);
+        const string pendingSale = "Cong Huynh bought 1kg bag of Robusta coffee";
+
+        var proposal = await actions.ProposeAsync(tenantId, userId,
+            new($"Create product Robusta coffee, unit kg, price 180k. After creating it, continue pending sale: {pendingSale}"));
+
+        Assert.Equal("create_product", proposal.Data!.Intent);
+        Assert.Equal("Robusta coffee", proposal.Data.Details["Product"]);
+        Assert.Equal("180,000 VND", proposal.Data.Details["Default price"]);
+        Assert.Equal(pendingSale, proposal.Data.Details["Pending sale"]);
+    }
+
+    [Fact]
+    public async Task CompletedCustomerDraftStaysCompletedWhenConversationIsReloaded()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+
+        var chat = await agent.AgentChatAsync(tenantId, userId, new("add a customer"));
+
+        Assert.True(chat.Success);
+        Assert.NotNull(chat.Data!.Proposal?.ActionId);
+        Assert.Equal("create_customer", chat.Data.Proposal.Intent);
+        Assert.Equal("Create a customer?", chat.Data.Proposal.Summary);
+
+        var execution = await actions.ConfirmAsync(
+            tenantId,
+            userId,
+            chat.Data.Proposal.ActionId!.Value,
+            true,
+            input: new AiActionInputOverrides(
+                Name: "Anh Minh",
+                Phone: "0901234567",
+                Email: "minh@example.test",
+                Address: "Da Nang"));
+
+        Assert.True(execution.Success);
+        var customer = Assert.Single(db.Customers);
+        Assert.Equal("Anh Minh", customer.Name);
+
+        var reloaded = await agent.GetConversationAsync(tenantId, userId, chat.Data.ConversationId);
+        var savedProposal = Assert.Single(reloaded.Data!.Messages, message => message.Proposal != null).Proposal!;
+        Assert.Equal(AiActionStatuses.Executed, savedProposal.Status);
+        Assert.False(savedProposal.RequiresConfirmation);
+        Assert.Equal("Customer created: Anh Minh.", savedProposal.Summary);
+        Assert.Equal("Customer created: Anh Minh.", savedProposal.Details["Result"]);
+        Assert.Equal("Anh Minh", savedProposal.Details["name"]);
+    }
+
+    [Fact]
+    public async Task IncompleteDraftCannotBeConfirmedWithoutRequiredFormValues()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = Setup(db);
+        var proposal = await actions.ProposeAsync(tenantId, userId, new("add a customer"));
+
+        var result = await actions.ConfirmAsync(tenantId, userId, proposal.Data!.ActionId!.Value, true);
+
+        Assert.False(result.Success);
+        Assert.Empty(db.Customers);
+        var saved = await db.AiActions.SingleAsync();
+        Assert.Equal(AiActionStatuses.PendingConfirmation, saved.Status);
+        Assert.True(saved.RequiresConfirmation);
+    }
+
+    [Fact]
+    public async Task TypedConfirmationReturnsTheSettledProposalForClientReconciliation()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+
+        var proposed = await agent.AgentChatAsync(tenantId, userId, new("add Matcha as product"));
+        var confirmed = await agent.AgentChatAsync(tenantId, userId, new("yes", proposed.Data!.ConversationId));
+
+        Assert.True(confirmed.Success);
+        Assert.NotNull(confirmed.Data!.Proposal);
+        Assert.Equal(proposed.Data.Proposal!.ActionId, confirmed.Data.Proposal.ActionId);
+        Assert.Equal(AiActionStatuses.Executed, confirmed.Data.Proposal.Status);
+        Assert.Equal("Product created: Matcha.", confirmed.Data.Proposal.Summary);
+        Assert.False(confirmed.Data.Proposal.RequiresConfirmation);
+    }
 }

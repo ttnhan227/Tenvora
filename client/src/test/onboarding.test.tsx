@@ -49,6 +49,7 @@ describe("Onboarding and Tailored Workspace Experience", () => {
     expect(screen.getByText("Services & Clients")).toBeInTheDocument();
     expect(screen.getByText("Food, Café & Restaurant")).toBeInTheDocument();
     expect(screen.getByText("Simple Cashbook")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^close$/i })).not.toBeInTheDocument();
 
     // Select Café / Food
     fireEvent.click(screen.getByText("Food, Café & Restaurant"));
@@ -94,8 +95,6 @@ describe("Onboarding and Tailored Workspace Experience", () => {
   });
 
   it("renders GettingStartedGuide with tailored first steps based on business profile", () => {
-    const handleOpenSettings = vi.fn();
-
     render(
       <BrowserRouter>
         <LanguageProvider defaultLanguage="en">
@@ -104,7 +103,6 @@ describe("Onboarding and Tailored Workspace Experience", () => {
             currency="EUR"
             businessType="services"
             hasActivity={false}
-            onOpenSettings={handleOpenSettings}
           />
         </LanguageProvider>
       </BrowserRouter>
@@ -116,7 +114,6 @@ describe("Onboarding and Tailored Workspace Experience", () => {
     expect(screen.getByText("Issue an invoice / sale")).toBeInTheDocument();
     expect(screen.getByText("Log a project expense")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /customize setup/i }));
-    expect(handleOpenSettings).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: /open settings/i })).toHaveAttribute("href", "/settings");
   });
 });

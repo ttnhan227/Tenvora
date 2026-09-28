@@ -124,6 +124,91 @@ public sealed class OnboardingTests
     }
 
     [Fact]
+    public async Task CompleteOnboarding_CanOnlyRunOnce_AndDoesNotOverwriteWorkspace()
+    {
+        await using var db = Db();
+        var service = CreateAuthService(db);
+
+        var tenant = new Tenant
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "First Business",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "USD",
+            BusinessType = "retail",
+            OnboardingCompleted = true
+        };
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Email = "owner@example.com",
+            PasswordHash = "hashed",
+            Role = "TenantAdmin",
+            PreferredCurrency = "USD"
+        };
+        db.Tenants.Add(tenant);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var result = await service.CompleteOnboardingAsync(
+            user.Id,
+            tenant.Id,
+            new CompleteOnboardingRequest("Replacement Business", "VND", "food"));
+
+        Assert.False(result.Success);
+        Assert.Contains("Use Settings", result.Message);
+        Assert.Equal("First Business", tenant.CompanyName);
+        Assert.Equal("USD", tenant.BaseCurrency);
+        Assert.Equal("retail", tenant.BusinessType);
+        Assert.Equal("USD", user.PreferredCurrency);
+    }
+
+    [Fact]
+    public async Task WorkspaceSetupAndSettings_RejectNonAdministrators()
+    {
+        await using var db = Db();
+        var service = CreateAuthService(db);
+
+        var tenant = new Tenant
+        {
+            Id = Guid.NewGuid(),
+            CompanyName = "Owner Controlled Business",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "USD",
+            BusinessType = "retail",
+            OnboardingCompleted = false
+        };
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            Email = "operator@example.com",
+            PasswordHash = "hashed",
+            Role = "OperationsManager",
+            PreferredCurrency = "USD"
+        };
+        db.Tenants.Add(tenant);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var onboarding = await service.CompleteOnboardingAsync(
+            user.Id, tenant.Id, new CompleteOnboardingRequest("Changed", "VND", "food"));
+        var settings = await service.UpdateSettingsAsync(
+            user.Id, tenant.Id, new UpdateSettingsRequest("Changed", "VND", "food"));
+
+        Assert.False(onboarding.Success);
+        Assert.False(settings.Success);
+        Assert.Contains("administrators", onboarding.Message);
+        Assert.Contains("administrators", settings.Message);
+        Assert.Equal("Owner Controlled Business", tenant.CompanyName);
+        Assert.Equal("USD", tenant.BaseCurrency);
+        Assert.False(tenant.OnboardingCompleted);
+    }
+
+    [Fact]
     public async Task AuthController_CompleteOnboarding_ReturnsOk()
     {
         await using var db = Db();
@@ -173,6 +258,9 @@ public sealed class OnboardingTests
         Assert.Equal("services", apiResult.Data.BusinessType);
         Assert.True(apiResult.Data.OnboardingCompleted);
 
+        var repeatedResponse = await controller.CompleteOnboarding(new CompleteOnboardingRequest("Overwrite Attempt", "USD", "simple"));
+        Assert.IsType<ConflictObjectResult>(repeatedResponse);
+
         var updateResponse = await controller.UpdateSettings(new UpdateSettingsRequest("Tiệm Tạp Hoá Cô Ba", "VND", "retail", "Cô Ba", "0901234567"));
         var updateOkResult = Assert.IsType<OkObjectResult>(updateResponse);
         var updateApiResult = Assert.IsType<ApiResult<UserProfileResponse>>(updateOkResult.Value);
@@ -183,5 +271,88 @@ public sealed class OnboardingTests
         Assert.Equal("Cô Ba", updateApiResult.Data.FullName);
         Assert.Equal("0901234567", updateApiResult.Data.PhoneNumber);
     }
-}
 
+    [Theory]
+    [InlineData(50000, 2.0000)]
+    [InlineData(35000, 1.4000)]
+    [InlineData(45000, 1.8000)]
+    [InlineData(120000, 4.8000)]
+    [InlineData(250000, 10.0000)]
+    [InlineData(2700000, 108.0000)]
+    public void CurrencyConverter_ConvertsReversibly_BetweenVndAndUsd(decimal vndPrice, decimal expectedUsd)
+    {
+        // VND -> USD
+        var usd = CurrencyConverter.Convert(vndPrice, "VND", "USD");
+        Assert.Equal(expectedUsd, usd);
+
+        // USD -> VND (Switch back gives the EXACT same number)
+        var backToVnd = CurrencyConverter.Convert(usd, "USD", "VND");
+        Assert.Equal(vndPrice, backToVnd);
+    }
+
+    [Fact]
+    public async Task UpdateSettings_ConvertsExistingProducts_WhenCurrencyChangesBackAndForth()
+    {
+        await using var db = Db();
+        var service = CreateAuthService(db);
+
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var tenant = new Tenant
+        {
+            Id = tenantId,
+            CompanyName = "Figure Cafe",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "VND",
+            BusinessType = "food",
+            OnboardingCompleted = true
+        };
+        var user = new User
+        {
+            Id = userId,
+            TenantId = tenantId,
+            Email = "owner@figurecafe.test",
+            PasswordHash = "hashed",
+            Role = "TenantAdmin",
+            PreferredCurrency = "VND"
+        };
+        var product = new Tenvora.Api.Domain.Entities.Product
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Name = "Goku Figure",
+            Unit = "item",
+            DefaultPrice = 50_000m,
+            CostPrice = 30_000m,
+            Currency = "VND"
+        };
+        db.Tenants.Add(tenant);
+        db.Users.Add(user);
+        db.Products.Add(product);
+        await db.SaveChangesAsync();
+
+        // 1. Switch from VND to USD
+        var resultUsd = await service.UpdateSettingsAsync(userId, tenantId,
+            new UpdateSettingsRequest("Figure Cafe", "USD", "food"));
+        Assert.True(resultUsd.Success);
+        Assert.Equal("USD", resultUsd.Data!.PreferredCurrency);
+
+        var reloadedProductUsd = await db.Products.FindAsync(product.Id);
+        Assert.NotNull(reloadedProductUsd);
+        Assert.Equal("USD", reloadedProductUsd.Currency);
+        Assert.Equal(2.0000m, reloadedProductUsd.DefaultPrice);
+        Assert.Equal(1.2000m, reloadedProductUsd.CostPrice);
+
+        // 2. Switch from USD back to VND -> Returns the EXACT same number!
+        var resultVnd = await service.UpdateSettingsAsync(userId, tenantId,
+            new UpdateSettingsRequest("Figure Cafe", "VND", "food"));
+        Assert.True(resultVnd.Success);
+        Assert.Equal("VND", resultVnd.Data!.PreferredCurrency);
+
+        var reloadedProductVnd = await db.Products.FindAsync(product.Id);
+        Assert.NotNull(reloadedProductVnd);
+        Assert.Equal("VND", reloadedProductVnd.Currency);
+        Assert.Equal(50_000m, reloadedProductVnd.DefaultPrice);
+        Assert.Equal(30_000m, reloadedProductVnd.CostPrice);
+    }
+}

@@ -18,5 +18,6 @@ public interface IAiActionService
         Guid actionId,
         bool confirmed,
         string userRole = "TenantAdmin",
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        AiActionInputOverrides? input = null);
 }

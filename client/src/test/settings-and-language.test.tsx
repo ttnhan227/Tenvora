@@ -8,6 +8,7 @@ import SettingsPage from "@/pages/settings/SettingsPage";
 
 const mockUpdateSettings = vi.fn();
 const mockSetPassword = vi.fn();
+let mockRole = "TenantAdmin";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
@@ -20,7 +21,7 @@ vi.mock("@/contexts/AuthContext", () => ({
       preferredCurrency: "VND",
       fullName: "Cô Ba",
       phoneNumber: "0901234567",
-      role: "TenantAdmin",
+      role: mockRole,
       googleLinked: true,
       hasPassword: true,
       isActive: true,
@@ -56,6 +57,7 @@ describe("Language & App Settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    mockRole = "TenantAdmin";
   });
 
   it("LanguageProvider defaults to Vietnamese and translates navigation", () => {
@@ -147,5 +149,25 @@ describe("Language & App Settings", () => {
     expect(screen.getByText(/Ngôn ngữ hiển thị/i)).toBeInTheDocument();
     expect(screen.getByText(/Màu sắc giao diện/i)).toBeInTheDocument();
     expect(screen.queryByText(/Dễ nhìn/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps workspace-wide store settings administrator-only", () => {
+    mockRole = "OperationsManager";
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <LanguageProvider>
+            <SettingsPage />
+          </LanguageProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+
+    expect(screen.queryByRole("button", { name: /^Cửa hàng$/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Tên cửa hàng/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Ngôn ngữ hiển thị/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tài khoản & Mật khẩu/i })).toBeInTheDocument();
   });
 });

@@ -5,8 +5,6 @@ import {
   ArrowDownToLine,
   ArrowRight,
   CircleDollarSign,
-  Eye,
-  EyeOff,
   Package,
   PackageOpen,
   Plus,
@@ -17,12 +15,13 @@ import {
   Users,
   WalletCards,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, MoneyCard, PageHeader } from "@/components/business/BusinessUI";
 import { GettingStartedGuide } from "@/components/business/GettingStartedGuide";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { BusinessReportModal } from "@/components/business/BusinessReportModal";
 import { Button } from "@/components/ui/button";
 import { businessMoney, businessService } from "@/services/businessService";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,27 +31,8 @@ import { getProfileOrDefault, BusinessType } from "@/data/businessProfiles";
 export default function BusinessHome() {
   const { user } = useAuth();
   const { t, isVietnamese } = useLanguage();
-  const [setupOpen, setSetupOpen] = useState(false);
   const [period, setPeriod] = useState<string>("today");
-  const [privacyMode, setPrivacyMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("tenvora_privacy_mode") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  const togglePrivacyMode = () => {
-    setPrivacyMode((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("tenvora_privacy_mode", String(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  };
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const query = useQuery({
     queryKey: ["business-dashboard", period],
@@ -87,6 +67,10 @@ export default function BusinessHome() {
                   <span>{t("nav.agent", "AI Agent")}</span>
                 </Link>
               </Button>
+              <Button variant="outline" onClick={() => setReportModalOpen(true)} className="items-center gap-1.5 font-bold">
+                <FileText className="h-4 w-4 text-primary" />
+                <span>{isVietnamese ? "Báo cáo" : "Report"}</span>
+              </Button>
               <Button asChild variant="outline">
                 <Link to="/expenses?create=1">
                   <Receipt className="h-4 w-4" />
@@ -109,7 +93,6 @@ export default function BusinessHome() {
             currency={currency}
             businessType={user?.businessType}
             hasActivity={false}
-            onOpenSettings={() => setSetupOpen(true)}
           />
         )}
 
@@ -154,27 +137,13 @@ export default function BusinessHome() {
                 </div>
 
                 <Button
-                  type="button"
                   variant="outline"
                   size="sm"
-                  onClick={togglePrivacyMode}
-                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground border-border/80"
-                  title={isVietnamese ? "Ẩn số liệu nhạy cảm trước mặt khách / nhân viên" : "Toggle sensitive amounts"}
+                  onClick={() => setReportModalOpen(true)}
+                  className="gap-1.5 text-xs font-bold border-primary/20 hover:bg-primary/5"
                 >
-                  {privacyMode ? (
-                    <EyeOff className="h-3.5 w-3.5 text-amber-600" />
-                  ) : (
-                    <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <span>
-                    {privacyMode
-                      ? isVietnamese
-                        ? "Đang ẩn số tiền (Riêng tư)"
-                        : "Amounts hidden"
-                      : isVietnamese
-                      ? "Chế độ riêng tư"
-                      : "Privacy mode"}
-                  </span>
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  <span>{isVietnamese ? "Tải báo cáo kinh doanh" : "Download report"}</span>
                 </Button>
               </div>
 
@@ -190,11 +159,9 @@ export default function BusinessHome() {
                       ? isVietnamese ? "Doanh thu tháng này" : "Sales this month"
                       : isVietnamese ? "Tổng doanh thu" : "Total sales"
                   }
-                  value={privacyMode ? "••••••••" : businessMoney(data.periodSales ?? data.todaySales, currency)}
+                  value={businessMoney(data.periodSales ?? data.todaySales, currency)}
                   detail={
-                    privacyMode
-                      ? (isVietnamese ? "Đã ẩn số tiền nhạy cảm tại quầy" : "Amounts masked for cashier view")
-                      : (data.periodSales ?? data.todaySales) > 0
+                    (data.periodSales ?? data.todaySales) > 0
                       ? `${businessMoney(data.periodPayments ?? data.todayPayments, currency)} ${isVietnamese ? "tiền mặt khách đã trả" : "received from customers"}`
                       : isVietnamese ? "Ghi đơn đầu tiên để bắt đầu theo dõi" : "Record your first sale to start tracking"
                   }
@@ -203,11 +170,9 @@ export default function BusinessHome() {
                 />
                 <MoneyCard
                   label={isVietnamese ? "Lợi nhuận ước tính" : "Net profit"}
-                  value={privacyMode ? "••••••••" : businessMoney(data.periodNetProfit ?? 0, currency)}
+                  value={businessMoney(data.periodNetProfit ?? 0, currency)}
                   detail={
-                    privacyMode
-                      ? (isVietnamese ? "Đã ẩn tỷ suất & lợi nhuận" : "Profit margin masked")
-                      : isVietnamese
+                    isVietnamese
                       ? "Doanh thu - (Chi phí + Nhập hàng)"
                       : "Sales - (Expenses + Purchases)"
                   }
@@ -216,11 +181,9 @@ export default function BusinessHome() {
                 />
                 <MoneyCard
                   label={isVietnamese ? "Tiền mặt thực thu" : "Money received"}
-                  value={privacyMode ? "••••••••" : businessMoney(data.periodPayments ?? data.todayPayments, currency)}
+                  value={businessMoney(data.periodPayments ?? data.todayPayments, currency)}
                   detail={
-                    privacyMode
-                      ? (isVietnamese ? "Đã ẩn tiền mặt thực thu" : "Cash collection masked")
-                      : (data.periodPayments ?? data.todayPayments) > 0
+                    (data.periodPayments ?? data.todayPayments) > 0
                       ? isVietnamese ? "Tổng tiền mặt đã thu trong kỳ" : "Payments collected in period"
                       : isVietnamese ? "Chưa thu khoản tiền nào" : "No payments received yet"
                   }
@@ -229,20 +192,14 @@ export default function BusinessHome() {
                 />
                 <MoneyCard
                   label={isVietnamese ? "Khoản đã chi & nhập hàng" : "Spent & purchases"}
-                  value={
-                    privacyMode
-                      ? "••••••••"
-                      : businessMoney(
-                          (data.periodSupplierPayments ?? data.todaySupplierPayments) +
-                            (data.periodExpenses ?? data.todayExpenses),
-                          currency
-                        )
-                  }
+                  value={businessMoney(
+                    (data.periodSupplierPayments ?? data.todaySupplierPayments) +
+                      (data.periodExpenses ?? data.todayExpenses),
+                    currency
+                  )}
                   detail={
-                    privacyMode
-                      ? (isVietnamese ? "Đã ẩn chi tiêu & mua hàng" : "Expenses masked")
-                      : (data.periodSupplierPayments ?? data.todaySupplierPayments) +
-                          (data.periodExpenses ?? data.todayExpenses) > 0
+                    (data.periodSupplierPayments ?? data.todaySupplierPayments) +
+                      (data.periodExpenses ?? data.todayExpenses) > 0
                       ? isVietnamese ? "Tiền trả nhà cung cấp & chi tiêu" : "Supplier payments and expenses"
                       : isVietnamese ? "Chưa ghi nhận khoản chi nào" : "No expenses recorded"
                   }
@@ -371,13 +328,13 @@ export default function BusinessHome() {
             </>
           )
         )}
-
-        <OnboardingWizard
-          open={setupOpen}
-          onOpenChange={setSetupOpen}
-          onCompleted={() => query.refetch()}
-        />
       </div>
+
+      <BusinessReportModal
+        open={reportModalOpen}
+        onOpenChange={setReportModalOpen}
+        defaultPeriod={period === "all" ? "all" : "month"}
+      />
     </DashboardLayout>
   );
 }

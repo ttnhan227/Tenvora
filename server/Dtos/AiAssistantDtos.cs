@@ -83,7 +83,22 @@ public record AiActionProposalResponse(
     DateTime? ExpiresAt = null
 );
 
-public record AiConfirmActionRequest(bool Confirmed);
+public record AiActionInputOverrides(
+    string? Name = null,
+    string? Phone = null,
+    string? Email = null,
+    string? Address = null,
+    string? Unit = null,
+    decimal? UnitPrice = null,
+    string? Category = null,
+    decimal? Amount = null,
+    string? Description = null
+);
+
+public record AiConfirmActionRequest(
+    bool Confirmed,
+    AiActionInputOverrides? Input = null
+);
 
 public record AiActionExecutionResponse(
     Guid ActionId,
@@ -168,4 +183,3 @@ public record AiConversationDetailDto(
     DateTime UpdatedAt,
     List<AiConversationMessageDto> Messages
 );
-

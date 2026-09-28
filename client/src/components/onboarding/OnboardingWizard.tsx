@@ -121,27 +121,33 @@ export function OnboardingWizard({ open, onOpenChange, onCompleted }: Onboarding
 
   const handleSkip = async () => {
     setIsSubmitting(true);
+    setError(null);
     try {
       const trimmedFull = fullName.trim();
       const trimmedPhone = phoneNumber.trim();
 
-      if (trimmedFull || trimmedPhone) {
-        await completeOnboarding(
+      const result = trimmedFull || trimmedPhone
+        ? await completeOnboarding(
           companyName.trim() || user?.companyName || "My Business",
           currency || "USD",
           selectedType || "retail",
           trimmedFull || undefined,
           trimmedPhone || undefined
-        );
-      } else {
-        await completeOnboarding(
+        )
+        : await completeOnboarding(
           companyName.trim() || user?.companyName || "My Business",
           currency || "USD",
           selectedType || "retail"
         );
+
+      if (result.success) {
+        onOpenChange(false);
+        onCompleted?.();
+      } else {
+        setError(result.message || (isVietnamese ? "Không thể hoàn tất thiết lập." : "Failed to complete workspace setup."));
       }
-      onOpenChange(false);
-      onCompleted?.();
+    } catch {
+      setError(isVietnamese ? "Đã xảy ra lỗi. Vui lòng thử lại." : "An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,7 +155,12 @@ export function OnboardingWizard({ open, onOpenChange, onCompleted }: Onboarding
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl gap-6 p-6 sm:p-8">
+      <DialogContent
+        className="max-w-2xl gap-6 p-6 sm:p-8"
+        showCloseButton={false}
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader className="space-y-2 text-left">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
             <Sparkles className="h-4 w-4" />
@@ -416,7 +427,7 @@ export function OnboardingWizard({ open, onOpenChange, onCompleted }: Onboarding
               disabled={isSubmitting}
               className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
             >
-              {isVietnamese ? "Bỏ qua thiết lập" : "Skip setup for now"}
+              {isVietnamese ? "Dùng thiết lập mặc định" : "Use default setup"}
             </button>
           )}
 

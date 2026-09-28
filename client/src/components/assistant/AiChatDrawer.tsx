@@ -24,8 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { businessService } from "@/services/businessService";
 import { InteractiveProposalCard } from "./InteractiveProposalCard";
+import { ChatMessageContent } from "./ChatMessageContent";
 import {
   aiAssistantService,
+  applyActionExecutionToProposal,
+  AiActionInputOverrides,
   AiActionProposalResponse,
   AiAgentToolCallInfo,
   AiConversationMessage,
@@ -33,12 +36,14 @@ import {
 } from "@/services/aiService";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { contextFromPath } from "./assistantContext";
+import { getSyncedAiConversationId, publishAiConversationSync, setSyncedAiConversationId, subscribeToAiConversationSync } from "./assistantSync";
 
 interface AiChatDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
   canMutate?: boolean;
+  draftPrompt?: string;
 }
 
 export function AiChatDrawer({
@@ -46,6 +51,7 @@ export function AiChatDrawer({
   onOpenChange,
   currency = "VND",
   canMutate = true,
+  draftPrompt,
 }: AiChatDrawerProps) {
   const { isVietnamese } = useLanguage();
   const location = useLocation();
@@ -53,6 +59,7 @@ export function AiChatDrawer({
   const queryClient = useQueryClient();
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const syncSource = useRef(crypto.randomUUID()).current;
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
@@ -74,44 +81,77 @@ export function AiChatDrawer({
   // Load conversations on drawer open
   useEffect(() => {
     if (open) {
-      loadConversations();
+      loadConversations(getSyncedAiConversationId());
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !draftPrompt) return;
+    setInput(draftPrompt);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [open, draftPrompt]);
+
   // Auto-scroll to bottom of chat
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = async () => {
+  const loadConversations = async (preferredId?: string | null) => {
     const res = await aiAssistantService.getConversations();
     if (res.success && res.data) {
       setConversations(res.data);
-      if (!activeConversationId && res.data.length > 0) {
-        loadConversation(res.data[0].id);
-      } else if (!activeConversationId) {
+      const targetId = preferredId === null
+        ? null
+        : preferredId ?? activeConversationId ?? res.data[0]?.id ?? null;
+      if (targetId && res.data.some((conversation) => conversation.id === targetId)) {
+        await loadConversation(targetId, false);
+      } else if (!targetId) {
+        setActiveConversationId(null);
         setMessages([greeting]);
+        setSyncedAiConversationId(null);
+      } else if (res.data.length > 0) {
+        await loadConversation(res.data[0].id, false);
+      } else {
+        setActiveConversationId(null);
+        setMessages([greeting]);
+        setSyncedAiConversationId(null);
       }
     }
   };
 
-  const loadConversation = async (id: string) => {
+  const loadConversation = async (id: string, broadcast = true) => {
     setIsBusy(true);
     const res = await aiAssistantService.getConversation(id);
     if (res.success && res.data) {
       setActiveConversationId(id);
       setMessages(res.data.messages.length > 0 ? res.data.messages : [greeting]);
       setShowHistory(false);
+      setSyncedAiConversationId(id);
+      if (broadcast) publishAiConversationSync({ activeConversationId: id, reason: "selected", source: syncSource });
     }
     setIsBusy(false);
   };
 
-  const startNewConversation = () => {
+  const startNewConversation = (broadcast = true) => {
     setActiveConversationId(null);
     setMessages([greeting]);
     setShowHistory(false);
     setInput("");
+    setSyncedAiConversationId(null);
+    if (broadcast) publishAiConversationSync({ activeConversationId: null, reason: "new", source: syncSource });
   };
+
+  useEffect(() => subscribeToAiConversationSync((event) => {
+    if (event.source === syncSource) return;
+    setActiveConversationId(event.activeConversationId);
+    if (open) {
+      void loadConversations(event.activeConversationId);
+    } else if (!event.activeConversationId) {
+      setMessages([greeting]);
+    } else {
+      setMessages([]);
+    }
+  }), [open, syncSource]);
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -120,6 +160,8 @@ export function AiChatDrawer({
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversationId === id) {
         startNewConversation();
+      } else {
+        publishAiConversationSync({ activeConversationId, reason: "deleted", source: syncSource });
       }
       toast.success(isVietnamese ? "Đã xoá cuộc trò chuyện" : "Conversation deleted");
     }
@@ -153,19 +195,35 @@ export function AiChatDrawer({
       const data = response.data;
       if (!activeConversationId) {
         setActiveConversationId(data.conversationId);
-        loadConversations();
+        loadConversations(data.conversationId);
       }
+      publishAiConversationSync({ activeConversationId: data.conversationId, reason: "changed", source: syncSource });
 
       const assistantMsg: AiConversationMessage = {
         id: data.messageId,
         role: "assistant",
         content: data.reply,
         createdAt: new Date().toISOString(),
-        proposal: data.proposal,
         toolCalls: data.toolCalls,
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => {
+        const actionId = data.proposal?.actionId;
+        const updatesExisting = Boolean(
+          actionId && prev.some((message) => message.proposal?.actionId === actionId)
+        );
+        const reconciled = updatesExisting
+          ? prev.map((message) =>
+              message.proposal?.actionId === actionId
+                ? { ...message, proposal: data.proposal }
+                : message
+            )
+          : prev;
+        return [
+          ...reconciled,
+          { ...assistantMsg, proposal: updatesExisting ? undefined : data.proposal },
+        ];
+      });
     } else {
       setMessages((prev) => [
         ...prev,
@@ -182,40 +240,48 @@ export function AiChatDrawer({
     setIsBusy(false);
   };
 
-  const handleDecision = async (messageId: string, proposal: AiActionProposalResponse, confirmed: boolean) => {
-    if (!proposal.actionId || isBusy) return;
+  const handleDecision = async (
+    messageId: string,
+    proposal: AiActionProposalResponse,
+    confirmed: boolean,
+    input?: AiActionInputOverrides
+  ): Promise<boolean> => {
+    if (!proposal.actionId || isBusy) return false;
+    const pendingSale = confirmed && proposal.intent === "create_product"
+      ? proposal.details["Pending sale"]
+      : null;
     setIsBusy(true);
 
-    const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
+    const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed, input);
 
-    // Remove pending proposal from message so user can't re-click
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId
-          ? {
-              ...m,
-              proposal: {
-                ...proposal,
-                status: confirmed ? "Executed" : "Cancelled",
-                requiresConfirmation: false,
-              },
-            }
-          : m
-      )
-    );
+    if (response.success && response.data) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                proposal: applyActionExecutionToProposal(proposal, response.data!, input),
+              }
+            : m
+        )
+      );
+      publishAiConversationSync({ activeConversationId, reason: "changed", source: syncSource });
+    } else if (activeConversationId) {
+      const refreshed = await aiAssistantService.getConversation(activeConversationId);
+      if (refreshed.success && refreshed.data) setMessages(refreshed.data.messages);
+      publishAiConversationSync({ activeConversationId, reason: "changed", source: syncSource });
+    }
 
-    const confirmationReply: AiConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: response.success && response.data
-        ? `${confirmed ? "✅ " : "❌ "}${response.data.message}`
-        : response.message || (isVietnamese ? "Lỗi khi thực hiện thao tác." : "Error completing action."),
-      createdAt: new Date().toISOString(),
-    };
+    if (!response.success || !response.data) {
+      setMessages((prev) => [...prev, {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: response.message || (isVietnamese ? "Lỗi khi thực hiện thao tác." : "Error completing action."),
+        createdAt: new Date().toISOString(),
+      }]);
+    }
 
-    setMessages((prev) => [...prev, confirmationReply]);
-
-    if (response.success && confirmed) {
+    if (response.success && response.data?.status === "Executed") {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sales"] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
@@ -225,45 +291,23 @@ export function AiChatDrawer({
         queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
         queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
       ]);
-      toast.success(isVietnamese ? "Đã ghi nhận giao dịch thành công!" : "Transaction recorded successfully!");
+      toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }
 
     setIsBusy(false);
-  };
-
-  const handleCustomExecuted = (messageId: string, resultMessage: string) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.proposal
-          ? {
-              ...m,
-              proposal: {
-                ...m.proposal,
-                status: "Executed",
-                requiresConfirmation: false,
-              },
-            }
-          : m
-      )
-    );
-
-    const confirmationReply: AiConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: resultMessage,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, confirmationReply]);
+    if (response.success && response.data?.status === "Executed" && pendingSale) {
+      await handleSend(pendingSale);
+    }
+    return Boolean(response.success && response.data);
   };
 
   const handleExpandToFullPage = () => {
     onOpenChange(false);
-    if (activeConversationId) {
-      navigate(`/agent?id=${activeConversationId}`);
-    } else {
-      navigate("/agent");
-    }
+    const query = new URLSearchParams();
+    if (activeConversationId) query.set("id", activeConversationId);
+    if (input.trim()) query.set("prompt", input.trim());
+    const queryString = query.toString();
+    navigate(queryString ? `/agent?${queryString}` : "/agent");
   };
 
   const quickPrompts = isVietnamese
@@ -327,7 +371,7 @@ export function AiChatDrawer({
             <Button
               variant="ghost"
               size="icon"
-              onClick={startNewConversation}
+              onClick={() => startNewConversation()}
               title={isVietnamese ? "Cuộc trò chuyện mới" : "New chat"}
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
             >
@@ -358,7 +402,7 @@ export function AiChatDrawer({
           <div className="border-b bg-secondary/30 p-3">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
               <span>{isVietnamese ? "Các cuộc trò chuyện gần đây" : "Recent conversations"}</span>
-              <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={startNewConversation}>
+              <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => startNewConversation()}>
                 <Plus className="mr-1 h-3 w-3" />
                 {isVietnamese ? "Mới" : "New"}
               </Button>
@@ -431,7 +475,7 @@ export function AiChatDrawer({
                   </div>
                 )}
 
-                <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                <ChatMessageContent content={m.content} />
 
                 {/* Interactive Human-in-the-Loop Proposal Card */}
                 {m.proposal && (
@@ -440,9 +484,10 @@ export function AiChatDrawer({
                     busy={isBusy}
                     isVietnamese={isVietnamese}
                     currency={currency}
-                    onDecision={(confirmed) => handleDecision(m.id, m.proposal!, confirmed)}
+                    onDecision={(confirmed, actionInput) =>
+                      handleDecision(m.id, m.proposal!, confirmed, actionInput)
+                    }
                     onReply={(text) => handleSend(text)}
-                    onCustomExecuted={(resultText) => handleCustomExecuted(m.id, resultText)}
                   />
                 )}
               </div>

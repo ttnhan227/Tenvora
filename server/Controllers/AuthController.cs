@@ -111,7 +111,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "TenantAdmin")]
     [HttpPost("onboarding")]
     public async Task<IActionResult> CompleteOnboarding([FromBody] CompleteOnboardingRequest request)
     {
@@ -119,12 +119,16 @@ public class AuthController : ControllerBase
         var tenantId = User.GetTenantId();
         var result = await _authService.CompleteOnboardingAsync(userId, tenantId, request);
         if (!result.Success)
+        {
+            if (result.Message.Contains("already complete", StringComparison.OrdinalIgnoreCase))
+                return Conflict(result);
             return BadRequest(result);
+        }
 
         return Ok(result);
     }
 
-    [Authorize]
+    [Authorize(Roles = "TenantAdmin")]
     [HttpPut("settings")]
     public async Task<IActionResult> UpdateSettings([FromBody] UpdateSettingsRequest request)
     {

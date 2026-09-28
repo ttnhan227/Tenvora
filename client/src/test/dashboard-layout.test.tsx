@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { email: "owner@example.test", role: "OperationsManager", companyName: "Example Business" },
+    user: { email: "owner@example.test", role: "OperationsManager", companyName: "Example Business", onboardingCompleted: false },
     logout: vi.fn(),
   }),
 }));
@@ -31,8 +31,9 @@ describe("Business workspace navigation", () => {
     expect(linkNames).toEqual(expect.arrayContaining([
       "Home", "Sales", "Customers", "Products", "Purchases", "Suppliers", "Expenses",
     ]));
-    for (const section of ["Today", "Record book", "Business setup"]) {
+    for (const section of ["Today", "Record book", "Business operations", "Business setup"]) {
       expect(screen.getByText(section)).toBeInTheDocument();
     }
+    expect(screen.queryByText("What do you use Tenvora for?")).not.toBeInTheDocument();
   });
 });

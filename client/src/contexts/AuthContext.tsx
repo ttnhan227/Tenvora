@@ -194,8 +194,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Complete onboarding error:", error);
       return {
         success: false,
-        message: "Failed to update workspace setup.",
-        errors: ["Failed to update workspace setup."],
+        message: "Failed to complete workspace setup.",
+        errors: ["Failed to complete workspace setup."],
       };
     }
   };

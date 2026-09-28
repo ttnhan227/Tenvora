@@ -10,7 +10,9 @@ export interface CsvColumn<T> {
 export function exportToCsv<T>(filename: string, columns: CsvColumn<T>[], data: T[]): void {
   const escapeCell = (val: unknown): string => {
     if (val === null || val === undefined) return '""';
-    const str = String(val);
+    const raw = String(val);
+    // Prevent imported text from becoming a spreadsheet formula when opened in Excel/Sheets.
+    const str = typeof val === "string" && /^[=+@-]/.test(raw.trimStart()) ? `'${raw}` : raw;
     if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
       return `"${str.replace(/"/g, '""')}"`;
     }

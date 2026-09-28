@@ -2,7 +2,8 @@ namespace Tenvora.Api.Models;
 
 /// <summary>
 /// A short-lived, server-owned proposal produced from natural language. The payload is
-/// never accepted back from the browser; confirmation references this record by Id.
+/// is server-owned. Confirmation may include a small allow-listed set of editable
+/// form values, which the service validates and merges into this payload.
 /// </summary>
 public sealed class AiAction
 {

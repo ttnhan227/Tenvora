@@ -5,9 +5,10 @@ import { Bot, CheckCircle2, Loader2, Send, Sparkles, User, X } from "lucide-reac
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { aiAssistantService, AiActionProposalResponse } from "@/services/aiService";
+import { aiAssistantService, AiActionProposalResponse, applyActionExecutionToProposal } from "@/services/aiService";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { contextFromPath } from "./assistantContext";
+import { ChatMessageContent } from "./ChatMessageContent";
 
 interface ChatMessage {
   id: string;
@@ -44,7 +45,9 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
   const send = async (value?: string) => {
     const text = (value ?? input).trim();
     if (!text || busy) return;
-    const pendingMessage = [...messages].reverse().find((message) => message.proposal?.actionId);
+    const pendingMessage = [...messages].reverse().find(
+      (message) => message.proposal?.actionId && message.proposal.requiresConfirmation
+    );
     setMessages((current) => [...current, { id: crypto.randomUUID(), sender: "user", text }]);
     setInput("");
     if (pendingMessage?.proposal && /^(yes|y|confirm|confirmed|ok|okay|đồng ý|dong y|xác nhận|xac nhan|ừ|uh|có)$/i.test(text)) {
@@ -83,12 +86,24 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
     if (!proposal.actionId || busy) return;
     setBusy(true);
     const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
-    setMessages((current) => current.map((message) => message.id === messageId ? { ...message, proposal: undefined } : message));
-    setMessages((current) => [...current, {
-      id: crypto.randomUUID(), sender: "tenvora",
-      text: response.success && response.data ? response.data.message : response.message || fallbackError(isVietnamese),
-      tone: response.success && confirmed ? "success" : "normal",
-    }]);
+    if (response.success && response.data) {
+      setMessages((current) => current.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              proposal: message.proposal
+                ? applyActionExecutionToProposal(message.proposal, response.data!)
+                : undefined,
+            }
+          : message
+      ));
+    }
+    if (!response.success || !response.data) {
+      setMessages((current) => [...current, {
+        id: crypto.randomUUID(), sender: "tenvora",
+        text: response.message || fallbackError(isVietnamese),
+      }]);
+    }
     if (response.success && confirmed) await queryClient.invalidateQueries();
     setBusy(false);
   };
@@ -112,7 +127,7 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
             <div key={message.id} className={`flex items-start gap-2 ${message.sender === "user" ? "flex-row-reverse" : ""}`}>
               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${message.sender === "user" ? "bg-primary text-primary-foreground" : "border bg-card text-primary"}`}>{message.sender === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}</span>
               <div className={`max-w-[84%] rounded-2xl p-3 text-sm shadow-sm ${message.sender === "user" ? "bg-primary text-primary-foreground" : message.tone === "success" ? "border border-emerald-300 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-100" : "border bg-card"}`}>
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                <ChatMessageContent content={message.text} />
                 {message.proposal && <ProposalCard
                   proposal={message.proposal}
                   busy={busy}
@@ -144,13 +159,19 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
 }
 
 function ProposalCard({ proposal, busy, onDecision, onCandidate, isVietnamese }: { proposal: AiActionProposalResponse; busy: boolean; onDecision: (confirmed: boolean) => void; onCandidate: (label: string) => void; isVietnamese: boolean }) {
+  const isTerminal = ["Executed", "Cancelled", "Expired", "Failed"].includes(proposal.status);
   return (
     <div className="mt-3 border-t pt-3">
+      {isTerminal && <p className="text-xs font-semibold text-muted-foreground">
+        {proposal.status === "Executed"
+          ? (isVietnamese ? "Thao tác đã hoàn tất." : "Action completed.")
+          : (isVietnamese ? "Đề xuất này không còn đang chờ xử lý." : "This proposal is no longer pending.")}
+      </p>}
       {Object.keys(proposal.details).length > 0 && <dl className="grid gap-2 sm:grid-cols-2">{Object.entries(proposal.details).filter(([, value]) => value).map(([label, value]) => <div key={label}><dt className="text-[11px] opacity-65">{label}</dt><dd className="font-semibold">{value}</dd></div>)}</dl>}
       {proposal.candidates && proposal.candidates.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{proposal.candidates.map((candidate) => <button key={candidate.id} type="button" disabled={busy} onClick={() => onCandidate(candidate.label)} className="rounded-full border bg-background px-2.5 py-1 text-xs hover:bg-secondary disabled:opacity-50">{candidate.label}</button>)}</div>}
       <div className="mt-3 flex justify-end gap-2">
-        {proposal.actionId && <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecision(false)}><X className="h-3.5 w-3.5" />{isVietnamese ? "Hủy" : "Cancel"}</Button>}
-        {proposal.requiresConfirmation && proposal.actionId && <Button size="sm" disabled={busy} onClick={() => onDecision(true)} className="bg-emerald-600 text-white hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{isVietnamese ? "Xác nhận" : "Confirm"}</Button>}
+        {!isTerminal && proposal.actionId && <Button size="sm" variant="outline" disabled={busy} onClick={() => onDecision(false)}><X className="h-3.5 w-3.5" />{isVietnamese ? "Hủy" : "Cancel"}</Button>}
+        {!isTerminal && proposal.requiresConfirmation && proposal.actionId && <Button size="sm" disabled={busy} onClick={() => onDecision(true)} className="bg-emerald-600 text-white hover:bg-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" />{isVietnamese ? "Xác nhận" : "Confirm"}</Button>}
       </div>
     </div>
   );

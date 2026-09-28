@@ -126,11 +126,14 @@ public sealed class AiAgentService : IAiAgentService
                     conversation.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync(ct);
 
+                    await _context.Entry(pendingAction).ReloadAsync(ct);
+                    var settledProposal = MapActionToProposal(pendingAction);
+
                     return ApiResult<AiAgentChatResponse>.Ok(new AiAgentChatResponse(
                         conversation.Id,
                         assistantConfirmMsg.Id,
                         replyMsg,
-                        null,
+                        settledProposal,
                         null,
                         "Tenvora Agent",
                         "interactive-executor",
@@ -148,6 +151,11 @@ public sealed class AiAgentService : IAiAgentService
             .OrderBy(m => m.CreatedAt)
             .ToListAsync(ct);
 
+        // A clarification reply is part of the previous action, not a brand-new
+        // dashboard question. Recover older dead-end product clarifications and
+        // turn the supplied product description into an inline catalog draft.
+        var clarificationRecovery = TryRecoverMissingProductClarification(history, rawText, currency);
+
         // 5. Run Agent with Tools (Gemini with tool-calling loop or local deterministic runner)
         var apiKey = _config["AI_PROVIDER_API_KEY"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY");
         var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? "https://generativelanguage.googleapis.com/v1beta/models";
@@ -159,7 +167,15 @@ public sealed class AiAgentService : IAiAgentService
         string providerName = "Google Gemini";
         bool isFallback = false;
 
-        if (!string.IsNullOrWhiteSpace(apiKey))
+        if (clarificationRecovery != null)
+        {
+            reply = clarificationRecovery.Reply;
+            proposal = clarificationRecovery.Proposal;
+            toolCalls = clarificationRecovery.ToolCalls;
+            providerName = "Tenvora Local Agent";
+            isFallback = true;
+        }
+        else if (!string.IsNullOrWhiteSpace(apiKey))
         {
             try
             {
@@ -773,7 +789,7 @@ RULES:
         var toolCalls = new List<AiAgentToolCallInfo>();
 
         // 1. Check if user wants to record or execute an action
-        if (Regex.IsMatch(lower, @"(vừa trả|trả nợ|thanh toán|paid|repaid|ghi|record|bán cho|sold|chi\s|spent|mua từ|nhập hàng|purchase|tạo|create|thêm|add|sửa|update|edit|xóa|delete|hủy|void)"))
+        if (LooksLikeBusinessAction(lower))
         {
             var propResult = await _actionService.ProposeAsync(
                 tenantId, userId, new AiProposeActionRequest(prompt, uiContext), userRole, ct);
@@ -786,18 +802,18 @@ RULES:
 
                 if (isClarification)
                 {
-                    toolCalls.Add(new AiAgentToolCallInfo("propose_transaction", isVi ? $"Cần thêm thông tin: {p.Summary}" : $"Need info: {p.Summary}", p));
+                    toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Cần thêm thông tin: {p.Summary}" : $"Need info: {p.Summary}", p));
                     var question = isVi
-                        ? $"{p.Summary}\n\nBạn vui lòng cho biết thêm thông tin (ví dụ: tên, giá bán, hoặc đơn vị tính) bằng cách nhập trực tiếp vào thẻ hoặc gửi tin nhắn để tôi chuẩn bị giao dịch."
-                        : $"{p.Summary}\n\nPlease provide the missing details (e.g. name, price, or unit) in the card or chat so I can prepare the transaction for you.";
+                        ? $"{p.Summary}\n\nBạn vui lòng cho biết thêm thông tin (ví dụ: tên, giá bán, hoặc đơn vị tính) bằng cách nhập trực tiếp vào thẻ hoặc gửi tin nhắn để tôi chuẩn bị thao tác."
+                        : $"{p.Summary}\n\nPlease provide the missing details (e.g. name, price, or unit) in the card or chat so I can prepare the action for you.";
 
                     return new AgentTurnResult(question, p, toolCalls);
                 }
 
-                toolCalls.Add(new AiAgentToolCallInfo("propose_transaction", isVi ? $"Chuẩn bị: {p.Summary}" : $"Prepared: {p.Summary}", p));
+                toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Chuẩn bị: {p.Summary}" : $"Prepared: {p.Summary}", p));
                 var confirmMsg = isVi
-                    ? $"Tôi đã chuẩn bị giao dịch: **{p.Summary}**.\n\nVui lòng kiểm tra chi tiết trên thẻ bên dưới và nhấn **Xác nhận & Ghi sổ** (hoặc gõ 'đồng ý' / 'xác nhận') để ghi vào sổ."
-                    : $"I've prepared the transaction: **{p.Summary}**.\n\nPlease review the details below and click **Approve & Record** (or reply 'yes' or 'confirm') to write it to your ledger.";
+                    ? $"Tôi đã chuẩn bị thao tác: **{p.Summary}**.\n\nVui lòng kiểm tra chi tiết trên thẻ bên dưới rồi xác nhận để hoàn tất."
+                    : $"I've prepared this action: **{p.Summary}**.\n\nPlease review the details in the card below, then confirm to complete it.";
 
                 return new AgentTurnResult(confirmMsg, p, toolCalls);
             }
@@ -874,33 +890,110 @@ Bạn có thể yêu cầu tôi kiểm tra kho hàng, theo dõi công nợ, ho�
         return new AgentTurnResult(overviewText, null, toolCalls);
     }
 
+    private static bool LooksLikeBusinessAction(string lower)
+    {
+        if (Regex.IsMatch(lower, @"(vừa trả|trả nợ|thanh toán|paid|repaid|ghi|record|bán cho|sold|chi\s|spent|mua từ|nhập hàng|purchase|tạo|create|thêm|add|sửa|update|edit|xóa|delete|hủy|void)"))
+            return true;
+
+        // Natural retail shorthand: "[customer] bought 1kg [product]". Requiring
+        // a quantity keeps ordinary questions such as "what did customers buy?"
+        // on the read-only chat path. "bougt" covers a common mobile typo.
+        return Regex.IsMatch(lower, @"\b(bought|bougt|purchased)\b.*\b\d+(?:[.,]\d+)?\s*(kg|kilograms?|g|grams?|bags?|packs?|boxes?|bottles?|pcs?|pieces?|items?|cái|món|bao|gói|hộp|chai)\b");
+    }
+
+    private static AgentTurnResult? TryRecoverMissingProductClarification(
+        List<AiConversationMessage> history,
+        string currentPrompt,
+        string currency)
+    {
+        if (LooksLikeBusinessAction(currentPrompt.ToLowerInvariant()) || history.Count < 3)
+            return null;
+
+        var previousAssistant = history.Take(history.Count - 1).LastOrDefault(message => message.Role == "assistant");
+        if (previousAssistant == null ||
+            !(previousAssistant.Content.Contains("couldn't match an active product", StringComparison.OrdinalIgnoreCase) ||
+              previousAssistant.Content.Contains("not in your product catalog", StringComparison.OrdinalIgnoreCase)))
+            return null;
+
+        var productName = Regex.Replace(currentPrompt.Trim(),
+            @"^\d+(?:[.,]\d+)?\s*(?:(?:kg|kilograms?|g|grams?|liters?|litres?|l)\s*)?(?:(?:bags?|packs?|boxes?|bottles?)\s+of\s+|of\s+)?",
+            "", RegexOptions.IgnoreCase).Trim(' ', ',', '.', ':', ';', '\'', '"');
+        if (string.IsNullOrWhiteSpace(productName) || !Regex.IsMatch(productName, @"[\p{L}]"))
+            return null;
+
+        var unitMatch = Regex.Match(currentPrompt,
+            @"\d+(?:[.,]\d+)?\s*(kg|kilograms?|g|grams?|liters?|litres?|l|bags?|packs?|boxes?|bottles?|pcs?|pieces?|items?)\b",
+            RegexOptions.IgnoreCase);
+        var unit = unitMatch.Success ? unitMatch.Groups[1].Value : "item";
+        var pendingSale = history.Take(history.Count - 1)
+            .LastOrDefault(message => message.Role == "user" &&
+                Regex.IsMatch(message.Content, @"\b(bought|bougt|purchased|sold|bán)\b", RegexOptions.IgnoreCase))?.Content;
+
+        var proposal = new AiActionProposalResponse(
+            null,
+            "create_product",
+            AiActionStatuses.NeedsClarification,
+            "Low",
+            false,
+            $"{productName} is not in your product catalog yet. Add its selling price first, then Tenvora can prepare the sale.",
+            new Dictionary<string, string?>
+            {
+                ["Product"] = productName,
+                ["Unit"] = unit,
+                ["Default price"] = $"0 {currency}",
+                ["Price required"] = "true",
+                ["Pending sale"] = pendingSale
+            });
+        var tools = new List<AiAgentToolCallInfo>
+        {
+            new("prepare_product", $"Prepare missing product: {productName}", proposal)
+        };
+        return new AgentTurnResult(
+            $"I kept the pending sale. **{productName}** is not a saved product yet, so complete the product card below with its selling price first.",
+            proposal,
+            tools);
+    }
+
     #endregion
 
     private static AiActionProposalResponse MapActionToProposal(AiAction action)
     {
-        IReadOnlyDictionary<string, string?> details = new Dictionary<string, string?>();
+        var expired = action.Status == AiActionStatuses.PendingConfirmation && action.ExpiresAt <= DateTime.UtcNow;
+        var status = expired ? AiActionStatuses.Expired : action.Status;
+        var details = new Dictionary<string, string?>();
+        string? resultMessage = null;
         try
         {
             if (!string.IsNullOrWhiteSpace(action.PayloadJson))
             {
                 var doc = JsonDocument.Parse(action.PayloadJson);
-                var dict = new Dictionary<string, string?>();
                 foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    dict[prop.Name] = prop.Value.ToString();
+                    details[prop.Name] = prop.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                        ? null
+                        : prop.Value.ToString();
                 }
-                details = dict;
+            }
+            if (!string.IsNullOrWhiteSpace(action.ResultJson))
+            {
+                var result = JsonDocument.Parse(action.ResultJson);
+                if (result.RootElement.TryGetProperty("message", out var message))
+                    resultMessage = message.GetString();
+                else if (result.RootElement.TryGetProperty("error", out var error))
+                    resultMessage = error.GetString();
             }
         }
         catch { }
 
+        if (!string.IsNullOrWhiteSpace(resultMessage)) details["Result"] = resultMessage;
+
         return new AiActionProposalResponse(
             action.Id,
             action.Intent,
-            action.Status,
+            status,
             action.RiskLevel,
-            action.RequiresConfirmation,
-            action.SourceText,
+            !expired && action.RequiresConfirmation,
+            resultMessage ?? action.SourceText,
             details,
             null,
             action.ExpiresAt

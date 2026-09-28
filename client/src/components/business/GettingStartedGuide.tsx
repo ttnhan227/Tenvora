@@ -30,7 +30,6 @@ interface GettingStartedGuideProps {
   currency: string;
   businessType?: string | null;
   hasActivity: boolean;
-  onOpenSettings: () => void;
 }
 
 export function GettingStartedGuide({
@@ -38,7 +37,6 @@ export function GettingStartedGuide({
   currency,
   businessType,
   hasActivity,
-  onOpenSettings,
 }: GettingStartedGuideProps) {
   const { isVietnamese } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
@@ -59,13 +57,9 @@ export function GettingStartedGuide({
           </span>
         </span>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="font-semibold text-primary hover:underline"
-          >
+          <Link to="/settings" className="font-semibold text-primary hover:underline">
             {isVietnamese ? "Tuỳ chỉnh" : "Customize"}
-          </button>
+          </Link>
           <span className="text-border">·</span>
           <button
             type="button"
@@ -106,14 +100,15 @@ export function GettingStartedGuide({
 
         <div className="flex items-center gap-2 self-start">
           <Button
-            type="button"
+            asChild
             variant="outline"
             size="sm"
-            onClick={onOpenSettings}
             className="h-8 gap-1.5 text-xs"
           >
-            <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{isVietnamese ? "Tuỳ chỉnh thiết lập" : "Customize setup"}</span>
+            <Link to="/settings">
+              <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{isVietnamese ? "Mở cài đặt" : "Open settings"}</span>
+            </Link>
           </Button>
           <button
             type="button"

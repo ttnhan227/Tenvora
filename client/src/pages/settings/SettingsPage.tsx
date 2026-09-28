@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Store,
   Globe,
@@ -31,8 +32,12 @@ export default function SettingsPage() {
   const { user, updateSettings, setPassword } = useAuth();
   const { t, language, setLanguage, isVietnamese } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const queryClient = useQueryClient();
+  const canManageWorkspace = user?.role === "TenantAdmin";
 
-  const [activeTab, setActiveTab] = useState<"store" | "display" | "account">("store");
+  const [activeTab, setActiveTab] = useState<"store" | "display" | "account">(
+    user?.role === "TenantAdmin" ? "store" : "display"
+  );
 
   // Store profile form state
   const [companyName, setCompanyName] = useState(user?.companyName || "");
@@ -51,16 +56,29 @@ export default function SettingsPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  const profileId = user?.id;
+  const profileCompanyName = user?.companyName || "";
+  const profileBusinessType = (user?.businessType as BusinessType) || "retail";
+  const profileCurrency = user?.preferredCurrency || "VND";
+  const profileFullName = user?.fullName || "";
+  const profilePhoneNumber = user?.phoneNumber || "";
+
   // Keep state synced if user profile loads asynchronously
   useEffect(() => {
-    if (user) {
-      if (!companyName) setCompanyName(user.companyName || "");
-      if (user.businessType) setBusinessType(user.businessType as BusinessType);
-      if (user.preferredCurrency) setCurrency(user.preferredCurrency);
-      if (user.fullName && !fullName) setFullName(user.fullName);
-      if (user.phoneNumber && !phoneNumber) setPhoneNumber(user.phoneNumber);
-    }
-  }, [user]);
+    if (!profileId) return;
+    setCompanyName(profileCompanyName);
+    setBusinessType(profileBusinessType);
+    setCurrency(profileCurrency);
+    setFullName(profileFullName);
+    setPhoneNumber(profilePhoneNumber);
+  }, [
+    profileBusinessType,
+    profileCompanyName,
+    profileCurrency,
+    profileFullName,
+    profileId,
+    profilePhoneNumber,
+  ]);
 
   const handleSaveStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +98,7 @@ export default function SettingsPage() {
       );
 
       if (res.success) {
+        queryClient.invalidateQueries();
         toast.success(t("settings.savedSuccess", "Đã lưu cài đặt thành công!"));
       } else {
         toast.error(res.message || t("settings.savedFailed", "Lưu cài đặt thất bại."));
@@ -156,19 +175,21 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 border-b pb-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("store")}
-            className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
-              activeTab === "store"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            }`}
-          >
-            <Store size={18} />
-            <span>{t("settings.tabStore", "Cửa hàng")}</span>
-          </button>
+        <div className={`grid grid-cols-1 gap-2 border-b pb-2 ${canManageWorkspace ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          {canManageWorkspace && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("store")}
+              className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+                activeTab === "store"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <Store size={18} />
+              <span>{t("settings.tabStore", "Cửa hàng")}</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -199,7 +220,7 @@ export default function SettingsPage() {
         </div>
 
         {/* TAB 1: Store & Business Profile */}
-        {activeTab === "store" && (
+        {canManageWorkspace && activeTab === "store" && (
           <form onSubmit={handleSaveStore} className="space-y-6 animate-fade-in">
             <Card className="rounded-2xl border">
               <CardHeader>

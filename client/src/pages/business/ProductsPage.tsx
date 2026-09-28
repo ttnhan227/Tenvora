@@ -1,11 +1,10 @@
 import { FormEvent, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Download, Package, Pencil, Plus, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
-import { ProductCsvImportDialog } from "@/components/business/ProductCsvImportDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,7 +34,6 @@ export default function ProductsPage() {
   const returnTo = params.get("returnTo");
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(params.get("create") === "1");
-  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductInput>(emptyProduct);
 
@@ -125,10 +123,12 @@ export default function ProductsPage() {
               : "Manage product catalog, cost price, selling price, and track automated stock inventory."
           }
           actions={
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-2">
-                <Upload className="h-4 w-4" />
-                {isVietnamese ? "Nhập CSV" : "Import CSV"}
+            <div className="flex max-w-full flex-wrap gap-2">
+              <Button asChild variant="outline" className="gap-2">
+                <Link to="/imports?type=products">
+                  <Upload className="h-4 w-4" />
+                  {isVietnamese ? "Nhập Excel / CSV" : "Import Excel / CSV"}
+                </Link>
               </Button>
               {data.length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
@@ -390,11 +390,6 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
 
-      <ProductCsvImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        currency={data[0]?.currency || "VND"}
-      />
     </DashboardLayout>
   );
 }

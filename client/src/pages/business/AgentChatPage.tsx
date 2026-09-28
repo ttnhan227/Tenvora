@@ -24,12 +24,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   aiAssistantService,
+  applyActionExecutionToProposal,
+  AiActionInputOverrides,
   AiActionProposalResponse,
   AiConversationMessage,
   AiConversationSummary,
 } from "@/services/aiService";
 import { businessMoney, businessService } from "@/services/businessService";
 import { InteractiveProposalCard } from "@/components/assistant/InteractiveProposalCard";
+import { ChatMessageContent } from "@/components/assistant/ChatMessageContent";
+import { getSyncedAiConversationId, publishAiConversationSync, setSyncedAiConversationId, subscribeToAiConversationSync } from "@/components/assistant/assistantSync";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AgentChatPage() {
@@ -38,9 +42,11 @@ export default function AgentChatPage() {
   const queryClient = useQueryClient();
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const syncSource = useRef(crypto.randomUUID()).current;
 
   const initialId = params.get("id");
-  const [activeId, setActiveId] = useState<string | null>(initialId);
+  const initialPrompt = params.get("prompt");
+  const [activeId, setActiveId] = useState<string | null>(initialId ?? getSyncedAiConversationId() ?? null);
   const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
   const [messages, setMessages] = useState<AiConversationMessage[]>([]);
   const [input, setInput] = useState("");
@@ -64,48 +70,82 @@ export default function AgentChatPage() {
   };
 
   useEffect(() => {
-    loadConversations();
+    const target = initialId ?? getSyncedAiConversationId();
+    void loadConversations(target);
+    if (initialId) {
+      setSyncedAiConversationId(initialId);
+      publishAiConversationSync({ activeConversationId: initialId, reason: "selected", source: syncSource });
+    }
   }, []);
 
   useEffect(() => {
-    if (initialId) {
+    if (initialPrompt) {
+      setInput(initialPrompt);
+      window.requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+  }, [initialPrompt]);
+
+  useEffect(() => {
+    if (initialId && initialId !== activeId) {
       loadConversation(initialId);
     }
   }, [initialId]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = async () => {
+  const loadConversations = async (preferredId?: string | null) => {
     const res = await aiAssistantService.getConversations();
     if (res.success && res.data) {
       setConversations(res.data);
-      if (!activeId && res.data.length > 0 && !initialId) {
-        loadConversation(res.data[0].id);
-      } else if (!activeId && !initialId) {
+      const targetId = preferredId === null
+        ? null
+        : preferredId ?? activeId ?? res.data[0]?.id ?? null;
+      if (targetId && res.data.some((conversation) => conversation.id === targetId)) {
+        await loadConversation(targetId, false);
+      } else if (!targetId) {
+        setActiveId(null);
+        setParams({}, { replace: true });
         setMessages([greeting]);
+        setSyncedAiConversationId(null);
+      } else if (res.data.length > 0) {
+        await loadConversation(res.data[0].id, false);
+      } else {
+        setActiveId(null);
+        setParams({}, { replace: true });
+        setMessages([greeting]);
+        setSyncedAiConversationId(null);
       }
     }
   };
 
-  const loadConversation = async (id: string) => {
+  const loadConversation = async (id: string, broadcast = true) => {
     setIsBusy(true);
     const res = await aiAssistantService.getConversation(id);
     if (res.success && res.data) {
       setActiveId(id);
       setParams({ id }, { replace: true });
       setMessages(res.data.messages.length > 0 ? res.data.messages : [greeting]);
+      setSyncedAiConversationId(id);
+      if (broadcast) publishAiConversationSync({ activeConversationId: id, reason: "selected", source: syncSource });
     }
     setIsBusy(false);
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = (broadcast = true) => {
     setActiveId(null);
     setParams({}, { replace: true });
     setMessages([greeting]);
     setInput("");
+    setSyncedAiConversationId(null);
+    if (broadcast) publishAiConversationSync({ activeConversationId: null, reason: "new", source: syncSource });
   };
+
+  useEffect(() => subscribeToAiConversationSync((event) => {
+    if (event.source === syncSource) return;
+    void loadConversations(event.activeConversationId);
+  }), [syncSource]);
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -114,6 +154,8 @@ export default function AgentChatPage() {
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeId === id) {
         handleNewChat();
+      } else {
+        publishAiConversationSync({ activeConversationId: activeId, reason: "deleted", source: syncSource });
       }
       toast.success(isVietnamese ? "Đã xoá cuộc trò chuyện" : "Conversation deleted");
     }
@@ -145,19 +187,35 @@ export default function AgentChatPage() {
       if (!activeId) {
         setActiveId(data.conversationId);
         setParams({ id: data.conversationId }, { replace: true });
-        loadConversations();
+        loadConversations(data.conversationId);
       }
+      publishAiConversationSync({ activeConversationId: data.conversationId, reason: "changed", source: syncSource });
 
       const assistantMsg: AiConversationMessage = {
         id: data.messageId,
         role: "assistant",
         content: data.reply,
         createdAt: new Date().toISOString(),
-        proposal: data.proposal,
         toolCalls: data.toolCalls,
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev) => {
+        const actionId = data.proposal?.actionId;
+        const updatesExisting = Boolean(
+          actionId && prev.some((message) => message.proposal?.actionId === actionId)
+        );
+        const reconciled = updatesExisting
+          ? prev.map((message) =>
+              message.proposal?.actionId === actionId
+                ? { ...message, proposal: data.proposal }
+                : message
+            )
+          : prev;
+        return [
+          ...reconciled,
+          { ...assistantMsg, proposal: updatesExisting ? undefined : data.proposal },
+        ];
+      });
     } else {
       setMessages((prev) => [
         ...prev,
@@ -174,39 +232,50 @@ export default function AgentChatPage() {
     setIsBusy(false);
   };
 
-  const handleDecision = async (messageId: string, proposal: AiActionProposalResponse, confirmed: boolean) => {
-    if (!proposal.actionId || isBusy) return;
+  const handleDecision = async (
+    messageId: string,
+    proposal: AiActionProposalResponse,
+    confirmed: boolean,
+    input?: AiActionInputOverrides
+  ): Promise<boolean> => {
+    if (!proposal.actionId || isBusy) return false;
+    const pendingSale = confirmed && proposal.intent === "create_product"
+      ? proposal.details["Pending sale"]
+      : null;
     setIsBusy(true);
 
-    const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
+    const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed, input);
 
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId
-          ? {
-              ...m,
-              proposal: {
-                ...proposal,
-                status: confirmed ? "Executed" : "Cancelled",
-                requiresConfirmation: false,
-              },
-            }
-          : m
-      )
-    );
+    if (response.success && response.data) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                proposal: applyActionExecutionToProposal(proposal, response.data!, input),
+              }
+            : m
+        )
+      );
+      publishAiConversationSync({ activeConversationId: activeId, reason: "changed", source: syncSource });
+    } else if (activeId) {
+      // Validation failures stay pending; execution failures become Failed.
+      // Reload the authoritative proposal state instead of guessing locally.
+      const refreshed = await aiAssistantService.getConversation(activeId);
+      if (refreshed.success && refreshed.data) setMessages(refreshed.data.messages);
+      publishAiConversationSync({ activeConversationId: activeId, reason: "changed", source: syncSource });
+    }
 
-    const confirmationMsg: AiConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: response.success && response.data
-        ? `${confirmed ? "✅ " : "❌ "}${response.data.message}`
-        : response.message || (isVietnamese ? "Lỗi khi thực hiện thao tác." : "Error completing action."),
-      createdAt: new Date().toISOString(),
-    };
+    if (!response.success || !response.data) {
+      setMessages((prev) => [...prev, {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: response.message || (isVietnamese ? "Lỗi khi thực hiện thao tác." : "Error completing action."),
+        createdAt: new Date().toISOString(),
+      }]);
+    }
 
-    setMessages((prev) => [...prev, confirmationMsg]);
-
-    if (response.success && confirmed) {
+    if (response.success && response.data?.status === "Executed") {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sales"] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
@@ -216,36 +285,14 @@ export default function AgentChatPage() {
         queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
         queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
       ]);
-      toast.success(isVietnamese ? "Đã ghi nhận giao dịch thành công!" : "Transaction recorded successfully!");
+      toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }
 
     setIsBusy(false);
-  };
-
-  const handleCustomExecuted = (messageId: string, resultMessage: string) => {
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === messageId && m.proposal
-          ? {
-              ...m,
-              proposal: {
-                ...m.proposal,
-                status: "Executed",
-                requiresConfirmation: false,
-              },
-            }
-          : m
-      )
-    );
-
-    const confirmationMsg: AiConversationMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: resultMessage,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, confirmationMsg]);
+    if (response.success && response.data?.status === "Executed" && pendingSale) {
+      await handleSend(pendingSale);
+    }
+    return Boolean(response.success && response.data);
   };
 
   const suggestions = isVietnamese
@@ -274,7 +321,7 @@ export default function AgentChatPage() {
               </span>
               <span className="font-bold text-sm">Tenvora Agent</span>
             </div>
-            <Button size="sm" variant="outline" onClick={handleNewChat} className="h-8 gap-1 text-xs">
+            <Button size="sm" variant="outline" onClick={() => handleNewChat()} className="h-8 gap-1 text-xs">
               <Plus className="h-3.5 w-3.5" />
               {isVietnamese ? "Mới" : "New"}
             </Button>
@@ -351,7 +398,7 @@ export default function AgentChatPage() {
               </div>
             </div>
 
-            <Button size="sm" variant="outline" onClick={handleNewChat} className="md:hidden h-8 gap-1 text-xs">
+            <Button size="sm" variant="outline" onClick={() => handleNewChat()} className="md:hidden h-8 gap-1 text-xs">
               <Plus className="h-3.5 w-3.5" />
               {isVietnamese ? "Mới" : "New"}
             </Button>
@@ -396,7 +443,7 @@ export default function AgentChatPage() {
                     </div>
                   )}
 
-                  <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+                  <ChatMessageContent content={m.content} />
 
                   {/* Proposal Action Card */}
                   {m.proposal && (
@@ -405,9 +452,10 @@ export default function AgentChatPage() {
                       busy={isBusy}
                       isVietnamese={isVietnamese}
                       currency={currency}
-                      onDecision={(confirmed) => handleDecision(m.id, m.proposal!, confirmed)}
+                      onDecision={(confirmed, actionInput) =>
+                        handleDecision(m.id, m.proposal!, confirmed, actionInput)
+                      }
                       onReply={(text) => handleSend(text)}
-                      onCustomExecuted={(resultText) => handleCustomExecuted(m.id, resultText)}
                     />
                   )}
                 </div>

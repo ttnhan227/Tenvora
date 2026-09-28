@@ -8,14 +8,19 @@ import { AiAssistantDialog } from "@/components/assistant/AiAssistantDialog";
 import { aiAssistantService } from "@/services/aiService";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
-vi.mock("@/services/aiService", () => ({
-  aiAssistantService: {
-    proposeAction: vi.fn(),
-    confirmAction: vi.fn(),
-    chat: vi.fn(),
-    getStatus: vi.fn(),
-  },
-}));
+vi.mock("@/services/aiService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/aiService")>();
+  return {
+    ...actual,
+    aiAssistantService: {
+      ...actual.aiAssistantService,
+      proposeAction: vi.fn(),
+      confirmAction: vi.fn(),
+      chat: vi.fn(),
+      getStatus: vi.fn(),
+    },
+  };
+});
 
 function renderWithProviders(ui: ReactNode, route = "/dashboard") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

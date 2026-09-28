@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,20 +12,26 @@ import {
   User,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AiActionProposalResponse } from "@/services/aiService";
-import { apiError, businessService } from "@/services/businessService";
+import { AiActionInputOverrides, AiActionProposalResponse } from "@/services/aiService";
 
 export interface InteractiveProposalCardProps {
   proposal: AiActionProposalResponse;
   busy: boolean;
   isVietnamese: boolean;
   currency?: string;
-  onDecision: (confirmed: boolean) => void;
+  onDecision: (confirmed: boolean, input?: AiActionInputOverrides) => Promise<boolean> | boolean;
   onReply?: (text: string) => void;
-  onCustomExecuted?: (resultText: string) => void;
+}
+
+function detail(proposal: AiActionProposalResponse, ...keys: string[]): string {
+  const entries = Object.entries(proposal.details);
+  for (const key of keys) {
+    const found = entries.find(([candidate]) => candidate.toLowerCase() === key.toLowerCase());
+    if (found?.[1]) return found[1];
+  }
+  return "";
 }
 
 function cleanInitialName(val?: string | null): string {
@@ -75,6 +80,63 @@ function parseInitialPrice(val?: string | null): number {
   return isNaN(num) ? 0 : Math.max(0, num);
 }
 
+function completedContext(
+  proposal: AiActionProposalResponse,
+  isVietnamese: boolean,
+): Array<[string, string]> {
+  const fields: Array<[string, string, string[]]> = [];
+  if (["create_customer", "update_customer", "archive_customer"].includes(proposal.intent)) {
+    fields.push(
+      [isVietnamese ? "Khách hàng" : "Customer", "Name", ["Name", "Customer", "CustomerName"]],
+      [isVietnamese ? "Điện thoại" : "Phone", "Phone", ["Phone"]],
+      ["Email", "Email", ["Email"]],
+      [isVietnamese ? "Địa chỉ" : "Address", "Address", ["Address"]],
+    );
+  } else if (["create_product", "update_product", "archive_product"].includes(proposal.intent)) {
+    fields.push(
+      [isVietnamese ? "Sản phẩm" : "Product", "Name", ["Name", "Product", "ProductName"]],
+      [isVietnamese ? "Đơn vị" : "Unit", "Unit", ["Unit"]],
+      [isVietnamese ? "Giá" : "Price", "UnitPrice", ["UnitPrice", "Default price", "Price"]],
+    );
+  } else if (["create_supplier", "update_supplier", "archive_supplier"].includes(proposal.intent)) {
+    fields.push(
+      [isVietnamese ? "Nhà cung cấp" : "Supplier", "Name", ["Name", "Supplier", "SupplierName"]],
+      [isVietnamese ? "Điện thoại" : "Phone", "Phone", ["Phone"]],
+      ["Email", "Email", ["Email"]],
+      [isVietnamese ? "Địa chỉ" : "Address", "Address", ["Address"]],
+    );
+  } else if (proposal.intent === "expense") {
+    fields.push(
+      [isVietnamese ? "Danh mục" : "Category", "Category", ["Category"]],
+      [isVietnamese ? "Số tiền" : "Amount", "Amount", ["Amount"]],
+      [isVietnamese ? "Mô tả" : "Description", "Description", ["Description"]],
+    );
+  } else if (proposal.intent === "sale" || proposal.intent === "purchase") {
+    fields.push(
+      [isVietnamese ? "Khách hàng" : "Customer", "CustomerName", ["Customer", "CustomerName", "Supplier", "SupplierName"]],
+      [isVietnamese ? "Mặt hàng" : "Item", "ProductName", ["Product", "ProductName"]],
+      [isVietnamese ? "Số lượng" : "Quantity", "Quantity", ["Quantity"]],
+      [isVietnamese ? "Tổng tiền" : "Total", "Amount", ["Total", "Amount"]],
+    );
+  } else if (proposal.intent.includes("payment")) {
+    fields.push(
+      [isVietnamese ? "Đối tượng" : "Account", "Account", ["CustomerName", "SupplierName", "Customer", "Supplier"]],
+      [isVietnamese ? "Số tiền" : "Amount", "Amount", ["Amount"]],
+    );
+  } else if (proposal.intent === "update_settings") {
+    fields.push([isVietnamese ? "Tiền tệ" : "Currency", "Currency", ["Currency"]]);
+  }
+
+  const seen = new Set<string>();
+  return fields.flatMap(([label, fallback, keys]) => {
+    const value = detail(proposal, ...keys);
+    const normalized = value.trim();
+    if (!normalized || normalized === "0" || seen.has(`${label}:${normalized}`)) return [];
+    seen.add(`${label}:${normalized}`);
+    return [[label || fallback, normalized] as [string, string]];
+  });
+}
+
 export function InteractiveProposalCard({
   proposal,
   busy,
@@ -82,76 +144,70 @@ export function InteractiveProposalCard({
   currency = "VND",
   onDecision,
   onReply,
-  onCustomExecuted,
 }: InteractiveProposalCardProps) {
-  const queryClient = useQueryClient();
-  const isSettled = proposal.status === "Executed" || proposal.status === "Cancelled";
+  const isTerminal = ["Executed", "Cancelled", "Expired", "Failed"].includes(proposal.status);
+  const isProcessing = proposal.status === "Executing";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locallyDismissed, setLocallyDismissed] = useState(false);
 
   // Product Form State
   const [productName, setProductName] = useState(() =>
     cleanInitialName(
-      proposal.details["Product"] ||
-        proposal.details["Name"] ||
-        proposal.details["Tên sản phẩm"]
+      detail(proposal, "Product", "Name", "Tên sản phẩm")
     )
   );
   const [productUnit, setProductUnit] = useState(
-    () => proposal.details["Unit"] || proposal.details["Đơn vị tính"] || "item"
+    () => detail(proposal, "Unit", "Đơn vị tính") || "item"
   );
   const [productPrice, setProductPrice] = useState<number>(() =>
-    parseInitialPrice(
-      proposal.details["Default price"] ||
-        proposal.details["Price"] ||
-        proposal.details["Giá mặc định"]
-    )
+    parseInitialPrice(detail(proposal, "Default price", "Price", "UnitPrice", "Giá mặc định"))
   );
+  const productPriceRequired = detail(proposal, "Price required") === "true";
+  const moneyStep = currency.toUpperCase() === "VND" ? "1000" : "0.01";
 
   // Customer Form State
   const [customerName, setCustomerName] = useState(() =>
     cleanInitialName(
-      proposal.details["Name"] ||
-        proposal.details["Customer"] ||
-        proposal.details["Tên khách hàng"]
+      detail(proposal, "Name", "Customer", "Tên khách hàng")
     )
   );
   const [customerPhone, setCustomerPhone] = useState(
-    () => proposal.details["Phone"] || proposal.details["Số điện thoại"] || ""
+    () => detail(proposal, "Phone", "Số điện thoại")
   );
   const [customerAddress, setCustomerAddress] = useState(
-    () => proposal.details["Address"] || proposal.details["Địa chỉ"] || ""
+    () => detail(proposal, "Address", "Địa chỉ")
   );
   const [customerEmail, setCustomerEmail] = useState(
-    () => proposal.details["Email"] || ""
+    () => detail(proposal, "Email")
   );
 
   // Supplier Form State
   const [supplierName, setSupplierName] = useState(() =>
     cleanInitialName(
-      proposal.details["Name"] ||
-        proposal.details["Supplier"] ||
-        proposal.details["Tên nhà cung cấp"]
+      detail(proposal, "Name", "Supplier", "Tên nhà cung cấp")
     )
   );
   const [supplierPhone, setSupplierPhone] = useState(
-    () => proposal.details["Phone"] || proposal.details["Số điện thoại"] || ""
+    () => detail(proposal, "Phone", "Số điện thoại")
   );
   const [supplierAddress, setSupplierAddress] = useState(
-    () => proposal.details["Address"] || proposal.details["Địa chỉ"] || ""
+    () => detail(proposal, "Address", "Địa chỉ")
+  );
+  const [supplierEmail, setSupplierEmail] = useState(
+    () => detail(proposal, "Email")
   );
 
   // Expense Form State
   const [expenseCategory, setExpenseCategory] = useState(
     () =>
-      proposal.details["Category"] ||
-      proposal.details["Danh mục"] ||
+      detail(proposal, "Category", "Danh mục") ||
       (isVietnamese ? "Chi phí vận hành" : "Operating Expense")
   );
   const [expenseAmount, setExpenseAmount] = useState<number>(() =>
-    parseInitialPrice(proposal.details["Amount"] || proposal.details["Số tiền"])
+    parseInitialPrice(detail(proposal, "Amount", "Số tiền"))
   );
   const [expenseDescription, setExpenseDescription] = useState(
-    () => proposal.details["Description"] || proposal.details["Mô tả"] || ""
+    () => detail(proposal, "Description", "Mô tả")
   );
 
   // Refinement / Clarification
@@ -161,32 +217,23 @@ export function InteractiveProposalCard({
   // Handlers for direct submission
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productName.trim() || isSubmitting || busy) return;
+    if (!productName.trim() || (productPriceRequired && productPrice <= 0) || isSubmitting || busy) return;
     setIsSubmitting(true);
     try {
-      const created = await businessService.createProduct({
+      const input: AiActionInputOverrides = {
         name: productName.trim(),
         unit: productUnit.trim() || "item",
-        defaultPrice: productPrice,
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["products"] }),
-        queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
-      ]);
-      toast.success(
-        isVietnamese
-          ? `Đã tạo sản phẩm "${created.name}" thành công!`
-          : `Created product "${created.name}" successfully!`
-      );
-      onCustomExecuted?.(
-        isVietnamese
-          ? `✅ Đã tạo sản phẩm **${created.name}** (${created.unit}, ${created.defaultPrice.toLocaleString()} ${currency}) thành công!`
-          : `✅ Successfully created product **${created.name}** (${created.unit}, ${created.defaultPrice.toLocaleString()} ${currency})!`
-      );
-    } catch (err: unknown) {
-      toast.error(
-        apiError(err, isVietnamese ? "Không thể tạo sản phẩm." : "Failed to create product.")
-      );
+        unitPrice: productPrice,
+      };
+      if (proposal.actionId) await onDecision(true, input);
+      else {
+        setLocallyDismissed(true);
+        const pendingSale = detail(proposal, "Pending sale");
+        onReply?.(
+          `Create product ${input.name}, unit ${input.unit}, price ${input.unitPrice ?? 0} ${currency}` +
+          (pendingSale ? `. After creating it, continue pending sale: ${pendingSale}` : "")
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -197,30 +244,17 @@ export function InteractiveProposalCard({
     if (!customerName.trim() || isSubmitting || busy) return;
     setIsSubmitting(true);
     try {
-      const created = await businessService.createCustomer({
+      const input: AiActionInputOverrides = {
         name: customerName.trim(),
-        phone: customerPhone.trim() || undefined,
-        address: customerAddress.trim() || undefined,
-        email: customerEmail.trim() || undefined,
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["customers"] }),
-        queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
-      ]);
-      toast.success(
-        isVietnamese
-          ? `Đã tạo khách hàng "${created.name}" thành công!`
-          : `Created customer "${created.name}" successfully!`
-      );
-      onCustomExecuted?.(
-        isVietnamese
-          ? `✅ Đã tạo khách hàng **${created.name}**${created.phone ? ` (SĐT: ${created.phone})` : ""} thành công!`
-          : `✅ Successfully created customer **${created.name}**${created.phone ? ` (Phone: ${created.phone})` : ""}!`
-      );
-    } catch (err: unknown) {
-      toast.error(
-        apiError(err, isVietnamese ? "Không thể tạo khách hàng." : "Failed to create customer.")
-      );
+        phone: customerPhone.trim() || null,
+        address: customerAddress.trim() || null,
+        email: customerEmail.trim() || null,
+      };
+      if (proposal.actionId) await onDecision(true, input);
+      else {
+        setLocallyDismissed(true);
+        onReply?.(`Create customer ${input.name}${input.phone ? `, phone ${input.phone}` : ""}${input.address ? `, address ${input.address}` : ""}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -231,29 +265,17 @@ export function InteractiveProposalCard({
     if (!supplierName.trim() || isSubmitting || busy) return;
     setIsSubmitting(true);
     try {
-      const created = await businessService.createSupplier({
+      const input: AiActionInputOverrides = {
         name: supplierName.trim(),
-        phone: supplierPhone.trim() || undefined,
-        address: supplierAddress.trim() || undefined,
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["suppliers"] }),
-        queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
-      ]);
-      toast.success(
-        isVietnamese
-          ? `Đã tạo nhà cung cấp "${created.name}" thành công!`
-          : `Created supplier "${created.name}" successfully!`
-      );
-      onCustomExecuted?.(
-        isVietnamese
-          ? `✅ Đã tạo nhà cung cấp **${created.name}**${created.phone ? ` (SĐT: ${created.phone})` : ""} thành công!`
-          : `✅ Successfully created supplier **${created.name}**${created.phone ? ` (Phone: ${created.phone})` : ""}!`
-      );
-    } catch (err: unknown) {
-      toast.error(
-        apiError(err, isVietnamese ? "Không thể tạo nhà cung cấp." : "Failed to create supplier.")
-      );
+        phone: supplierPhone.trim() || null,
+        email: supplierEmail.trim() || null,
+        address: supplierAddress.trim() || null,
+      };
+      if (proposal.actionId) await onDecision(true, input);
+      else {
+        setLocallyDismissed(true);
+        onReply?.(`Create supplier ${input.name}${input.phone ? `, phone ${input.phone}` : ""}${input.address ? `, address ${input.address}` : ""}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -264,30 +286,16 @@ export function InteractiveProposalCard({
     if (expenseAmount <= 0 || isSubmitting || busy) return;
     setIsSubmitting(true);
     try {
-      const created = await businessService.createBusinessExpense({
+      const input: AiActionInputOverrides = {
         category: expenseCategory.trim() || (isVietnamese ? "Chi phí khác" : "Other"),
         amount: expenseAmount,
-        description: expenseDescription.trim() || undefined,
-        expenseDate: new Date().toISOString(),
-      });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
-        queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
-      ]);
-      toast.success(
-        isVietnamese
-          ? `Đã ghi nhận chi phí ${created.amount.toLocaleString()} ${currency}!`
-          : `Recorded expense ${created.amount.toLocaleString()} ${currency}!`
-      );
-      onCustomExecuted?.(
-        isVietnamese
-          ? `✅ Đã ghi nhận chi phí **${created.category}** số tiền **${created.amount.toLocaleString()} ${currency}**!`
-          : `✅ Successfully recorded expense **${created.category}** for **${created.amount.toLocaleString()} ${currency}**!`
-      );
-    } catch (err: unknown) {
-      toast.error(
-        apiError(err, isVietnamese ? "Không thể ghi nhận chi phí." : "Failed to record expense.")
-      );
+        description: expenseDescription.trim() || null,
+      };
+      if (proposal.actionId) await onDecision(true, input);
+      else {
+        setLocallyDismissed(true);
+        onReply?.(`Record ${input.amount} ${currency} expense for ${input.category}${input.description ? `, ${input.description}` : ""}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -301,25 +309,54 @@ export function InteractiveProposalCard({
     }
   };
 
-  // 1. Settled State (Completed or Cancelled)
-  if (isSettled) {
+  const handleDismiss = () => {
+    if (proposal.actionId) void onDecision(false);
+    else setLocallyDismissed(true);
+  };
+
+  if (locallyDismissed) return null;
+
+  // 1. Terminal / processing state
+  if (isTerminal || isProcessing) {
+    const resultMessage = detail(proposal, "Result");
+    const statusMessage = proposal.status === "Executed"
+      ? (resultMessage || proposal.summary)
+      : proposal.status === "Cancelled"
+        ? (isVietnamese ? "Thao tác đã được hủy bỏ." : "Action was cancelled.")
+        : proposal.status === "Expired"
+          ? (isVietnamese ? "Đề xuất đã hết hạn. Hãy yêu cầu Tenvora chuẩn bị lại." : "This proposal expired. Ask Tenvora to prepare it again.")
+          : proposal.status === "Failed"
+            ? (isVietnamese ? "Thao tác không thể hoàn tất. Hãy kiểm tra và thử lại bằng yêu cầu mới." : "This action could not be completed. Review it and try a new request.")
+            : (isVietnamese ? "Thao tác đang được xử lý…" : "This action is being processed…");
+    const context = proposal.status === "Executed" ? completedContext(proposal, isVietnamese) : [];
     return (
       <div className="mt-3.5 rounded-xl border border-border/60 bg-muted/30 p-3.5 text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2.5">
           {proposal.status === "Executed" ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          ) : proposal.status === "Executing" ? (
+            <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" />
           ) : (
-            <X className="h-4 w-4 text-muted-foreground" />
+            <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           )}
-          <span className="font-semibold text-foreground">
-            {proposal.status === "Executed"
-              ? isVietnamese
-                ? "Giao dịch đã được ghi nhận vào hệ thống."
-                : "Transaction successfully recorded."
-              : isVietnamese
-              ? "Thao tác đã được hủy bỏ."
-              : "Action was cancelled."}
-          </span>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              {proposal.status === "Executed"
+                ? (isVietnamese ? "Đã hoàn tất" : "Completed")
+                : proposal.status}
+            </span>
+            <p className="mt-0.5 font-semibold text-foreground">{statusMessage}</p>
+            {context.length > 0 && (
+              <dl className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                {context.map(([label, value]) => (
+                  <div key={`${label}-${value}`} className="rounded-md border border-border/40 bg-background/70 px-2 py-1.5">
+                    <dt className="text-[10px] text-muted-foreground">{label}</dt>
+                    <dd className="truncate font-semibold text-foreground">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -379,12 +416,14 @@ export function InteractiveProposalCard({
                 </div>
                 <div>
                   <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                    {isVietnamese ? `Giá bán (${currency})` : `Default Price (${currency})`}
+                    {isVietnamese
+                      ? `Giá bán (${currency})${productPriceRequired ? " *" : ""}`
+                      : `Default Price (${currency})${productPriceRequired ? " *" : ""}`}
                   </label>
                   <Input
                     type="number"
                     min="0"
-                    step="1000"
+                    step={moneyStep}
                     value={productPrice === 0 ? "" : productPrice}
                     onChange={(e) =>
                       setProductPrice(Math.max(0, Number(e.target.value) || 0))
@@ -403,7 +442,7 @@ export function InteractiveProposalCard({
                 variant="outline"
                 size="sm"
                 disabled={isSubmitting || busy}
-                onClick={() => onDecision(false)}
+                onClick={handleDismiss}
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
@@ -412,8 +451,7 @@ export function InteractiveProposalCard({
               <Button
                 type="submit"
                 size="sm"
-                disabled={!productName.trim() || isSubmitting || busy}
-                onClick={handleCreateProduct}
+                disabled={!productName.trim() || (productPriceRequired && productPrice <= 0) || isSubmitting || busy}
                 className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
               >
                 {isSubmitting ? (
@@ -421,7 +459,9 @@ export function InteractiveProposalCard({
                 ) : (
                   <Plus className="h-3.5 w-3.5" />
                 )}
-                {isVietnamese ? "Lưu & Tạo sản phẩm" : "Save & Create Product"}
+                {proposal.intent === "update_product"
+                  ? (isVietnamese ? "Lưu thay đổi" : "Save Changes")
+                  : (isVietnamese ? "Lưu & Tạo sản phẩm" : "Save & Create Product")}
               </Button>
             </div>
           </div>
@@ -495,6 +535,19 @@ export function InteractiveProposalCard({
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  disabled={isSubmitting || busy}
+                  placeholder="Email..."
+                  className="h-8 text-xs bg-background"
+                />
+              </div>
             </div>
 
             <div className="mt-3.5 flex items-center justify-end gap-2">
@@ -503,7 +556,7 @@ export function InteractiveProposalCard({
                 variant="outline"
                 size="sm"
                 disabled={isSubmitting || busy}
-                onClick={() => onDecision(false)}
+                onClick={handleDismiss}
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
@@ -513,7 +566,6 @@ export function InteractiveProposalCard({
                 type="submit"
                 size="sm"
                 disabled={!customerName.trim() || isSubmitting || busy}
-                onClick={handleCreateCustomer}
                 className="h-8 text-xs gap-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-sm"
               >
                 {isSubmitting ? (
@@ -521,7 +573,9 @@ export function InteractiveProposalCard({
                 ) : (
                   <Plus className="h-3.5 w-3.5" />
                 )}
-                {isVietnamese ? "Lưu & Tạo khách hàng" : "Save & Create Customer"}
+                {proposal.intent === "update_customer"
+                  ? (isVietnamese ? "Lưu thay đổi" : "Save Changes")
+                  : (isVietnamese ? "Lưu & Tạo khách hàng" : "Save & Create Customer")}
               </Button>
             </div>
           </div>
@@ -595,6 +649,19 @@ export function InteractiveProposalCard({
                   />
                 </div>
               </div>
+              <div>
+                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={supplierEmail}
+                  onChange={(e) => setSupplierEmail(e.target.value)}
+                  disabled={isSubmitting || busy}
+                  placeholder="Email..."
+                  className="h-8 text-xs bg-background"
+                />
+              </div>
             </div>
 
             <div className="mt-3.5 flex items-center justify-end gap-2">
@@ -603,7 +670,7 @@ export function InteractiveProposalCard({
                 variant="outline"
                 size="sm"
                 disabled={isSubmitting || busy}
-                onClick={() => onDecision(false)}
+                onClick={handleDismiss}
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
@@ -613,7 +680,6 @@ export function InteractiveProposalCard({
                 type="submit"
                 size="sm"
                 disabled={!supplierName.trim() || isSubmitting || busy}
-                onClick={handleCreateSupplier}
                 className="h-8 text-xs gap-1 bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm"
               >
                 {isSubmitting ? (
@@ -621,7 +687,9 @@ export function InteractiveProposalCard({
                 ) : (
                   <Plus className="h-3.5 w-3.5" />
                 )}
-                {isVietnamese ? "Lưu & Tạo nhà cung cấp" : "Save & Create Supplier"}
+                {proposal.intent === "update_supplier"
+                  ? (isVietnamese ? "Lưu thay đổi" : "Save Changes")
+                  : (isVietnamese ? "Lưu & Tạo nhà cung cấp" : "Save & Create Supplier")}
               </Button>
             </div>
           </div>
@@ -671,7 +739,7 @@ export function InteractiveProposalCard({
                   <Input
                     type="number"
                     min="0"
-                    step="1000"
+                    step={moneyStep}
                     value={expenseAmount === 0 ? "" : expenseAmount}
                     onChange={(e) =>
                       setExpenseAmount(Math.max(0, Number(e.target.value) || 0))
@@ -704,7 +772,7 @@ export function InteractiveProposalCard({
                 variant="outline"
                 size="sm"
                 disabled={isSubmitting || busy}
-                onClick={() => onDecision(false)}
+                onClick={handleDismiss}
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
@@ -714,7 +782,6 @@ export function InteractiveProposalCard({
                 type="submit"
                 size="sm"
                 disabled={expenseAmount <= 0 || isSubmitting || busy}
-                onClick={handleCreateExpense}
                 className="h-8 text-xs gap-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-sm"
               >
                 {isSubmitting ? (
@@ -878,7 +945,7 @@ export function InteractiveProposalCard({
                 size="sm"
                 variant="outline"
                 disabled={busy}
-                onClick={() => onDecision(false)}
+                onClick={handleDismiss}
                 className="h-8 gap-1 text-xs"
               >
                 <X className="h-3.5 w-3.5" />

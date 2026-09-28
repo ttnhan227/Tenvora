@@ -21,10 +21,12 @@ const SalesPage = lazy(() => import("./pages/business/SalesPage"));
 const SuppliersPage = lazy(() => import("./pages/business/SuppliersPage"));
 const PurchasesPage = lazy(() => import("./pages/business/PurchasesPage"));
 const BusinessExpensesPage = lazy(() => import("./pages/business/BusinessExpensesPage"));
+const ReportsPage = lazy(() => import("./pages/business/ReportsPage"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
 const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const AgentChatPage = lazy(() => import("./pages/business/AgentChatPage"));
+const DataImportsPage = lazy(() => import("./pages/business/DataImportsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -44,6 +46,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<ProtectedRoute><BusinessHome /></ProtectedRoute>} />
         <Route path="/agent" element={<ProtectedRoute><AgentChatPage /></ProtectedRoute>} />
+        <Route path="/imports" element={<ProtectedRoute requiredRole={["TenantAdmin", "OperationsManager"]}><DataImportsPage /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
         <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />
         <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
@@ -51,6 +54,7 @@ export default function App() {
         <Route path="/suppliers" element={<ProtectedRoute><SuppliersPage /></ProtectedRoute>} />
         <Route path="/purchases" element={<ProtectedRoute><PurchasesPage /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><BusinessExpensesPage /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/team" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><UserManagement /></ProtectedRoute>} />
         <Route path="/audit" element={<ProtectedRoute requiredRole={["TenantAdmin"]}><AuditLogView /></ProtectedRoute>} />

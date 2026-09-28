@@ -7,6 +7,7 @@ import {
   Check,
   Clock,
   Download,
+  FileUp,
   Minus,
   PackagePlus,
   PauseCircle,
@@ -425,7 +426,8 @@ export default function SalesPage() {
               : "Record what a customer bought and whether they paid. Tenvora keeps the running balance for you."
           }
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=sales"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import invoices"}</Link></Button>
               {heldOrders.length > 0 && (
                 <Button
                   variant="outline"

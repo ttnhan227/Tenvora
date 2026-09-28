@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Minus, PackageOpen, PackagePlus, Plus, Search, Truck, WalletCards } from "lucide-react";
+import { Download, FileUp, Minus, PackageOpen, PackagePlus, Plus, Search, Truck, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
@@ -145,7 +145,8 @@ export default function PurchasesPage() {
           title={t("nav.purchases")}
           description={isVietnamese ? "Ghi hàng hoá hoặc dịch vụ mua từ nhà cung cấp và các khoản thanh toán đi kèm." : "Record goods or services bought from suppliers and keep every payment with the purchase."}
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="gap-2"><Link to="/imports?type=purchases"><FileUp className="h-4 w-4" />{isVietnamese ? "Nhập hóa đơn" : "Import bills"}</Link></Button>
               {(purchases.data ?? []).length > 0 && (
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />

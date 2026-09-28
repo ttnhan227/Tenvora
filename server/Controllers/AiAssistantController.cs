@@ -86,7 +86,7 @@ public class AiAssistantController : ControllerBase
     public async Task<IActionResult> ConfirmAction(Guid actionId, [FromBody] AiConfirmActionRequest request, CancellationToken ct)
     {
         var result = await _actionService.ConfirmAsync(
-            User.GetTenantId(), User.GetUserId(), actionId, request.Confirmed, User.GetUserRole(), ct);
+            User.GetTenantId(), User.GetUserId(), actionId, request.Confirmed, User.GetUserRole(), ct, request.Input);
         return result.ToActionResult();
     }
 

@@ -118,6 +118,24 @@ async function businessFixture(page: Page) {
 }
 
 test.describe("Tenvora 2.0 golden workflow", () => {
+  test("previews and imports a customer CSV without manual entry", async ({ page }) => {
+    await businessFixture(page);
+    await page.goto("/imports?type=customers");
+    await expect(page.getByRole("heading", { name: "Data Import Center", exact: true })).toBeVisible();
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "customers.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from('Name,Phone,Email,Address\n"Lan, Nguyen",0901234000,lan@example.com,"Hoi An, Quang Nam"\nMinh Tran,0905678000,minh@example.com,Hue'),
+    });
+
+    await expect(page.getByText("2", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Lan, Nguyen", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Import 2 ready rows" }).click();
+    await expect(page.getByText("Import finished", { exact: true })).toBeVisible();
+    await expect(page.getByText("2 imported · 0 skipped · 0 failed", { exact: true })).toBeVisible();
+  });
+
   test("records a sale, preserves its first payment, and settles the remaining balance", async ({ page }) => {
     await businessFixture(page);
     await page.goto("/sales");
@@ -136,22 +154,24 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await expect(dialog.getByText(/2,700,000/).first()).toBeVisible();
     await dialog.getByRole("button", { name: "Save sale" }).click();
 
-    await expect(page.getByText("SALE-20260925-0001", { exact: true })).toBeVisible();
-    await expect(page.getByText("Partially paid")).toBeVisible();
+    await expect(page.getByText("SALE-20260925-0001", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Partially paid").first()).toBeVisible();
     await expect(page.getByText(/1,700,000/).first()).toBeVisible();
 
+    const receiptDialog = page.getByRole("dialog", { name: "Sales Receipt Slip" });
+    await receiptDialog.getByRole("button", { name: "Close" }).click();
     await page.getByRole("button", { name: "Receive payment" }).click();
     const paymentDialog = page.getByRole("dialog");
     await expect(paymentDialog.getByLabel("Amount *")).toHaveValue("1700000");
     await paymentDialog.getByRole("button", { name: "Record payment" }).click();
-    await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+    await expect(page.getByText("Paid", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Payment history", { exact: true })).toBeVisible();
   });
 
   test("core business screens remain usable on a phone", async ({ page }) => {
     await businessFixture(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    for (const [route, heading] of [["/dashboard", /Good (morning|afternoon|evening), Owner/], ["/customers", "Customers"], ["/products", "Products & services"], ["/sales", "Sales"], ["/suppliers", "Suppliers"], ["/purchases", "Purchases"], ["/expenses", "Expenses"]] as const) {
+    for (const [route, heading] of [["/dashboard", /Good (morning|afternoon|evening), Owner/], ["/customers", "Customers"], ["/products", "Products & Inventory"], ["/sales", "Sales"], ["/suppliers", "Suppliers"], ["/purchases", "Purchases"], ["/expenses", "Expenses"]] as const) {
       await page.goto(route);
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
       const overflow = await page.evaluate(() => {
@@ -181,7 +201,123 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await page.getByRole("button", { name: "Thêm khách hàng" }).first().click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Thêm khách hàng" })).toBeVisible();
-    await expect(dialog.getByLabel("Tên *")).toBeVisible();
+    await expect(dialog.getByLabel("Tên khách hàng *")).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Huỷ bỏ" })).toBeVisible();
+  });
+
+  test("a completed customer action stays closed after refreshing chat", async ({ page }) => {
+    await businessFixture(page);
+    let executed = false;
+    let confirmationBody: Record<string, unknown> | undefined;
+
+    await page.route("**/api/ai/assistant/**", async (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname;
+
+      if (path.endsWith("/conversations") && request.method() === "GET") {
+        await route.fulfill({ json: { success: true, data: [] } });
+        return;
+      }
+      if (path.endsWith("/agent-chat") && request.method() === "POST") {
+        await route.fulfill({ json: {
+          success: true,
+          data: {
+            conversationId: "conversation-1",
+            messageId: "assistant-1",
+            reply: "I've prepared this action: **Create a customer?**",
+            proposal: {
+              actionId: "action-customer",
+              intent: "create_customer",
+              status: "PendingConfirmation",
+              riskLevel: "Low",
+              requiresConfirmation: true,
+              summary: "Create a customer?",
+              details: { name: null, phone: null, email: null, address: null },
+            },
+            toolCalls: [],
+            provider: "test",
+            model: "test",
+            isFallback: true,
+          },
+        } });
+        return;
+      }
+      if (path.endsWith("/actions/action-customer/confirm") && request.method() === "POST") {
+        confirmationBody = request.postDataJSON();
+        executed = true;
+        await route.fulfill({ json: {
+          success: true,
+          data: {
+            actionId: "action-customer",
+            status: "Executed",
+            message: "Customer created: Anh Minh.",
+            recordType: "Customer",
+            recordId: "customer-created",
+          },
+        } });
+        return;
+      }
+      if (path.endsWith("/conversations/conversation-1") && request.method() === "GET") {
+        await route.fulfill({ json: {
+          success: true,
+          data: {
+            id: "conversation-1",
+            title: "add a customer",
+            createdAt: now,
+            updatedAt: now,
+            messages: [
+              { id: "user-1", role: "user", content: "add a customer", createdAt: now },
+              {
+                id: "assistant-1",
+                role: "assistant",
+                content: "I've prepared this action: **Create a customer?**",
+                createdAt: now,
+                proposal: {
+                  actionId: "action-customer",
+                  intent: "create_customer",
+                  status: executed ? "Executed" : "PendingConfirmation",
+                  riskLevel: "Low",
+                  requiresConfirmation: !executed,
+                  summary: executed ? "Customer created: Anh Minh." : "Create a customer?",
+                  details: executed
+                    ? { name: "Anh Minh", phone: "0901234567", Result: "Customer created: Anh Minh." }
+                    : { name: null },
+                },
+              },
+            ],
+          },
+        } });
+        return;
+      }
+      await route.fulfill({ json: { success: true, data: [] } });
+    });
+
+    await page.goto("/agent");
+    const composer = page.getByPlaceholder(/Ask or tell Tenvora Agent/i);
+    await composer.fill("add a customer");
+    await composer.press("Enter");
+
+    await expect(page.getByText("Create a customer?", { exact: true }).first()).toBeVisible();
+    await expect(page.locator("strong", { hasText: "Create a customer?" })).toBeVisible();
+    await page.getByPlaceholder(/Enter customer name/i).fill("Anh Minh");
+    await page.getByPlaceholder("Phone...").fill("0901234567");
+    await page.getByRole("button", { name: "Save & Create Customer" }).click();
+
+    await expect(page.getByText("Customer created: Anh Minh.")).toBeVisible();
+    expect(confirmationBody).toEqual({
+      confirmed: true,
+      input: {
+        name: "Anh Minh",
+        phone: "0901234567",
+        email: null,
+        address: null,
+      },
+    });
+
+    await page.reload();
+    await expect(page.getByText("Customer created: Anh Minh.")).toBeVisible();
+    await expect(page.getByText("Anh Minh", { exact: true })).toBeVisible();
+    await expect(page.getByText("0901234567", { exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder(/Enter customer name/i)).toHaveCount(0);
   });
 });

@@ -291,7 +291,7 @@ Output JSON only.";
         if (isCreate && productMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("create_product", 0.96m,
                 EntityName: ExtractCreatedName(text, "product|item|service|sản phẩm|hàng hóa|hàng hoá", contextEntity == "product"),
-                Amount: ExtractAmount(lower, currency), Unit: ExtractUnit(text), Notes: text));
+                Amount: ExtractProductPrice(text, currency), Unit: ExtractUnit(text), Notes: text));
         if (isCreate && supplierMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("create_supplier", 0.96m,
                 EntityName: ExtractCreatedName(text, "supplier|vendor|nhà cung cấp", contextEntity == "supplier"),
@@ -311,7 +311,7 @@ Output JSON only.";
         if (isUpdate && productMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("update_product", 0.93m,
                 EntityName: ExtractTargetName(text, "product|item|service|sản phẩm|hàng hóa|hàng hoá"),
-                Amount: ExtractAmount(lower, currency), Unit: ExtractUnit(text), Notes: text));
+                Amount: ExtractProductPrice(text, currency), Unit: ExtractUnit(text), Notes: text));
         if (isUpdate && supplierMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("update_supplier", 0.93m,
                 EntityName: ExtractTargetName(text, "supplier|vendor|nhà cung cấp"), Phone: ExtractPhone(text),
@@ -321,6 +321,18 @@ Output JSON only.";
         if (supplierPayment)
             return ApiResult<AiInterpretedAction>.Ok(new("supplier_payment", 0.94m,
                 SupplierName: ExtractTargetName(text, "supplier|vendor|nhà cung cấp"), Amount: ExtractAmount(lower, currency), Notes: text));
+
+        // In a retail workspace, "Cong Huynh bought 1kg coffee" describes a sale to
+        // the named customer. Keep this ahead of purchase/expense parsing so the
+        // quantity is not mistaken for a monetary amount by the generic parser.
+        var customerBoughtProduct = Regex.IsMatch(lower, @"\b(bought(?:/bougt)?|bougt|purchased)\b") &&
+                                    Regex.IsMatch(lower, @"\b\d+(?:[.,]\d+)?\s*(kg|kilograms?|g|grams?|bags?|packs?|boxes?|bottles?|pcs?|pieces?|items?|cái|món|bao|gói|hộp|chai)\b") &&
+                                    !Regex.IsMatch(lower, @"\b(i|we|shop|store|business|company)\s+(bought|bougt|purchased)\b") &&
+                                    !Regex.IsMatch(lower, @"\b(stock|inventory|supplier|vendor|wholesale|for the shop|for the store)\b");
+        if (customerBoughtProduct)
+            return ApiResult<AiInterpretedAction>.Ok(new("sale", 0.95m,
+                ProductName: ExtractPurchasedProductName(text), Quantity: ExtractQuantityValue(text),
+                Unit: ExtractUnit(text), Notes: text));
 
         var purchase = Regex.IsMatch(lower, @"\b(purchase|bought stock|nhập hàng|mua từ|mua của)\b");
         if (purchase)
@@ -683,6 +695,25 @@ Output JSON only.";
         return quantity.Success ? quantity.Groups[1].Value : null;
     }
 
+    private static string? ExtractPurchasedProductName(string text)
+    {
+        var match = Regex.Match(text,
+            @"\b(?:bought(?:/bougt)?|bougt|purchased)\b\s+(?:\d+(?:[.,]\d+)?\s*)?(?:(?:kg|kilograms?|g|grams?|liters?|litres?|l)\s*)?(?:(?:bags?|packs?|boxes?|bottles?)\s+of\s+|of\s+)?(.+)$",
+            RegexOptions.IgnoreCase);
+        return match.Success ? CleanExtractedName(match.Groups[1].Value) : null;
+    }
+
+    private static decimal ExtractProductPrice(string text, string currency)
+    {
+        var labeled = Regex.Match(text,
+            @"(?:price|cost|selling price|default price|giá|gia)\s*(?:is|to|là|thành|:)?\s*([$€£₫đ]?\s*\d+(?:[.,]\d+)?\s*(?:k|ngàn|nghìn|tr|triệu|million|usd|vnd|eur|gbp)?)",
+            RegexOptions.IgnoreCase);
+        if (labeled.Success) return ExtractAmount(labeled.Groups[1].Value, currency);
+
+        var symbolPrice = Regex.Match(text, @"[$€£₫]\s*\d+(?:[.,]\d+)?", RegexOptions.IgnoreCase);
+        return symbolPrice.Success ? ExtractAmount(symbolPrice.Value, currency) : 0m;
+    }
+
     private static decimal ExtractQuantityValue(string text)
     {
         var match = Regex.Match(text, @"(?<![\d.,])(\d+(?:[.,]\d+)?)\s*(?:kg|g|gram|kilogram|lít|lit|liter|cái|món|pcs?|box|thùng|bao|hộp|chai|gói|lon|ly|cốc|bịch|cuộn|bó|cây|viên|tờ|unit)\b", RegexOptions.IgnoreCase);
@@ -851,23 +882,77 @@ Output JSON only.";
             }
         }
 
-        // 3. Matches generic numbers (e.g. 50000, $50, 150)
-        var numMatch = Regex.Match(text, @"(\$|đ|vnd)?\s*(\d+([.,]\d{3})*([.,]\d+)?)", RegexOptions.IgnoreCase);
-        if (numMatch.Success)
+        // 3. Matches generic numbers (e.g. 50000, $50, 150, 1.40, 15.50)
+        var numMatch = Regex.Match(text, @"(\$|đ|vnd)?\s*(\d+([.,]\d+)*)", RegexOptions.IgnoreCase);
+        if (numMatch.Success && TryParseFinancialNumber(numMatch.Groups[2].Value, currency, out var val))
         {
-            var clean = numMatch.Groups[2].Value.Replace(".", "").Replace(",", "");
-            if (decimal.TryParse(clean, out var val))
-            {
-                // In VND, numbers under 1000 often mean thousands (e.g. "bán 50" -> 50,000)
-                if (currency.Equals("VND", StringComparison.OrdinalIgnoreCase) && val > 0 && val < 1000)
-                {
-                    return val * 1000m;
-                }
-                return val;
-            }
+            return val;
         }
 
         return 0m;
+    }
+
+    private static bool TryParseFinancialNumber(string raw, string currency, out decimal value)
+    {
+        value = 0m;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        var trimmed = raw.Trim();
+        var isVnd = currency.Equals("VND", StringComparison.OrdinalIgnoreCase);
+
+        string normalized;
+        if (trimmed.Contains(',') && trimmed.Contains('.'))
+        {
+            if (trimmed.IndexOf(',') < trimmed.IndexOf('.'))
+            {
+                normalized = trimmed.Replace(",", "");
+            }
+            else
+            {
+                normalized = trimmed.Replace(".", "").Replace(',', '.');
+            }
+        }
+        else if (trimmed.Contains('.'))
+        {
+            if (isVnd && Regex.IsMatch(trimmed, @"\.\d{3}$"))
+            {
+                normalized = trimmed.Replace(".", "");
+            }
+            else if (trimmed.Count(c => c == '.') > 1)
+            {
+                normalized = trimmed.Replace(".", "");
+            }
+            else
+            {
+                normalized = trimmed;
+            }
+        }
+        else if (trimmed.Contains(','))
+        {
+            if (isVnd || Regex.IsMatch(trimmed, @",\d{3}$") || trimmed.Count(c => c == ',') > 1)
+            {
+                normalized = trimmed.Replace(",", "");
+            }
+            else
+            {
+                normalized = trimmed.Replace(',', '.');
+            }
+        }
+        else
+        {
+            normalized = trimmed;
+        }
+
+        if (decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            if (isVnd && parsed > 0 && parsed < 1000 && !trimmed.Contains('.') && !trimmed.Contains(','))
+            {
+                parsed *= 1000m;
+            }
+            value = parsed;
+            return true;
+        }
+
+        return false;
     }
 
     private static decimal ExtractPerUnitPrice(string text, string currency)

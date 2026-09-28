@@ -373,10 +373,16 @@ public sealed class AuthService : IAuthService
             return ApiResult<UserProfileResponse>.Fail("Business type is required.");
         }
 
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+
         var user = await _userRepository.GetByIdAsync(userId);
         if (user is null || !user.IsActive)
         {
             return ApiResult<UserProfileResponse>.Fail("User not found.");
+        }
+        if (!user.Role.Equals("TenantAdmin", StringComparison.Ordinal))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Only workspace administrators can complete workspace setup.");
         }
 
         var tenant = await _tenantRepository.GetByIdAsync(tenantId);
@@ -384,8 +390,15 @@ public sealed class AuthService : IAuthService
         {
             return ApiResult<UserProfileResponse>.Fail("Tenant not found.");
         }
+        if (tenant.OnboardingCompleted)
+        {
+            return ApiResult<UserProfileResponse>.Fail("Workspace setup is already complete. Use Settings to make changes.");
+        }
 
+        var oldCurrency = tenant.BaseCurrency?.Trim().ToUpperInvariant() ?? "USD";
         var currency = request.PreferredCurrency.Trim().ToUpperInvariant();
+        var currencyChanged = !oldCurrency.Equals(currency, StringComparison.OrdinalIgnoreCase);
+
         tenant.CompanyName = request.CompanyName.Trim();
         tenant.BaseCurrency = currency;
         tenant.BusinessType = request.BusinessType.Trim().ToLowerInvariant();
@@ -404,7 +417,11 @@ public sealed class AuthService : IAuthService
         user.PreferredCurrency = currency;
         user.UpdatedAt = DateTime.UtcNow;
 
-        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+        if (currencyChanged)
+        {
+            await ConvertTenantCurrencyRecordsAsync(tenant.Id, oldCurrency, currency);
+        }
+
         await _tenantRepository.UpdateAsync(tenant);
         await _userRepository.UpdateAsync(user);
         if (write != null) await write.CommitAsync();
@@ -448,6 +465,10 @@ public sealed class AuthService : IAuthService
         {
             return ApiResult<UserProfileResponse>.Fail("User not found.");
         }
+        if (!user.Role.Equals("TenantAdmin", StringComparison.Ordinal))
+        {
+            return ApiResult<UserProfileResponse>.Fail("Only workspace administrators can change workspace settings.");
+        }
 
         var tenant = await _tenantRepository.GetByIdAsync(tenantId);
         if (tenant is null)
@@ -455,9 +476,12 @@ public sealed class AuthService : IAuthService
             return ApiResult<UserProfileResponse>.Fail("Tenant not found.");
         }
 
+        var oldCurrency = tenant.BaseCurrency?.Trim().ToUpperInvariant() ?? "USD";
         var currency = request.PreferredCurrency.Trim().ToUpperInvariant();
+        var currencyChanged = !oldCurrency.Equals(currency, StringComparison.OrdinalIgnoreCase);
+
         tenant.CompanyName = request.CompanyName.Trim();
-        tenant.BusinessType = request.BusinessType.Trim();
+        tenant.BusinessType = request.BusinessType.Trim().ToLowerInvariant();
         tenant.BaseCurrency = currency;
         tenant.UpdatedAt = DateTime.UtcNow;
 
@@ -467,6 +491,12 @@ public sealed class AuthService : IAuthService
         user.UpdatedAt = DateTime.UtcNow;
 
         await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+
+        if (currencyChanged)
+        {
+            await ConvertTenantCurrencyRecordsAsync(tenantId, oldCurrency, currency);
+        }
+
         await _tenantRepository.UpdateAsync(tenant);
         await _userRepository.UpdateAsync(user);
         if (write != null) await write.CommitAsync();
@@ -516,5 +546,91 @@ public sealed class AuthService : IAuthService
         );
 
         return ApiResult<AuthResponse>.Ok(response);
+    }
+
+    private async Task ConvertTenantCurrencyRecordsAsync(Guid tenantId, string oldCurrency, string newCurrency)
+    {
+        // 1. Convert all Products (DefaultPrice and CostPrice)
+        var products = await _context.Products.Where(p => p.TenantId == tenantId).ToListAsync();
+        foreach (var product in products)
+        {
+            var fromCur = string.IsNullOrWhiteSpace(product.Currency) ? oldCurrency : product.Currency;
+            product.DefaultPrice = CurrencyConverter.Convert(product.DefaultPrice, fromCur, newCurrency);
+            if (product.CostPrice > 0)
+            {
+                product.CostPrice = CurrencyConverter.Convert(product.CostPrice, fromCur, newCurrency);
+            }
+            product.Currency = newCurrency;
+            product.UpdatedAt = DateTime.UtcNow;
+        }
+
+        // 2. Convert all Sales, SaleItems, and Payments
+        var sales = await _context.Sales
+            .Include(s => s.Items)
+            .Include(s => s.Payments)
+            .Where(s => s.TenantId == tenantId)
+            .ToListAsync();
+        foreach (var sale in sales)
+        {
+            var fromCur = string.IsNullOrWhiteSpace(sale.Currency) ? oldCurrency : sale.Currency;
+            sale.TotalAmount = CurrencyConverter.Convert(sale.TotalAmount, fromCur, newCurrency);
+            sale.Currency = newCurrency;
+            sale.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var item in sale.Items)
+            {
+                item.UnitPrice = CurrencyConverter.Convert(item.UnitPrice, fromCur, newCurrency);
+                item.LineTotal = CurrencyConverter.Convert(item.LineTotal, fromCur, newCurrency);
+            }
+            foreach (var payment in sale.Payments)
+            {
+                payment.Amount = CurrencyConverter.Convert(payment.Amount, fromCur, newCurrency);
+                payment.Currency = newCurrency;
+            }
+        }
+
+        // 3. Convert all Purchases, PurchaseItems, and PurchasePayments
+        var purchases = await _context.Purchases
+            .Include(p => p.Items)
+            .Include(p => p.Payments)
+            .Where(p => p.TenantId == tenantId)
+            .ToListAsync();
+        foreach (var purchase in purchases)
+        {
+            var fromCur = string.IsNullOrWhiteSpace(purchase.Currency) ? oldCurrency : purchase.Currency;
+            purchase.TotalAmount = CurrencyConverter.Convert(purchase.TotalAmount, fromCur, newCurrency);
+            purchase.Currency = newCurrency;
+            purchase.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var item in purchase.Items)
+            {
+                item.UnitCost = CurrencyConverter.Convert(item.UnitCost, fromCur, newCurrency);
+                item.LineTotal = CurrencyConverter.Convert(item.LineTotal, fromCur, newCurrency);
+            }
+            foreach (var payment in purchase.Payments)
+            {
+                payment.Amount = CurrencyConverter.Convert(payment.Amount, fromCur, newCurrency);
+                payment.Currency = newCurrency;
+            }
+        }
+
+        // 4. Convert all BusinessExpenses
+        var expenses = await _context.BusinessExpenses.Where(e => e.TenantId == tenantId).ToListAsync();
+        foreach (var expense in expenses)
+        {
+            var fromCur = string.IsNullOrWhiteSpace(expense.Currency) ? oldCurrency : expense.Currency;
+            expense.Amount = CurrencyConverter.Convert(expense.Amount, fromCur, newCurrency);
+            expense.Currency = newCurrency;
+        }
+
+        // 5. Update any other users in this tenant to match the new currency
+        var tenantUsers = await _context.Users.Where(u => u.TenantId == tenantId).ToListAsync();
+        foreach (var tenantUser in tenantUsers)
+        {
+            tenantUser.PreferredCurrency = newCurrency;
+            tenantUser.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

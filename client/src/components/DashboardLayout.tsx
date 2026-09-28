@@ -10,17 +10,20 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { AccountSecurityDialog } from "@/components/AccountSecurityDialog";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { AiChatDrawer } from "@/components/assistant/AiChatDrawer";
+import { ContextualAiBar } from "@/components/assistant/ContextualAiBar";
 import { getProfileOrDefault } from "@/data/businessProfiles";
 import { getWorkspaceRouteItem, workspaceNav } from "./WorkspaceNav";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, isVietnamese } = useLanguage();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiDraftPrompt, setAiDraftPrompt] = useState<string | undefined>();
+  const needsOnboarding = user?.role === "TenantAdmin" && user.onboardingCompleted === false;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -34,17 +37,24 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user && user.onboardingCompleted === false) {
+    if (needsOnboarding) {
       setSetupOpen(true);
     }
-  }, [user?.onboardingCompleted]);
+  }, [needsOnboarding]);
 
   const currentItem = getWorkspaceRouteItem(pathname);
   const currentTitle = currentItem ? t(currentItem.key, currentItem.label) : t("nav.home", "Trang chủ");
 
-  const visibleNav = workspaceNav.filter((item) => !item.admin || user?.role === "TenantAdmin");
+  const visibleNav = workspaceNav.filter((item) =>
+    (!item.admin || user?.role === "TenantAdmin") && (!item.roles || item.roles.includes(user?.role ?? ""))
+  );
   const mobileHrefs = ["/dashboard", "/sales", "/customers", "/settings"];
   const mobileItems = visibleNav.filter((item) => mobileHrefs.includes(item.href));
+
+  const openAi = (prompt?: string) => {
+    setAiDraftPrompt(prompt);
+    setAiOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -133,7 +143,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setAiOpen(true)}
+              onClick={() => openAi()}
               aria-label={t("header.aiAssistant", "Trợ lý AI")}
               className="inline-flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-bold"
             >
@@ -166,6 +176,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </header>
 
         <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-[76rem] px-4 pb-28 pt-6 sm:px-6 md:px-8 md:pb-12 md:pt-8">
+          <ContextualAiBar pathname={pathname} isVietnamese={isVietnamese} onPrompt={openAi} />
           <div className="animate-fade-in">{children}</div>
         </main>
       </div>
@@ -185,12 +196,13 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onOpenChange={setAiOpen}
         currency={user?.preferredCurrency ?? "VND"}
         canMutate={["TenantAdmin", "OperationsManager"].includes(user?.role ?? "")}
+        draftPrompt={aiDraftPrompt}
       />
 
       {/* Floating Agent Trigger Pill */}
       <button
         type="button"
-        onClick={() => setAiOpen(true)}
+        onClick={() => openAi()}
         aria-label={t("header.aiAssistant", "Tenvora Agent")}
         className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full border border-primary/30 bg-primary/90 px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg backdrop-blur-md transition-all hover:bg-primary hover:shadow-primary/25 hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
       >
