@@ -281,13 +281,17 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     let executed = false;
     let conversationCreated = false;
     let confirmationBody: Record<string, unknown> | undefined;
+    let releaseInitialList!: () => void;
+    const initialList = new Promise<void>((resolve) => { releaseInitialList = resolve; });
 
     await page.route("**/api/ai/assistant/**", async (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
 
       if (path.endsWith("/conversations") && request.method() === "GET") {
-        await route.fulfill({ json: { success: true, data: conversationCreated ? [{ id: "conversation-1", title: "add a customer", createdAt: now, updatedAt: now, messageCount: 2 }] : [] } });
+        const data = conversationCreated ? [{ id: "conversation-1", title: "add a customer", createdAt: now, updatedAt: now, messageCount: 2 }] : [];
+        if (!conversationCreated) await initialList;
+        await route.fulfill({ json: { success: true, data } });
         return;
       }
       if (path.endsWith("/agent-chat") && request.method() === "POST") {
@@ -374,6 +378,8 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await expect(page.getByText("Customer Details", { exact: true })).toBeVisible();
     await page.getByPlaceholder(/Enter customer name/i).fill("Anh Minh");
     await page.getByPlaceholder("Phone...").fill("0901234567");
+    releaseInitialList();
+    await expect(page.getByPlaceholder(/Enter customer name/i)).toHaveValue("Anh Minh");
     await page.getByRole("button", { name: "Save & Create Customer" }).click();
 
     await expect(page.getByText("Customer created: Anh Minh.")).toBeVisible();

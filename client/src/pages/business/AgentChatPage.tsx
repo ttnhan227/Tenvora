@@ -44,6 +44,7 @@ export default function AgentChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const syncSource = useRef(crypto.randomUUID()).current;
+  const conversationLoad = useRef(0);
 
   const initialId = params.get("id");
   const initialPrompt = params.get("prompt");
@@ -81,10 +82,13 @@ export default function AgentChatPage() {
     endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = useLatestCallback(async (preferredId?: string | null) => {
+  const loadConversations = useLatestCallback(async (preferredId?: string | null, reloadMessages = true) => {
+    const request = ++conversationLoad.current;
     const res = await aiAssistantService.getConversations();
+    if (request !== conversationLoad.current) return;
     if (res.success && res.data) {
       setConversations(res.data);
+      if (!reloadMessages) return;
       const targetId = preferredId === null
         ? null
         : preferredId ?? activeId ?? res.data[0]?.id ?? null;
@@ -109,8 +113,10 @@ export default function AgentChatPage() {
   });
 
   const loadConversation = async (id: string, broadcast = true) => {
+    const request = ++conversationLoad.current;
     setIsBusy(true);
     const res = await aiAssistantService.getConversation(id);
+    if (request !== conversationLoad.current) return;
     if (res.success && res.data) {
       setActiveId(id);
       setParams({ id }, { replace: true });
@@ -124,6 +130,8 @@ export default function AgentChatPage() {
   };
 
   const handleNewChat = (broadcast = true) => {
+    ++conversationLoad.current;
+    setIsBusy(false);
     setActiveId(null);
     setParams({}, { replace: true });
     setMessages([greeting]);
@@ -137,14 +145,19 @@ export default function AgentChatPage() {
     void loadConversations(event.activeConversationId);
   }), [syncSource, loadConversations]);
 
+  const initializeConversation = useLatestCallback((target: string | null | undefined) => {
+    if (target && target === activeId && messages.length > 0) return;
+    void loadConversations(target);
+  });
+
   useEffect(() => {
     const target = initialId ?? getSyncedAiConversationId();
-    void loadConversations(target);
+    initializeConversation(target);
     if (initialId) {
       setSyncedAiConversationId(initialId);
       publishAiConversationSync({ activeConversationId: initialId, reason: "selected", source: syncSource });
     }
-  }, [initialId, loadConversations, syncSource]);
+  }, [initialId, initializeConversation, syncSource]);
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,6 +178,7 @@ export default function AgentChatPage() {
   const handleSend = async (customPrompt?: string) => {
     const text = (customPrompt ?? input).trim();
     if (!text || isBusy) return;
+    ++conversationLoad.current;
 
     const userMsg: AiConversationMessage = {
       id: crypto.randomUUID(),
@@ -188,7 +202,7 @@ export default function AgentChatPage() {
       if (!activeId) {
         setActiveId(data.conversationId);
         setParams({ id: data.conversationId }, { replace: true });
-        loadConversations(data.conversationId);
+        void loadConversations(data.conversationId, false);
       }
       publishAiConversationSync({ activeConversationId: data.conversationId, reason: "changed", source: syncSource });
 

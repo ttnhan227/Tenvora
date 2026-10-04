@@ -61,6 +61,7 @@ export function AiChatDrawer({
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const syncSource = useRef(crypto.randomUUID()).current;
+  const conversationLoad = useRef(0);
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
@@ -90,10 +91,13 @@ export function AiChatDrawer({
     endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = useLatestCallback(async (preferredId?: string | null) => {
+  const loadConversations = useLatestCallback(async (preferredId?: string | null, reloadMessages = true) => {
+    const request = ++conversationLoad.current;
     const res = await aiAssistantService.getConversations();
+    if (request !== conversationLoad.current) return;
     if (res.success && res.data) {
       setConversations(res.data);
+      if (!reloadMessages) return;
       const targetId = preferredId === null
         ? null
         : preferredId ?? activeConversationId ?? res.data[0]?.id ?? null;
@@ -116,8 +120,10 @@ export function AiChatDrawer({
   });
 
   const loadConversation = async (id: string, broadcast = true) => {
+    const request = ++conversationLoad.current;
     setIsBusy(true);
     const res = await aiAssistantService.getConversation(id);
+    if (request !== conversationLoad.current) return;
     if (res.success && res.data) {
       setActiveConversationId(id);
       setMessages(res.data.messages.length > 0 ? res.data.messages : [greeting]);
@@ -131,6 +137,8 @@ export function AiChatDrawer({
   };
 
   const startNewConversation = (broadcast = true) => {
+    ++conversationLoad.current;
+    setIsBusy(false);
     setActiveConversationId(null);
     setMessages([greeting]);
     setShowHistory(false);
@@ -175,6 +183,7 @@ export function AiChatDrawer({
   const handleSend = async (customText?: string) => {
     const text = (customText ?? input).trim();
     if (!text || isBusy) return;
+    ++conversationLoad.current;
 
     const userMsg: AiConversationMessage = {
       id: crypto.randomUUID(),
@@ -200,7 +209,7 @@ export function AiChatDrawer({
       const data = response.data;
       if (!activeConversationId) {
         setActiveConversationId(data.conversationId);
-        loadConversations(data.conversationId);
+        void loadConversations(data.conversationId, false);
       }
       publishAiConversationSync({ activeConversationId: data.conversationId, reason: "changed", source: syncSource });
 
