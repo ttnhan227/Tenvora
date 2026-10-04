@@ -103,7 +103,11 @@ builder.Services.AddCors(options =>
         var extraOrigins = Environment.GetEnvironmentVariable("CLIENT_ORIGINS");
         if (!string.IsNullOrWhiteSpace(extraOrigins))
         {
-            var validOrigins = extraOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(o => Uri.TryCreate(o, UriKind.Absolute, out _)).ToList();
+            var validOrigins = extraOrigins
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(o => o.Trim().TrimEnd('/'))
+                .Where(o => Uri.TryCreate(o, UriKind.Absolute, out _))
+                .ToList();
             origins.AddRange(validOrigins);
         }
 
@@ -170,6 +174,8 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
 
 if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("No database connection string found.");
+
+connectionString = connectionString.Trim().Trim('"', '\'');
 
 if (connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) || connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
 {

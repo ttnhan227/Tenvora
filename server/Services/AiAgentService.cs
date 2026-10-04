@@ -157,9 +157,9 @@ public sealed class AiAgentService : IAiAgentService
         var clarificationRecovery = TryRecoverMissingProductClarification(history, rawText, currency);
 
         // 5. Run Agent with Tools (Gemini with tool-calling loop or local deterministic runner)
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? "gemini-3.8-flash";
+        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
+        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
+        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
 
         string reply;
         AiActionProposalResponse? proposal = null;

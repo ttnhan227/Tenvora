@@ -31,9 +31,9 @@ public class AiAssistantController : ControllerBase
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
-        var provider = _config["AI_PROVIDER_NAME"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_NAME") ?? "Google Gemini";
-        var model = _config["AI_CHAT_MODEL"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? "gemini-3.8-flash";
-        var hasKey = !string.IsNullOrWhiteSpace(_config["AI_PROVIDER_API_KEY"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY"));
+        var provider = _config["AI_PROVIDER_NAME"] ?? _config["AiProvider:Name"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_NAME") ?? Environment.GetEnvironmentVariable("AiProvider__Name") ?? "Google Gemini";
+        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
+        var hasKey = !string.IsNullOrWhiteSpace(_config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey"));
 
         return Ok(ApiResult<object>.Ok(new
         {

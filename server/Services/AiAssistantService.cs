@@ -64,9 +64,9 @@ public class AiAssistantService : IAiAssistantService
         if (deterministicRead != null)
             return ApiResult<AiChatResponse>.Ok(new AiChatResponse(deterministicRead, "Tenvora", "application-tools", true));
 
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? "gemini-3.8-flash";
+        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
+        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
+        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -168,9 +168,9 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
         var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct);
         var currency = tenant?.BaseCurrency ?? "VND";
 
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? "gemini-3.8-flash";
+        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
+        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
+        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
