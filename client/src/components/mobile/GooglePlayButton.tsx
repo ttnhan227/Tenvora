@@ -18,7 +18,7 @@ interface GooglePlayButtonProps {
 
 export function GooglePlayButton({
   className = "",
-  downloadUrl = "/downloads/tenvora-mobile.apk",
+  downloadUrl = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk",
 }: GooglePlayButtonProps) {
   const [open, setOpen] = useState(false);
 

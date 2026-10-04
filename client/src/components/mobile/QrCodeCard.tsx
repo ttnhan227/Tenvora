@@ -10,15 +10,14 @@ interface QrCodeCardProps {
 
 export function QrCodeCard({
   className = "",
-  apkPath = "/downloads/tenvora-mobile.apk",
+  apkPath = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk",
 }: QrCodeCardProps) {
   const [downloadUrl, setDownloadUrl] = useState(apkPath);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // If hostname is localhost and we have a LAN IP in mind, let's keep full origin
-      const fullUrl = `${window.location.origin}${apkPath}`;
+      const fullUrl = new URL(apkPath, window.location.origin).href;
       setDownloadUrl(fullUrl);
     }
   }, [apkPath]);

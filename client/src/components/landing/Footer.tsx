@@ -117,7 +117,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="/downloads/tenvora-mobile.apk"
+                  href="https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk"
                   download="tenvora-mobile.apk"
                   className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                 >

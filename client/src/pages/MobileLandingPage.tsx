@@ -21,7 +21,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function MobileLandingPage() {
   const { isVietnamese } = useLanguage();
-  const downloadApkUrl = "/api/mobile/apk";
+  const downloadApkUrl = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk";
 
   const mobileFeatures = [
     {

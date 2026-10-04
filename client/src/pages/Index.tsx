@@ -716,7 +716,7 @@ export default function Index() {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="lg" className="font-semibold">
-                      <a href="/downloads/tenvora-mobile.apk" download="tenvora-mobile.apk">
+                      <a href="https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk" download="tenvora-mobile.apk">
                         <Download className="mr-2 h-4 w-4 text-primary" />
                         <span>{isVietnamese ? "Tải trực tiếp file APK" : "Direct APK Download"}</span>
                       </a>
