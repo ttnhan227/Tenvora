@@ -1,12 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/receipt_photo.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -113,11 +111,30 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       onTap:
                           AppScope.of(context).user!.canManage
                               ? () => _edit(e)
-                              : null,
+                              : e.receiptImageDataUrl == null
+                              ? null
+                              : () => showModalBottomSheet<void>(
+                                context: context,
+                                useSafeArea: true,
+                                builder:
+                                    (_) => Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: ReceiptPhoto(
+                                        value: e.receiptImageDataUrl,
+                                        vietnamese:
+                                            AppScope.of(context).isVietnamese,
+                                      ),
+                                    ),
+                              ),
                       child: Row(
                         children: [
                           CircleAvatar(
-                            child: const Icon(Icons.receipt_outlined, size: 20),
+                            child: Icon(
+                              e.receiptImageDataUrl == null
+                                  ? Icons.receipt_outlined
+                                  : Icons.image_outlined,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -187,17 +204,13 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     text: widget.expense?.description,
   );
   late DateTime _date = widget.expense?.expenseDate ?? DateTime.now();
-  String? _receipt;
+  late String? _receipt = widget.expense?.receiptImageDataUrl;
   bool _busy = false;
-  Future<void> _pickReceipt() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      imageQuality: 72,
-      maxWidth: 1600,
-    );
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    setState(() => _receipt = 'data:image/jpeg;base64,${base64Encode(bytes)}');
+  @override
+  void dispose() {
+    _amount.dispose();
+    _description.dispose();
+    super.dispose();
   }
 
   Future<void> _save() async {
@@ -335,14 +348,11 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               ),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _pickReceipt,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: Text(
-                _receipt == null
-                    ? tr(context, 'Photograph receipt', 'Chụp hóa đơn')
-                    : tr(context, 'Receipt attached', 'Đã đính kèm hóa đơn'),
-              ),
+            ReceiptPhoto(
+              value: _receipt,
+              vietnamese: AppScope.of(context).isVietnamese,
+              enabled: !_busy,
+              onChanged: (value) => setState(() => _receipt = value),
             ),
             const SizedBox(height: 16),
             FilledButton(

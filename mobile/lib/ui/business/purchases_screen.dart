@@ -1,12 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/receipt_photo.dart';
 
 class PurchasesScreen extends StatefulWidget {
   const PurchasesScreen({super.key});
@@ -420,19 +418,6 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
     }
   }
 
-  Future<void> _pickInvoice() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.camera,
-      imageQuality: 78,
-      maxWidth: 1800,
-    );
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    setState(
-      () => _invoiceImage = 'data:image/jpeg;base64,${base64Encode(bytes)}',
-    );
-  }
-
   Future<void> _submit() async {
     if (_supplier == null || _lines.isEmpty) {
       showMessage(
@@ -627,22 +612,11 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _pickInvoice,
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(
-                      _invoiceImage == null
-                          ? tr(
-                            context,
-                            'Photograph supplier invoice',
-                            'Chụp hóa đơn nhà cung cấp',
-                          )
-                          : tr(
-                            context,
-                            'Invoice attached',
-                            'Đã đính kèm hóa đơn',
-                          ),
-                    ),
+                  ReceiptPhoto(
+                    value: _invoiceImage,
+                    vietnamese: AppScope.of(context).isVietnamese,
+                    enabled: !_busy,
+                    onChanged: (value) => setState(() => _invoiceImage = value),
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
@@ -840,13 +814,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               ),
               const SizedBox(height: 14),
               if (p.invoiceImageDataUrl != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.memory(
-                    dataUrlBytes(p.invoiceImageDataUrl)!,
-                    height: 180,
-                    fit: BoxFit.cover,
-                  ),
+                ReceiptPhoto(
+                  value: p.invoiceImageDataUrl,
+                  vietnamese: AppScope.of(context).isVietnamese,
                 ),
               if (p.invoiceImageDataUrl != null) const SizedBox(height: 12),
               PaperCard(
