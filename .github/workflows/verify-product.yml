@@ -23,6 +23,15 @@ jobs:
       TENVORA_TEST_DATABASE_URL: Host=localhost;Port=5432;Database=tenvora_readiness;Username=postgres;Password=readiness-local-only
     steps:
       - uses: actions/checkout@v4
+      - name: Check high severity vulnerabilities and leaked credentials
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: table
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
