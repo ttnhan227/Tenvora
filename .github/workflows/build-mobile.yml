@@ -143,7 +143,9 @@ jobs:
           set -euo pipefail
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           test -n "$APKSIGNER"
-          ACTUAL=$("$APKSIGNER" verify --print-certs dist/tenvora-mobile.apk | sed -n '/^Signer.*certificate SHA-256 digest:/s/.*digest: //p' | tr '[:upper:]' '[:lower:]' | sort -u)
+          SIGNING_REPORT=$("$APKSIGNER" verify --print-certs dist/tenvora-mobile.apk)
+          printf '%s\n' "$SIGNING_REPORT"
+          ACTUAL=$(printf '%s\n' "$SIGNING_REPORT" | awk '/certificate/ && /SHA-256/ {print $NF}' | tr '[:upper:]' '[:lower:]' | sort -u)
           EXPECTED=$(tr -d '\r\n' < mobile/android/signing-certificate.sha256)
           echo "APK certificate SHA-256: $ACTUAL"
           echo "Expected certificate SHA-256: $EXPECTED"
