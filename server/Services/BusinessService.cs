@@ -125,6 +125,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         var validation = ValidateProduct(request.Name, request.Unit, request.DefaultPrice);
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice < 0 || Scale(request.CostPrice) > 4) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
+        var image = NormalizeImageDataUrl(request.ImageDataUrl, out var imageError);
+        if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Sku == sku))
             return ApiResult<ProductDto>.Fail("A product with this SKU already exists.");
@@ -134,7 +136,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             Id = Guid.NewGuid(), TenantId = tenantId, Name = request.Name.Trim(), Sku = sku, Unit = request.Unit.Trim(),
             DefaultPrice = Money(request.DefaultPrice), CostPrice = Money(request.CostPrice),
             StockQuantity = Money(request.StockQuantity), MinStockLevel = request.MinStockLevel.HasValue ? Money(request.MinStockLevel.Value) : null,
-            Currency = await Currency(tenantId), Notes = Clean(request.Notes),
+            Currency = await Currency(tenantId), Notes = Clean(request.Notes), ImageDataUrl = image,
             IsActive = true, TrackInventory = trackInventory,
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
         };
@@ -151,6 +153,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice.HasValue && (request.CostPrice.Value < 0 || Scale(request.CostPrice.Value) > 4)) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
+        var image = NormalizeImageDataUrl(request.ImageDataUrl, out var imageError);
+        if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Id != productId && p.Sku == sku))
             return ApiResult<ProductDto>.Fail("A product with this SKU already exists.");
@@ -164,6 +168,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         product.IsActive = request.IsActive;
         if (request.TrackInventory.HasValue) product.TrackInventory = request.TrackInventory.Value;
         product.Notes = Clean(request.Notes);
+        if (request.RemoveImage) product.ImageDataUrl = null;
+        else if (image != null) product.ImageDataUrl = image;
         product.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return ApiResult<ProductDto>.Ok(MapProduct(product));
@@ -572,6 +578,43 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
     private async Task<string> Currency(Guid tenantId) =>
         (await db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.BaseCurrency).FirstOrDefaultAsync())?.ToUpperInvariant() ?? "USD";
 
+    private static string? NormalizeImageDataUrl(string? value, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var trimmed = value.Trim();
+        var allowedPrefixes = new[]
+        {
+            "data:image/jpeg;base64,",
+            "data:image/png;base64,",
+            "data:image/webp;base64,"
+        };
+        var prefix = allowedPrefixes.FirstOrDefault(p => trimmed.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        if (prefix == null)
+        {
+            error = "Images must be JPEG, PNG, or WebP files.";
+            return null;
+        }
+
+        try
+        {
+            var bytes = Convert.FromBase64String(trimmed[prefix.Length..]);
+            if (bytes.Length == 0 || bytes.Length > 2_000_000)
+            {
+                error = "Images must be smaller than 2 MB after processing.";
+                return null;
+            }
+        }
+        catch (FormatException)
+        {
+            error = "The image data is invalid.";
+            return null;
+        }
+
+        return trimmed;
+    }
+
     private static BusinessCustomerDto MapCustomer(Customer customer, string currency)
     {
         var sales = customer.Sales.Where(s => s.Status == SaleStatuses.Posted).ToList();
@@ -582,7 +625,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
     }
 
     private static ProductDto MapProduct(Product p) =>
-        new(p.Id, p.Name, p.Sku, p.Unit, p.DefaultPrice, p.CostPrice, p.StockQuantity, p.MinStockLevel, p.Currency, p.IsActive, p.Notes, p.CreatedAt, p.TrackInventory);
+        new(p.Id, p.Name, p.Sku, p.Unit, p.DefaultPrice, p.CostPrice, p.StockQuantity, p.MinStockLevel, p.Currency, p.IsActive, p.Notes, p.CreatedAt, p.TrackInventory, p.ImageDataUrl);
 
     private static SaleSummaryDto MapSale(Sale sale)
     {

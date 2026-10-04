@@ -124,11 +124,18 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
                     if (responseJson.TryGetProperty("candidates", out var candidates) &&
                         candidates.GetArrayLength() > 0 &&
                         candidates[0].TryGetProperty("content", out var content) &&
-                        content.TryGetProperty("parts", out var parts) &&
-                        parts.GetArrayLength() > 0 &&
-                        parts[0].TryGetProperty("text", out var textEl))
+                        content.TryGetProperty("parts", out var parts))
                     {
-                        var replyText = textEl.GetString();
+                        string? replyText = null;
+                        foreach (var part in parts.EnumerateArray())
+                        {
+                            if (part.TryGetProperty("text", out var textEl))
+                            {
+                                replyText = textEl.GetString();
+                                break;
+                            }
+                        }
+
                         if (!string.IsNullOrWhiteSpace(replyText))
                         {
                             return ApiResult<AiChatResponse>.Ok(new AiChatResponse(replyText.Trim(), "Google Gemini", model, false));
@@ -220,11 +227,18 @@ Output JSON only.";
                     if (responseJson.TryGetProperty("candidates", out var candidates) &&
                         candidates.GetArrayLength() > 0 &&
                         candidates[0].TryGetProperty("content", out var content) &&
-                        content.TryGetProperty("parts", out var parts) &&
-                        parts.GetArrayLength() > 0 &&
-                        parts[0].TryGetProperty("text", out var textEl))
+                        content.TryGetProperty("parts", out var parts))
                     {
-                        var rawJson = textEl.GetString();
+                        string? rawJson = null;
+                        foreach (var part in parts.EnumerateArray())
+                        {
+                            if (part.TryGetProperty("text", out var textEl))
+                            {
+                                rawJson = textEl.GetString();
+                                break;
+                            }
+                        }
+
                         if (!string.IsNullOrWhiteSpace(rawJson))
                         {
                             var parsed = ParseGeminiJsonResult(rawJson, currency);

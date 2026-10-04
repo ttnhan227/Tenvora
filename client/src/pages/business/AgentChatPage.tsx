@@ -117,6 +117,8 @@ export default function AgentChatPage() {
         setMessages([greeting]);
         setSyncedAiConversationId(null);
       }
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể tải danh sách cuộc trò chuyện." : "Could not load conversations."));
     }
   };
 
@@ -129,6 +131,8 @@ export default function AgentChatPage() {
       setMessages(res.data.messages.length > 0 ? res.data.messages : [greeting]);
       setSyncedAiConversationId(id);
       if (broadcast) publishAiConversationSync({ activeConversationId: id, reason: "selected", source: syncSource });
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể tải cuộc trò chuyện." : "Could not load the conversation."));
     }
     setIsBusy(false);
   };
@@ -158,6 +162,8 @@ export default function AgentChatPage() {
         publishAiConversationSync({ activeConversationId: activeId, reason: "deleted", source: syncSource });
       }
       toast.success(isVietnamese ? "Đã xoá cuộc trò chuyện" : "Conversation deleted");
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể xoá cuộc trò chuyện." : "Could not delete the conversation."));
     }
   };
 

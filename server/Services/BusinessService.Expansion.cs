@@ -114,6 +114,8 @@ public sealed partial class BusinessService
         var keyError = ValidateKey(idempotencyKey);
         if (keyError != null) return ApiResult<PurchaseDto>.Fail(keyError);
         if (request.Items == null || request.Items.Count == 0) return ApiResult<PurchaseDto>.Fail("Add at least one purchase item.");
+        var invoiceImage = NormalizeImageDataUrl(request.InvoiceImageDataUrl, out var invoiceImageError);
+        if (invoiceImageError != null) return ApiResult<PurchaseDto>.Fail(invoiceImageError);
         var requestHash = Hash(request);
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var existing = await db.Purchases.AsNoTracking().FirstOrDefaultAsync(p => p.TenantId == tenantId && p.IdempotencyKey == idempotencyKey);
@@ -134,7 +136,7 @@ public sealed partial class BusinessService
         var next = await db.Purchases.CountAsync(p => p.TenantId == tenantId && p.PurchasedAt >= dayStart && p.PurchasedAt < dayStart.AddDays(1)) + 1;
         var purchase = new Purchase { Id = Guid.NewGuid(), TenantId = tenantId, SupplierId = supplier.Id,
             PurchaseNumber = $"PUR-{purchasedAt:yyyyMMdd}-{next:D4}", Currency = await Currency(tenantId), Status = "Posted",
-            Notes = Clean(request.Notes), IdempotencyKey = idempotencyKey, RequestHash = requestHash,
+            Notes = Clean(request.Notes), InvoiceImageDataUrl = invoiceImage, IdempotencyKey = idempotencyKey, RequestHash = requestHash,
             PurchasedAt = purchasedAt, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, Supplier = supplier };
         foreach (var requested in request.Items)
         {
@@ -306,6 +308,8 @@ public sealed partial class BusinessService
         var category = request.Category?.Trim();
         if (string.IsNullOrWhiteSpace(category)) return ApiResult<BusinessExpenseDto>.Fail("Expense category is required.");
         if (request.Amount <= 0 || Scale(request.Amount) > 4) return ApiResult<BusinessExpenseDto>.Fail("Expense amount must be positive with at most four decimal places.");
+        var receiptImage = NormalizeImageDataUrl(request.ReceiptImageDataUrl, out var receiptImageError);
+        if (receiptImageError != null) return ApiResult<BusinessExpenseDto>.Fail(receiptImageError);
         var hash = Hash(request);
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var existing = await db.BusinessExpenses.AsNoTracking().FirstOrDefaultAsync(e => e.TenantId == tenantId && e.IdempotencyKey == idempotencyKey);
@@ -318,7 +322,7 @@ public sealed partial class BusinessService
         var date = Utc(request.ExpenseDate ?? DateTime.UtcNow);
         if (date > DateTime.UtcNow.AddDays(1)) return ApiResult<BusinessExpenseDto>.Fail("Expense date cannot be in the future.");
         var expense = new BusinessExpense { Id = Guid.NewGuid(), TenantId = tenantId, Category = category,
-            Amount = Money(request.Amount), Currency = await Currency(tenantId), Description = Clean(request.Description),
+            Amount = Money(request.Amount), Currency = await Currency(tenantId), Description = Clean(request.Description), ReceiptImageDataUrl = receiptImage,
             IdempotencyKey = idempotencyKey, RequestHash = hash, ExpenseDate = date, CreatedAt = DateTime.UtcNow };
         db.BusinessExpenses.Add(expense); await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
@@ -332,6 +336,8 @@ public sealed partial class BusinessService
         var category = request.Category?.Trim();
         if (string.IsNullOrWhiteSpace(category)) return ApiResult<BusinessExpenseDto>.Fail("Expense category is required.");
         if (request.Amount <= 0 || Scale(request.Amount) > 4) return ApiResult<BusinessExpenseDto>.Fail("Expense amount must be positive with at most four decimal places.");
+        var receiptImage = NormalizeImageDataUrl(request.ReceiptImageDataUrl, out var receiptImageError);
+        if (receiptImageError != null) return ApiResult<BusinessExpenseDto>.Fail(receiptImageError);
 
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var date = Utc(request.ExpenseDate ?? expense.ExpenseDate);
@@ -340,6 +346,8 @@ public sealed partial class BusinessService
         expense.Category = category;
         expense.Amount = Money(request.Amount);
         expense.Description = Clean(request.Description);
+        if (request.RemoveReceiptImage) expense.ReceiptImageDataUrl = null;
+        else if (receiptImage != null) expense.ReceiptImageDataUrl = receiptImage;
         expense.ExpenseDate = date;
         await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
@@ -476,6 +484,6 @@ public sealed partial class BusinessService
     private static BusinessCustomerDto MapDashboardCustomer(Customer c, List<Sale> sales, string currency)
     { var total = Money(sales.Sum(s => s.TotalAmount)); var paid = Money(sales.SelectMany(s => s.Payments.Where(p => !p.IsReversed)).Sum(p => p.Amount)); return new(c.Id, c.Name, c.Phone, c.Email, c.Address, c.Notes, c.Status, currency, total, paid, Money(total - paid), sales.Count, c.CreatedAt); }
     private static PurchaseDto MapPurchase(Purchase p)
-    { var paid = Money(p.Payments.Where(x => !x.IsReversed).Sum(x => x.Amount)); var balance = p.Status == "Voided" ? 0m : Money(p.TotalAmount - paid); return new(p.Id, p.PurchaseNumber, p.SupplierId, p.Supplier?.Name ?? "Supplier", p.Currency, p.TotalAmount, paid, balance, p.Status == "Voided" ? "Voided" : balance == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid", p.Status, p.Notes, p.PurchasedAt, p.CreatedAt, p.Items.Select(i => new PurchaseItemDto(i.Id, i.ProductId, i.Description, i.Unit, i.Quantity, i.UnitCost, i.LineTotal)).ToList(), p.Payments.OrderByDescending(x => x.PaidAt).Select(x => new PurchasePaymentDto(x.Id, x.PurchaseId, p.PurchaseNumber, x.SupplierId, x.Amount, x.Currency, x.Method, x.Reference, x.Notes, x.PaidAt, x.IsReversed, x.ReversedAt, x.ReversalReason)).ToList()); }
-    private static BusinessExpenseDto MapExpense(BusinessExpense e) => new(e.Id, e.Category, e.Amount, e.Currency, e.Description, e.ExpenseDate, e.CreatedAt);
+    { var paid = Money(p.Payments.Where(x => !x.IsReversed).Sum(x => x.Amount)); var balance = p.Status == "Voided" ? 0m : Money(p.TotalAmount - paid); return new(p.Id, p.PurchaseNumber, p.SupplierId, p.Supplier?.Name ?? "Supplier", p.Currency, p.TotalAmount, paid, balance, p.Status == "Voided" ? "Voided" : balance == 0 ? "Paid" : paid > 0 ? "Partially paid" : "Unpaid", p.Status, p.Notes, p.PurchasedAt, p.CreatedAt, p.Items.Select(i => new PurchaseItemDto(i.Id, i.ProductId, i.Description, i.Unit, i.Quantity, i.UnitCost, i.LineTotal)).ToList(), p.Payments.OrderByDescending(x => x.PaidAt).Select(x => new PurchasePaymentDto(x.Id, x.PurchaseId, p.PurchaseNumber, x.SupplierId, x.Amount, x.Currency, x.Method, x.Reference, x.Notes, x.PaidAt, x.IsReversed, x.ReversedAt, x.ReversalReason)).ToList(), p.InvoiceImageDataUrl); }
+    private static BusinessExpenseDto MapExpense(BusinessExpense e) => new(e.Id, e.Category, e.Amount, e.Currency, e.Description, e.ExpenseDate, e.CreatedAt, e.ReceiptImageDataUrl);
 }

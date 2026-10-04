@@ -178,23 +178,69 @@ if (connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreC
     var username = Uri.UnescapeDataString(userInfo[0]);
     var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
     var portNum = uri.Port > 0 ? uri.Port : 5432;
+    var isLocalOrDocker = uri.Host is "localhost" or "127.0.0.1" or "postgres";
+
+    var hostPortEnv = Environment.GetEnvironmentVariable("POSTGRES_PORT");
+    if (isLocalOrDocker && Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true" && !File.Exists("/.dockerenv") && !string.IsNullOrWhiteSpace(hostPortEnv) && int.TryParse(hostPortEnv, out var hp))
+    {
+        portNum = hp;
+    }
     var database = uri.AbsolutePath.TrimStart('/');
 
     var query = uri.Query.TrimStart('?');
-    var isLocalOrDocker = uri.Host is "localhost" or "127.0.0.1" or "postgres";
     var sslMode = isLocalOrDocker ? "Disable" : "Require";
+    string? searchPath = null;
+
     foreach (var part in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
     {
-        var kv = part.Split('=');
-        if (kv.Length == 2 && kv[0].Equals("sslmode", StringComparison.OrdinalIgnoreCase))
+        var kv = part.Split('=', 2);
+        if (kv.Length == 2)
         {
-            sslMode = kv[1].Equals("disable", StringComparison.OrdinalIgnoreCase) ? "Disable" :
-                      kv[1].Equals("require", StringComparison.OrdinalIgnoreCase) ? "Require" :
-                      kv[1].Equals("prefer", StringComparison.OrdinalIgnoreCase) ? "Prefer" : kv[1];
+            var paramKey = kv[0].Trim();
+            var val = Uri.UnescapeDataString(kv[1].Trim());
+            if (paramKey.Equals("sslmode", StringComparison.OrdinalIgnoreCase))
+            {
+                sslMode = val.Equals("disable", StringComparison.OrdinalIgnoreCase) ? "Disable" :
+                          val.Equals("require", StringComparison.OrdinalIgnoreCase) ? "Require" :
+                          val.Equals("prefer", StringComparison.OrdinalIgnoreCase) ? "Prefer" : val;
+            }
+            else if (paramKey.Equals("search_path", StringComparison.OrdinalIgnoreCase))
+            {
+                searchPath = val;
+            }
+            else if (paramKey.Equals("options", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(val, @"search_path[=\s]+([^\s&]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    searchPath = match.Groups[1].Value.Trim('\'', '"');
+                }
+            }
         }
     }
 
-    connectionString = $"Host={uri.Host};Port={portNum};Database={database};Username={username};Password={password};SSL Mode={sslMode};Trust Server Certificate=true";
+    if (!string.IsNullOrWhiteSpace(searchPath))
+    {
+        if (!searchPath.Split(',').Any(s => s.Trim().Equals("public", StringComparison.OrdinalIgnoreCase)))
+        {
+            searchPath += ",public";
+        }
+    }
+
+    var searchPathClause = !string.IsNullOrWhiteSpace(searchPath) ? $";Search Path={searchPath}" : "";
+    connectionString = $"Host={uri.Host};Port={portNum};Database={database};Username={username};Password={password};SSL Mode={sslMode};Trust Server Certificate=true{searchPathClause}";
+}
+else if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true" && !File.Exists("/.dockerenv"))
+{
+    if (connectionString.Contains("Host=postgres", StringComparison.OrdinalIgnoreCase) || connectionString.Contains("Host=localhost", StringComparison.OrdinalIgnoreCase))
+    {
+        connectionString = connectionString.Replace("Host=postgres", "Host=localhost");
+        var hostPort = Environment.GetEnvironmentVariable("POSTGRES_PORT");
+        if (!string.IsNullOrWhiteSpace(hostPort) && hostPort != "5432")
+        {
+            connectionString = System.Text.RegularExpressions.Regex.Replace(connectionString, @"Port=\d+", $"Port={hostPort}");
+        }
+    }
 }
 
 builder.Services.AddHttpContextAccessor();
@@ -341,6 +387,37 @@ app.MapGet("/api/health", () => Results.Ok(new
     service = "Tenvora API",
     timestamp = DateTimeOffset.UtcNow
 })).AllowAnonymous();
+
+app.MapGet("/api/mobile/apk", () =>
+{
+    var remoteApkUrl = Environment.GetEnvironmentVariable("MOBILE_APK_URL");
+    if (!string.IsNullOrWhiteSpace(remoteApkUrl))
+    {
+        return Results.Redirect(remoteApkUrl);
+    }
+
+    var candidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "client", "public", "downloads", "tenvora-mobile.apk"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile", "build", "app", "outputs", "flutter-apk", "tenvora-galaxy-a25-google.apk"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile", "build", "app", "outputs", "flutter-apk", "app-debug.apk"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "mobile", "build", "app", "outputs", "flutter-apk", "app-release.apk")
+    };
+
+    var newest = candidates
+        .Where(File.Exists)
+        .OrderByDescending(File.GetLastWriteTimeUtc)
+        .FirstOrDefault();
+
+    if (newest != null)
+    {
+        return Results.File(Path.GetFullPath(newest), "application/vnd.android.package-archive", "tenvora-mobile.apk");
+    }
+
+    // Fallback: Redirect to automated GitHub release build
+    const string defaultReleaseUrl = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk";
+    return Results.Redirect(defaultReleaseUrl);
+}).AllowAnonymous();
 
 app.MapControllers();
 

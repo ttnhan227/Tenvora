@@ -38,6 +38,8 @@ public sealed class Product
     [MaxLength(1000)]
     public string? Notes { get; set; }
 
+    public string? ImageDataUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

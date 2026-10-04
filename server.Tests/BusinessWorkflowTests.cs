@@ -129,6 +129,40 @@ public sealed class BusinessWorkflowTests
     }
 
     [Fact]
+    public async Task SubsequentPaymentsEnforceBalanceBoundsAndPreventDoubleSpending()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var (customerId, productId) = await SeedCustomerAndProduct(service, tenantId);
+        var sale = (await service.CreateSaleAsync(tenantId, "sale-balance-invariants",
+            new(customerId, [new(productId, 1m, 100m)]))).Data!;
+
+        // First payment of $60 succeeds -> balance becomes $40
+        var pay1 = await service.RecordPaymentAsync(tenantId, sale.Id, "pay-part-1", new(60m, "Bank transfer"));
+        Assert.True(pay1.Success);
+        Assert.Equal(60m, pay1.Data!.PaidAmount);
+        Assert.Equal(40m, pay1.Data.OutstandingBalance);
+        Assert.Equal("Partially paid", pay1.Data.PaymentStatus);
+
+        // Attempt second payment of $50 -> rejected because 50 > 40 remaining
+        var payTooMuch = await service.RecordPaymentAsync(tenantId, sale.Id, "pay-excess", new(50m, "Cash"));
+        Assert.False(payTooMuch.Success);
+        Assert.Contains("cannot exceed the outstanding balance", payTooMuch.Message);
+
+        // Pay exactly remaining $40 -> succeeds and marks status "Paid"
+        var payExact = await service.RecordPaymentAsync(tenantId, sale.Id, "pay-exact", new(40m, "Cash"));
+        Assert.True(payExact.Success);
+        Assert.Equal(100m, payExact.Data!.PaidAmount);
+        Assert.Equal(0m, payExact.Data.OutstandingBalance);
+        Assert.Equal("Paid", payExact.Data.PaymentStatus);
+
+        // Subsequent attempt to pay any amount after full payment is rejected
+        var payAfterFull = await service.RecordPaymentAsync(tenantId, sale.Id, "pay-after-full", new(1m, "Cash"));
+        Assert.False(payAfterFull.Success);
+        Assert.Contains("cannot exceed the outstanding balance", payAfterFull.Message);
+    }
+
+    [Fact]
     public async Task BusinessIsolationRejectsForeignCustomerProductAndReads()
     {
         await using var db = Db();

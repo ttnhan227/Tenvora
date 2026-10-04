@@ -287,9 +287,9 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
       const saved = localStorage.getItem("tenvora_lang");
       if (saved === "vi" || saved === "en") return saved;
       if (defaultLanguage) return defaultLanguage;
-      return "vi";
+      return "en";
     } catch {
-      return defaultLanguage || "vi";
+      return defaultLanguage || "en";
     }
   });
 
@@ -334,10 +334,10 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
 };
 
 const defaultLanguageContext: LanguageContextType = {
-  language: "vi",
+  language: "en",
   setLanguage: () => {},
-  isVietnamese: true,
-  t: (key: string, fallback?: string) => viTranslations[key] ?? fallback ?? key,
+  isVietnamese: false,
+  t: (key: string, fallback?: string) => enTranslations[key] ?? viTranslations[key] ?? fallback ?? key,
 };
 
 

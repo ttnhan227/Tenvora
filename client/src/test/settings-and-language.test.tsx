@@ -60,19 +60,19 @@ describe("Language & App Settings", () => {
     mockRole = "TenantAdmin";
   });
 
-  it("LanguageProvider defaults to Vietnamese and translates navigation", () => {
+  it("LanguageProvider defaults to English and translates navigation", () => {
     render(
       <LanguageProvider>
         <LanguageConsumer />
       </LanguageProvider>
     );
 
-    expect(screen.getByTestId("lang").textContent).toBe("vi");
-    expect(screen.getByTestId("is-vi").textContent).toBe("yes");
-    expect(screen.getByTestId("greeting").textContent).toBe("Trang chủ");
+    expect(screen.getByTestId("lang").textContent).toBe("en");
+    expect(screen.getByTestId("is-vi").textContent).toBe("no");
+    expect(screen.getByTestId("greeting").textContent).toBe("Home");
   });
 
-  it("LanguageToggle switches between Vietnamese and English on click", () => {
+  it("LanguageToggle switches between English and Vietnamese on click", () => {
     render(
       <LanguageProvider>
         <LanguageToggle />
@@ -80,16 +80,16 @@ describe("Language & App Settings", () => {
       </LanguageProvider>
     );
 
-    // Initial state is Vietnamese
-    expect(screen.getByTestId("lang").textContent).toBe("vi");
+    // Initial state is English
+    expect(screen.getByTestId("lang").textContent).toBe("en");
 
     // Click toggle button
-    const toggleBtn = screen.getByRole("button", { name: /switch to english/i });
+    const toggleBtn = screen.getByRole("button", { name: /chuyển sang tiếng việt/i });
     fireEvent.click(toggleBtn);
 
-    expect(screen.getByTestId("lang").textContent).toBe("en");
-    expect(screen.getByTestId("is-vi").textContent).toBe("no");
-    expect(screen.getByTestId("greeting").textContent).toBe("Home");
+    expect(screen.getByTestId("lang").textContent).toBe("vi");
+    expect(screen.getByTestId("is-vi").textContent).toBe("yes");
+    expect(screen.getByTestId("greeting").textContent).toBe("Trang chủ");
   });
 
   it("SettingsPage renders tabs and allows updating store profile", async () => {
@@ -99,7 +99,7 @@ describe("Language & App Settings", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <LanguageProvider>
+          <LanguageProvider defaultLanguage="vi">
             <SettingsPage />
           </LanguageProvider>
         </BrowserRouter>
@@ -138,7 +138,7 @@ describe("Language & App Settings", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <LanguageProvider>
+          <LanguageProvider defaultLanguage="vi">
             <SettingsPage />
           </LanguageProvider>
         </BrowserRouter>
@@ -158,7 +158,7 @@ describe("Language & App Settings", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <LanguageProvider>
+          <LanguageProvider defaultLanguage="vi">
             <SettingsPage />
           </LanguageProvider>
         </BrowserRouter>

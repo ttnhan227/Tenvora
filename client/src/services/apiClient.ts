@@ -37,6 +37,12 @@ apiClient.interceptors.request.use(
 // Single-flight token refresh to prevent concurrent race conditions
 let refreshPromise: Promise<string> | null = null;
 
+function isPublicAuthRequest(url?: string) {
+  if (!url) return false;
+  return ["/auth/login", "/auth/register", "/auth/google", "/auth/refresh-token"]
+    .some((endpoint) => url.includes(endpoint));
+}
+
 async function performTokenRefresh(): Promise<string> {
   const currentRefreshToken = localStorage.getItem("refreshToken");
   if (!currentRefreshToken) {
@@ -69,7 +75,7 @@ apiClient.interceptors.response.use(
       reportRequestActivity(-1);
     }
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !originalRequest.url?.includes("/auth/")) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isPublicAuthRequest(originalRequest.url)) {
       originalRequest._retry = true;
 
       try {

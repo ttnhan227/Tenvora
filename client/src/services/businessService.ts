@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 
 export interface PagedResult<T> {
   items: T[];
@@ -37,6 +38,7 @@ export interface Product {
   currency: string;
   isActive: boolean;
   notes?: string;
+  imageDataUrl?: string;
   createdAt: string;
 }
 
@@ -177,8 +179,8 @@ export interface PurchasePayment {
   reversedAt?: string;
   reversalReason?: string;
 }
-export interface Purchase { id: string; purchaseNumber: string; supplierId: string; supplierName: string; currency: string; totalAmount: number; paidAmount: number; outstandingBalance: number; paymentStatus: "Paid" | "Partially paid" | "Unpaid"; status: "Posted" | "Voided"; notes?: string; purchasedAt: string; createdAt: string; items: PurchaseItem[]; payments: PurchasePayment[]; }
-export interface BusinessExpense { id: string; category: string; amount: number; currency: string; description?: string; expenseDate: string; createdAt: string; }
+export interface Purchase { id: string; purchaseNumber: string; supplierId: string; supplierName: string; currency: string; totalAmount: number; paidAmount: number; outstandingBalance: number; paymentStatus: "Paid" | "Partially paid" | "Unpaid"; status: "Posted" | "Voided"; notes?: string; invoiceImageDataUrl?: string; purchasedAt: string; createdAt: string; items: PurchaseItem[]; payments: PurchasePayment[]; }
+export interface BusinessExpense { id: string; category: string; amount: number; currency: string; description?: string; receiptImageDataUrl?: string; expenseDate: string; createdAt: string; }
 export interface BusinessActivity { type: string; id: string; title: string; detail: string; amount: number; occurredAt: string; }
 export interface BusinessDashboard {
   currency: string;
@@ -221,6 +223,8 @@ export interface ProductInput {
   minStockLevel?: number;
   trackInventory?: boolean;
   notes?: string;
+  imageDataUrl?: string;
+  removeImage?: boolean;
   isActive?: boolean;
 }
 
@@ -292,7 +296,9 @@ export const businessService = {
   },
 
   async createProduct(input: ProductInput): Promise<Product> {
-    const response = await apiClient.post("/products", input);
+    const payload = { ...input };
+    delete payload.removeImage;
+    const response = await apiClient.post("/products", payload);
     return response.data.data;
   },
 
@@ -391,7 +397,7 @@ export const businessService = {
     return response.data.data;
   },
 
-  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string }): Promise<Purchase> {
+  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string; invoiceImageDataUrl?: string }): Promise<Purchase> {
     const response = await apiClient.post("/purchases", input, { headers: mutationHeaders() });
     return response.data.data;
   },
@@ -421,12 +427,12 @@ export const businessService = {
     return response.data.data;
   },
 
-  async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string }): Promise<BusinessExpense> {
+  async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string; receiptImageDataUrl?: string }): Promise<BusinessExpense> {
     const response = await apiClient.post("/business-expenses", input, { headers: mutationHeaders() });
     return response.data.data;
   },
 
-  async updateBusinessExpense(id: string, input: { category: string; amount: number; expenseDate?: string; description?: string }): Promise<BusinessExpense> {
+  async updateBusinessExpense(id: string, input: { category: string; amount: number; expenseDate?: string; description?: string; receiptImageDataUrl?: string; removeReceiptImage?: boolean }): Promise<BusinessExpense> {
     const response = await apiClient.put(`/business-expenses/${id}`, input);
     return response.data.data;
   },
@@ -488,6 +494,5 @@ export const businessMoney = (amount: number = 0, currency: string = "VND") =>
   }).format(amount || 0);
 
 export function apiError(error: unknown, fallback: string) {
-  const candidate = error as { response?: { data?: { message?: string; errors?: string[] } }; message?: string };
-  return candidate.response?.data?.errors?.[0] || candidate.response?.data?.message || candidate.message || fallback;
+  return getApiErrorMessage(error, fallback);
 }

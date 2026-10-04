@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Printer, Copy, Check, QrCode } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Sale, businessMoney } from "@/services/businessService";
@@ -71,6 +71,9 @@ export function ReceiptModal({ open, onOpenChange, sale, companyName = "Tenvora 
             <Printer className="h-5 w-5 text-primary" />
             {isVietnamese ? "Hóa đơn / Phiếu bán hàng" : "Sales Receipt Slip"}
           </DialogTitle>
+          <DialogDescription>
+            {isVietnamese ? "Xem, sao chép hoặc in phiếu bán hàng này." : "Review, copy, or print this sales receipt."}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Printable thermal receipt layout */}

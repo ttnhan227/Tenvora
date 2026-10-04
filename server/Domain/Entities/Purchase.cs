@@ -13,6 +13,7 @@ public sealed class Purchase
     [Column(TypeName = "numeric(18,4)")] public decimal TotalAmount { get; set; }
     [MaxLength(20)] public string Status { get; set; } = "Posted";
     [MaxLength(1000)] public string? Notes { get; set; }
+    public string? InvoiceImageDataUrl { get; set; }
     [MaxLength(100)] public string IdempotencyKey { get; set; } = default!;
     [MaxLength(128)] public string RequestHash { get; set; } = default!;
     public DateTime PurchasedAt { get; set; } = DateTime.UtcNow;

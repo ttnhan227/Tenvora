@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +15,7 @@ import { GoogleSignInButton, isGoogleAuthEnabled } from "@/components/auth/Googl
 export default function Login() {
   const navigate = useNavigate();
   const { login, googleLogin } = useAuth();
+  const { isVietnamese } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,10 +32,10 @@ export default function Login() {
       if (result.success) {
         navigate("/dashboard");
       } else {
-        setError(result.message || result.errors?.[0] || "Google sign-in failed.");
+        setError(result.message || result.errors?.[0] || (isVietnamese ? "Đăng nhập Google thất bại." : "Google sign-in failed."));
       }
     } catch {
-      setError("An error occurred during Google sign-in.");
+      setError(isVietnamese ? "Đã xảy ra lỗi khi đăng nhập bằng Google." : "An error occurred during Google sign-in.");
     } finally {
       setGoogleBusy(false);
     }
@@ -44,12 +47,12 @@ export default function Login() {
     setFieldErrors({});
 
     const validationErrors: { email?: string; password?: string } = {};
-    if (!email.trim()) validationErrors.email = "Enter your email address.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) validationErrors.email = "Enter a valid email address.";
-    if (!password) validationErrors.password = "Enter your password.";
+    if (!email.trim()) validationErrors.email = isVietnamese ? "Vui lòng nhập địa chỉ email." : "Enter your email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) validationErrors.email = isVietnamese ? "Email không đúng định dạng." : "Enter a valid email address.";
+    if (!password) validationErrors.password = isVietnamese ? "Vui lòng nhập mật khẩu." : "Enter your password.";
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors);
-      setError("Please correct the highlighted fields.");
+      setError(isVietnamese ? "Vui lòng sửa các trường được đánh dấu." : "Please correct the highlighted fields.");
       window.setTimeout(() => document.getElementById(validationErrors.email ? "email" : "password")?.focus(), 0);
       return;
     }
@@ -61,10 +64,10 @@ export default function Login() {
       if (success) {
         navigate("/dashboard");
       } else {
-        setError("The email address or password did not match. Check both fields and try again.");
+        setError(isVietnamese ? "Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại." : "The email address or password did not match. Check both fields and try again.");
       }
     } catch {
-      setError("An error occurred during authentication");
+      setError(isVietnamese ? "Đã xảy ra lỗi trong quá trình xác thực." : "An error occurred during authentication");
     } finally {
       setIsLoading(false);
     }
@@ -74,14 +77,22 @@ export default function Login() {
 
   return (
     <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-[1fr_1fr]">
-      <AuthAside title="Pick up exactly where your business left off." />
+      <AuthAside title={isVietnamese ? "Tiếp tục công việc kinh doanh của bạn một cách rõ ràng, chính xác." : "Pick up exactly where your business left off."} />
       <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
-          <Link to="/" className="friendly-focus mb-8 inline-flex items-center gap-2 rounded-lg text-sm font-bold text-muted-foreground hover:text-foreground"><ArrowLeft size={16} />Back home</Link>
+          <div className="mb-8 flex items-center justify-between">
+            <Link to="/" className="friendly-focus inline-flex items-center gap-2 rounded-lg text-sm font-bold text-muted-foreground hover:text-foreground">
+              <ArrowLeft size={16} />
+              {isVietnamese ? "Trang chủ" : "Back home"}
+            </Link>
+            <LanguageToggle />
+          </div>
           <BrandLogo to="/" size="lg" />
           <div className="paper-card mt-7 p-6 sm:p-8">
-            <h1 className="text-3xl font-bold">Welcome back</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Open your business notebook and continue where you left off.</p>
+            <h1 className="text-3xl font-bold">{isVietnamese ? "Chào mừng trở lại" : "Welcome back"}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isVietnamese ? "Mở sổ tay kinh doanh và tiếp tục theo dõi cửa hàng của bạn." : "Open your business notebook and continue where you left off."}
+            </p>
 
             {error && (
               <Alert variant="destructive" role="alert" className="mt-5">
@@ -103,7 +114,7 @@ export default function Login() {
                     <div className="w-full border-t border-border" />
                   </div>
                   <span className="relative bg-card px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Or continue with email
+                    {isVietnamese ? "Hoặc đăng nhập bằng email" : "Or continue with email"}
                   </span>
                 </div>
               </div>
@@ -111,7 +122,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email">{isVietnamese ? "Địa chỉ Email" : "Email address"}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -131,7 +142,7 @@ export default function Login() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{isVietnamese ? "Mật khẩu" : "Password"}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -157,10 +168,17 @@ export default function Login() {
                 className="w-full"
               >
                 {isLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {isLoading ? "Opening your records…" : "Open my business notebook"}
+                {isLoading
+                  ? (isVietnamese ? "Đang mở sổ sách…" : "Opening your records…")
+                  : (isVietnamese ? "Mở sổ tay kinh doanh" : "Open my business notebook")}
               </Button>
             </form>
-            <p className="mt-6 border-t pt-5 text-center text-sm text-muted-foreground">New to Tenvora? <Link to="/register" className="font-bold text-primary hover:underline">Start your business notebook</Link></p>
+            <p className="mt-6 border-t pt-5 text-center text-sm text-muted-foreground">
+              {isVietnamese ? "Chưa có tài khoản Tenvora? " : "New to Tenvora? "}
+              <Link to="/register" className="font-bold text-primary hover:underline">
+                {isVietnamese ? "Tạo sổ tay kinh doanh" : "Start your business notebook"}
+              </Link>
+            </p>
           </div>
         </div>
       </main>

@@ -18,6 +18,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function accessTokenNeedsRefresh(token: string) {
+  try {
+    const encoded = token.split(".")[1];
+    if (!encoded) return true;
+    const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(normalized)) as { exp?: number };
+    return !payload.exp || payload.exp * 1000 <= Date.now() + 30_000;
+  } catch {
+    return true;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
@@ -34,6 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem("accessToken");
       if (token) {
         setIsLoading(true);
+        if (accessTokenNeedsRefresh(token) && !(await authService.refreshSession())) {
+          authService.logout();
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
         const result = await authService.getProfile();
         if (result.success && result.data) {
           setUser(result.data);

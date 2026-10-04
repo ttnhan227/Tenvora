@@ -19,6 +19,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
 import { PaymentReversalModal } from "@/components/business/PaymentReversalModal";
+import { RecordImageField } from "@/components/business/RecordImageField";
 import { VoidDocumentModal } from "@/components/business/VoidDocumentModal";
 import { exportToCsv } from "@/lib/csvExport";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export default function PurchasesPage() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [method, setMethod] = useState("Cash");
   const [notes, setNotes] = useState("");
+  const [invoiceImageDataUrl, setInvoiceImageDataUrl] = useState<string | undefined>();
   const [paying, setPaying] = useState<Purchase | null>(null);
   const [payAmount, setPayAmount] = useState(0);
 
@@ -128,6 +130,7 @@ export default function PurchasesPage() {
         paymentAmount,
         paymentMethod: method,
         notes: notes || undefined,
+        invoiceImageDataUrl,
       }),
     onSuccess: async (p) => {
       await refresh();
@@ -136,6 +139,7 @@ export default function PurchasesPage() {
       setItems([line()]);
       setPaymentAmount(0);
       setNotes("");
+      setInvoiceImageDataUrl(undefined);
       toast.success(isVietnamese ? `Đã ghi ${p.purchaseNumber}` : `${p.purchaseNumber} recorded`);
     },
     onError: (e) => toast.error(apiError(e, isVietnamese ? "Không thể ghi lần nhập hàng." : "Could not record the purchase.")),
@@ -240,7 +244,13 @@ export default function PurchasesPage() {
                     }`}
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row">
-                      <div>
+                      <div className="flex min-w-0 gap-4">
+                        {p.invoiceImageDataUrl && (
+                          <a href={p.invoiceImageDataUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-20 w-16 shrink-0 overflow-hidden rounded-lg border bg-card" aria-label={isVietnamese ? "Mở ảnh hoá đơn" : "Open invoice image"}>
+                            <img src={p.invoiceImageDataUrl} alt="" className="h-full w-full object-cover" />
+                          </a>
+                        )}
+                        <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-semibold text-muted-foreground">{p.purchaseNumber}</p>
                           <StatusPill status={p.paymentStatus} />
@@ -256,6 +266,7 @@ export default function PurchasesPage() {
                         <p className="mt-2 text-xs text-muted-foreground">
                           {new Date(p.purchasedAt).toLocaleString()}
                         </p>
+                        </div>
                       </div>
                       <div className="sm:text-right">
                         <p className={`text-xl font-semibold ${isVoided ? "line-through text-muted-foreground" : ""}`}>
@@ -530,6 +541,12 @@ export default function PurchasesPage() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
+            <RecordImageField
+              label={isVietnamese ? "Ảnh hoá đơn nhà cung cấp" : "Supplier invoice image"}
+              helpText={isVietnamese ? "Chụp hoặc chọn hoá đơn giấy để lưu cùng lần nhập hàng." : "Take or choose a paper invoice to keep with this purchase."}
+              value={invoiceImageDataUrl}
+              onChange={(value) => setInvoiceImageDataUrl(value)}
+            />
             <DialogFooter>
               <Button
                 type="button"

@@ -11,15 +11,23 @@
   body {
     @apply bg-background text-foreground;
     min-width: 320px;
-    font-family: "Aptos", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: "Be Vietnam Pro", "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 15px;
-    line-height: 1.55;
-    letter-spacing: -0.008em;
+    line-height: 1.6;
+    letter-spacing: -0.003em;
     background-image: radial-gradient(circle at 15% 5%, hsl(var(--warning) / .055), transparent 30rem), radial-gradient(circle at 90% 35%, hsl(var(--primary) / .04), transparent 34rem);
   }
-  h1, h2, h3, h4, h5, h6 { @apply font-semibold tracking-tight; text-wrap: balance; }
-  h1, .display-type { font-family: Georgia, "Times New Roman", serif; letter-spacing: -0.035em; }
-  button, input, select, textarea { @apply shadow-none; }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+    font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  h1, .display-type {
+    font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.015em;
+  }
+  button, input, select, textarea { @apply shadow-none; font-family: inherit; }
   button, a { -webkit-tap-highlight-color: transparent; }
   .tabular-nums, [data-tabular], table td, .metric-value, .currency-amount { font-feature-settings: "tnum" 1, "zero" 1; font-variant-numeric: tabular-nums; }
   ::selection { background: hsl(var(--warning) / .35); }

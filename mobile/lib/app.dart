@@ -1,0 +1,60 @@
+import 'package:flutter/material.dart';
+
+import 'core/theme/tenvora_theme.dart';
+import 'state/app_controller.dart';
+import 'ui/auth/auth_screen.dart';
+import 'ui/auth/onboarding_screen.dart';
+import 'ui/shell/app_shell.dart';
+import 'ui/widgets/common.dart';
+
+class TenvoraApp extends StatelessWidget {
+  const TenvoraApp({super.key, required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) => AppScope(
+    controller: controller,
+    child: ListenableBuilder(
+      listenable: controller,
+      builder:
+          (context, _) => MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Tenvora',
+            theme: tenvoraTheme(Brightness.light),
+            darkTheme: tenvoraTheme(Brightness.dark),
+            themeMode: controller.themeMode,
+            home:
+                controller.initializing
+                    ? const _StartupScreen()
+                    : !controller.isAuthenticated
+                    ? const AuthScreen()
+                    : !(controller.user?.onboardingCompleted ?? false)
+                    ? const OnboardingScreen()
+                    : const AppShell(),
+          ),
+    ),
+  );
+}
+
+class _StartupScreen extends StatelessWidget {
+  const _StartupScreen();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const TenvoraMark(size: 58),
+          const SizedBox(height: 18),
+          Text('Tenvora', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 24),
+          const SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+        ],
+      ),
+    ),
+  );
+}

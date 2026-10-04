@@ -83,8 +83,34 @@ services:
     networks:
       - tenvora_net
 
+  # Flutter SDK toolchain only; no host installation required. This service
+  # generates platform shells, analyzes, tests, and builds Android artifacts.
+  mobile-tools:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile.tools
+    image: tenvora-mobile-tools:base
+    working_dir: /workspace/mobile
+    profiles: ["tools"]
+    volumes:
+      - ./mobile:/workspace/mobile
+      - ./client/public:/workspace/brand:ro
+      - flutter_sdk:/opt/flutter-sdk
+      - android_sdk:/opt/android-sdk
+      - android_user_home:/root/.android
+      - flutter_pub_cache:/root/.pub-cache
+      - gradle_cache:/root/.gradle
+    environment:
+      PUB_CACHE: /root/.pub-cache
+    command: ["verify"]
+
 volumes:
   postgres_data:
+  flutter_sdk:
+  android_sdk:
+  android_user_home:
+  flutter_pub_cache:
+  gradle_cache:
 
 networks:
   tenvora_net:

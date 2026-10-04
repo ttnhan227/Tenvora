@@ -54,7 +54,8 @@ public record ProductDto(
     bool IsActive,
     string? Notes,
     DateTime CreatedAt,
-    bool TrackInventory = false
+    bool TrackInventory = false,
+    string? ImageDataUrl = null
 );
 
 public record RecordDeletionResultDto(
@@ -73,7 +74,8 @@ public record CreateProductRequest(
     decimal CostPrice = 0m,
     decimal StockQuantity = 0m,
     decimal? MinStockLevel = null,
-    bool TrackInventory = false
+    bool TrackInventory = false,
+    string? ImageDataUrl = null
 );
 
 public record UpdateProductRequest(
@@ -86,7 +88,9 @@ public record UpdateProductRequest(
     decimal? CostPrice = null,
     decimal? StockQuantity = null,
     decimal? MinStockLevel = null,
-    bool? TrackInventory = null
+    bool? TrackInventory = null,
+    string? ImageDataUrl = null,
+    bool RemoveImage = false
 );
 
 public record CreateSaleItemRequest(Guid ProductId, decimal Quantity, decimal? UnitPrice = null);
@@ -186,7 +190,8 @@ public record CreatePurchaseItemRequest([MaxLength(200)] string Description, [Ma
 
 public record CreatePurchaseRequest(Guid SupplierId, [MinLength(1)] List<CreatePurchaseItemRequest> Items,
     decimal PaymentAmount = 0m, [MaxLength(50)] string PaymentMethod = "Other",
-    [MaxLength(1000)] string? Notes = null, DateTime? PurchasedAt = null);
+    [MaxLength(1000)] string? Notes = null, DateTime? PurchasedAt = null,
+    string? InvoiceImageDataUrl = null);
 
 public record RecordPurchasePaymentRequest(decimal Amount, [MaxLength(50)] string Method = "Other",
     [MaxLength(200)] string? Reference = null, [MaxLength(1000)] string? Notes = null, DateTime? PaidAt = null);
@@ -213,16 +218,18 @@ public record PurchasePaymentDto(
 public record PurchaseDto(Guid Id, string PurchaseNumber, Guid SupplierId, string SupplierName, string Currency,
     decimal TotalAmount, decimal PaidAmount, decimal OutstandingBalance, string PaymentStatus, string Status,
     string? Notes, DateTime PurchasedAt, DateTime CreatedAt, List<PurchaseItemDto> Items,
-    List<PurchasePaymentDto> Payments);
+    List<PurchasePaymentDto> Payments, string? InvoiceImageDataUrl = null);
 
 public record CreateBusinessExpenseRequest([Required, MaxLength(50)] string Category, decimal Amount,
-    DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null);
+    DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null,
+    string? ReceiptImageDataUrl = null);
 
 public record UpdateBusinessExpenseRequest([Required, MaxLength(50)] string Category, decimal Amount,
-    DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null);
+    DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null,
+    string? ReceiptImageDataUrl = null, bool RemoveReceiptImage = false);
 
 public record BusinessExpenseDto(Guid Id, string Category, decimal Amount, string Currency, string? Description,
-    DateTime ExpenseDate, DateTime CreatedAt);
+    DateTime ExpenseDate, DateTime CreatedAt, string? ReceiptImageDataUrl = null);
 
 public record BusinessActivityDto(string Type, Guid Id, string Title, string Detail, decimal Amount, DateTime OccurredAt);
 

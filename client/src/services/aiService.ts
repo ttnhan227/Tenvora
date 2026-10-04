@@ -1,5 +1,6 @@
 import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
+import { toApiFailure } from "@/lib/apiErrors";
 
 export interface AiChatRequest {
   message: string;
@@ -190,12 +191,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.post<ApiResponse<AiAgentChatResponse>>("/ai/assistant/agent-chat", request);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể kết nối tới Tenvora Agent lúc này.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể kết nối tới Tenvora Agent lúc này.");
     }
   },
 
@@ -203,12 +200,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.get<ApiResponse<AiConversationSummary[]>>("/ai/assistant/conversations");
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể tải danh sách cuộc trò chuyện.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể tải danh sách cuộc trò chuyện.");
     }
   },
 
@@ -216,12 +209,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.get<ApiResponse<AiConversationDetail>>(`/ai/assistant/conversations/${id}`);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể tải chi tiết cuộc trò chuyện.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể tải chi tiết cuộc trò chuyện.");
     }
   },
 
@@ -229,12 +218,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.delete<ApiResponse<boolean>>(`/ai/assistant/conversations/${id}`);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể xóa cuộc trò chuyện.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể xóa cuộc trò chuyện.");
     }
   },
 
@@ -242,12 +227,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.post<ApiResponse<AiChatResponse>>("/ai/assistant/chat", { message, uiContext });
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể kết nối tới trợ lý AI lúc này.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể kết nối tới trợ lý AI lúc này.");
     }
   },
 
@@ -255,12 +236,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.post<ApiResponse<AiParseRecordResponse>>("/ai/assistant/parse-record", { text });
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể phân tích nội dung ghi sổ.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể phân tích nội dung ghi sổ.");
     }
   },
 
@@ -268,12 +245,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.post<ApiResponse<AiActionProposalResponse>>("/ai/assistant/actions/propose", { text, uiContext });
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể chuẩn bị thao tác này.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể chuẩn bị thao tác này.");
     }
   },
 
@@ -288,12 +261,8 @@ export const aiAssistantService = {
         { confirmed, input },
       );
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể hoàn tất thao tác.",
-        errors: [error.message],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể hoàn tất thao tác.");
     }
   },
 
@@ -301,11 +270,8 @@ export const aiAssistantService = {
     try {
       const response = await apiClient.get<ApiResponse<AiStatusResponse>>("/ai/assistant/status");
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: "Không thể lấy trạng thái AI.",
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể lấy trạng thái AI.");
     }
   },
 };

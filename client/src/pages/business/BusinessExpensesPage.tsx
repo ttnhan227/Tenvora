@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
+import { RecordImageField } from "@/components/business/RecordImageField";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -76,6 +77,8 @@ export default function BusinessExpensesPage() {
     amount: 0,
     expenseDate: new Date().toISOString().slice(0, 10),
     description: "",
+    receiptImageDataUrl: undefined as string | undefined,
+    removeReceiptImage: false,
   });
 
   const query = useQuery({
@@ -100,6 +103,8 @@ export default function BusinessExpensesPage() {
         amount: 0,
         expenseDate: new Date().toISOString().slice(0, 10),
         description: "",
+        receiptImageDataUrl: undefined,
+        removeReceiptImage: false,
       });
       toast.success(
         editing
@@ -133,6 +138,8 @@ export default function BusinessExpensesPage() {
       amount: 0,
       expenseDate: new Date().toISOString().slice(0, 10),
       description: "",
+      receiptImageDataUrl: undefined,
+      removeReceiptImage: false,
     });
     setOpen(true);
   };
@@ -144,6 +151,8 @@ export default function BusinessExpensesPage() {
       amount: expense.amount,
       expenseDate: expense.expenseDate.slice(0, 10),
       description: expense.description ?? "",
+      receiptImageDataUrl: expense.receiptImageDataUrl,
+      removeReceiptImage: false,
     });
     setOpen(true);
   };
@@ -264,10 +273,19 @@ export default function BusinessExpensesPage() {
                     <span className="mt-1 block text-[10px] font-medium tracking-normal opacity-70">{new Date(e.expenseDate).getFullYear()}</span>
                   </div>
                   <div className="min-w-0 border-l-2 border-rose-500/25 pl-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-700 dark:text-rose-300">{categoryLabel(e.category)}</p>
-                    <p className="mt-1 truncate text-sm text-muted-foreground">
-                      {e.description || (isVietnamese ? "Không có mô tả" : "No description")}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      {e.receiptImageDataUrl && (
+                        <a href={e.receiptImageDataUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-11 w-11 shrink-0 overflow-hidden rounded-lg border" aria-label={isVietnamese ? "Mở ảnh biên lai" : "Open receipt image"}>
+                          <img src={e.receiptImageDataUrl} alt="" className="h-full w-full object-cover" />
+                        </a>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-700 dark:text-rose-300">{categoryLabel(e.category)}</p>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                          {e.description || (isVietnamese ? "Không có mô tả" : "No description")}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <p className="tabular-nums font-bold text-base text-foreground">
@@ -345,6 +363,13 @@ export default function BusinessExpensesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <RecordImageField
+              label={isVietnamese ? "Ảnh biên lai / hoá đơn" : "Receipt or invoice image"}
+              helpText={isVietnamese ? "Chụp hoặc chọn ảnh chứng từ. Ảnh lớn sẽ tự động được thu nhỏ." : "Take or choose a document photo. Large images are resized automatically."}
+              value={form.receiptImageDataUrl}
+              onChange={(value, removed) => setForm({ ...form, receiptImageDataUrl: value, removeReceiptImage: removed })}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

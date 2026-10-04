@@ -1,0 +1,126 @@
+name: Build & Release Mobile APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-mobile.yml'
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'Backend API Base URL (leave empty to use default)'
+        required: false
+        default: ''
+
+concurrency:
+  group: mobile-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build & Publish Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Environment
+        run: |
+          flutter --version
+          java -version
+
+      - name: Install Flutter Dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Check Mobile Code Quality
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Setup Signing Keystore (if secrets provided)
+        working-directory: mobile/android
+        env:
+          KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_PROPERTIES" ]; then
+            echo "Decoded production upload keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > tenvora-upload-key.jks
+            echo "$KEY_PROPERTIES" > key.properties
+          else
+            echo "No production upload key secrets detected; building with debug-signed release configuration."
+          fi
+
+      - name: Build Android Release APK
+        working-directory: mobile
+        env:
+          INPUT_API_URL: ${{ inputs.api_base_url }}
+          SECRET_API_URL: ${{ secrets.MOBILE_API_BASE_URL }}
+        run: |
+          API_URL="${INPUT_API_URL:-$SECRET_API_URL}"
+          DART_DEFINES=""
+          if [ -n "$API_URL" ]; then
+            echo "Configuring custom API_BASE_URL: $API_URL"
+            DART_DEFINES="--dart-define=API_BASE_URL=$API_URL"
+          fi
+
+          flutter build apk --release -PallowDebugReleaseSigning=true $DART_DEFINES
+
+      - name: Stage APK Output
+        run: |
+          mkdir -p dist
+          SOURCE_APK="mobile/build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "$SOURCE_APK" ]; then
+            SOURCE_APK=$(find mobile/build/app/outputs/flutter-apk -type f -name "*.apk" | head -n 1)
+          fi
+
+          if [ -f "$SOURCE_APK" ]; then
+            cp "$SOURCE_APK" dist/tenvora-mobile.apk
+            echo "Successfully staged APK: $(ls -lh dist/tenvora-mobile.apk)"
+          else
+            echo "Error: No APK artifact found in outputs."
+            exit 1
+          fi
+
+      - name: Upload GitHub Actions Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenvora-mobile-apk
+          path: dist/tenvora-mobile.apk
+          retention-days: 30
+
+      - name: Publish to GitHub Releases (mobile-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-latest
+          name: "Tenvora Mobile (Latest Android Build)"
+          body: |
+            ### Tenvora Mobile Latest Release
+            - **Commit:** `${{ github.sha }}`
+            - **Branch:** `${{ github.ref_name }}`
+            - **Updated at:** ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+
+            #### Download
+            - **Direct APK:** [tenvora-mobile.apk](https://github.com/${{ github.repository }}/releases/download/mobile-latest/tenvora-mobile.apk)
+          draft: false
+          prerelease: false
+          files: dist/tenvora-mobile.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,6 +8,9 @@ export default defineConfig(() => ({
   server: {
     host: "::",
     port: 5173,
+    watch: {
+      ignored: ["**/downloads/**", "**/*.apk"],
+    },
     proxy: { "/api": { target: process.env.API_PROXY_TARGET || "http://localhost:5000", changeOrigin: true } },
     hmr: {
       overlay: false,

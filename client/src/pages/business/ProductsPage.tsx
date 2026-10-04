@@ -7,10 +7,11 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
+import { RecordImageField } from "@/components/business/RecordImageField";
 import { StockAdjustmentModal } from "@/components/business/StockAdjustmentModal";
 import { StockAdjustmentHistoryModal } from "@/components/business/StockAdjustmentHistoryModal";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,8 @@ const emptyProduct: ProductInput = {
   minStockLevel: 0,
   trackInventory: true,
   notes: "",
+  imageDataUrl: undefined,
+  removeImage: false,
   isActive: true,
 };
 
@@ -125,6 +128,8 @@ export default function ProductsPage() {
       minStockLevel: product.minStockLevel ?? 0,
       trackInventory: product.trackInventory ?? true,
       notes: product.notes ?? "",
+      imageDataUrl: product.imageDataUrl,
+      removeImage: false,
       isActive: product.isActive,
     });
     setDialogOpen(true);
@@ -279,8 +284,16 @@ export default function ProductsPage() {
                 return (
                   <article
                     key={product.id}
-                    className={`paper-card p-5 transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}
+                    className={`paper-card overflow-hidden transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}
                   >
+                    <div className="flex h-36 items-center justify-center overflow-hidden border-b bg-gradient-to-br from-secondary/80 to-accent/35">
+                      {product.imageDataUrl ? (
+                        <img src={product.imageDataUrl} alt={product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <Package className="h-10 w-10 text-primary/45" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="font-bold text-base">{product.name}</h2>
@@ -373,6 +386,7 @@ export default function ProductsPage() {
                         )}
                       </div>
                     </div>
+                    </div>
                   </article>
                 );
               })}
@@ -403,9 +417,20 @@ export default function ProductsPage() {
                 ? "Thêm hàng hoá hoặc dịch vụ"
                 : "Add product or service"}
             </DialogTitle>
+            <DialogDescription>
+              {isVietnamese
+                ? "Lưu thông tin bán hàng, tồn kho và ảnh nhận diện cho mặt hàng này."
+                : "Keep this item's sales, inventory, and identifying image together."}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={submit} className="space-y-4">
+            <RecordImageField
+              label={isVietnamese ? "Ảnh hàng hoá" : "Product image"}
+              helpText={isVietnamese ? "JPEG, PNG hoặc WebP. Ảnh lớn sẽ tự động được thu nhỏ." : "JPEG, PNG, or WebP. Large images are resized automatically."}
+              value={form.imageDataUrl}
+              onChange={(value, removed) => setForm({ ...form, imageDataUrl: value, removeImage: removed })}
+            />
             <div className="space-y-2">
               <Label htmlFor="product-name">{isVietnamese ? "Tên hàng hoá" : "Name"} *</Label>
               <Input

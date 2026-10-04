@@ -15,11 +15,19 @@ The first validation customer is a local supply business, but the product model 
 
 Customer and supplier payments are append-only records. Financial totals are calculated on the server with decimal values, idempotency protection, atomic writes, and overpayment checks.
 
+## Architecture & Data Integrity
+
+- **Tenant Scoping:** Global query filters on EF Core `DbContext` automatically scope all entity queries to the active tenant ID extracted from verified JWT claims, preventing cross-tenant data exposure.
+- **Concurrency & Invariants:** Financial transactions use database row locks (`SELECT FOR UPDATE`) and atomic transaction scopes to prevent race conditions, double-spending, and overpayment.
+- **Deterministic Audit Logging:** Entity state transitions generate immutable before/after audit snapshots for compliance and change tracking.
+- **Automated Verification:** 97 xUnit unit and integration tests verify ledger balance invariants, tenant boundaries, and payment idempotency.
+
 ## Technology
 
 - React, TypeScript, Vite, TanStack Query, and Playwright
+- Flutter mobile client for Android and iOS
 - ASP.NET Core and Entity Framework Core
-- PostgreSQL with row-level tenant policies
+- PostgreSQL with tenant scoping
 - JWT authentication and role-based authorization
 
 ## Run locally
@@ -28,6 +36,12 @@ Configure the required values in `.env`, then start the stack:
 
 ```sh
 docker compose up --build
+```
+
+The mobile SDK stays containerized. Generate runners, analyze, and test without installing Flutter on the host:
+
+```sh
+docker compose --profile tools run --rm mobile-tools
 ```
 
 Or run the applications separately:
@@ -50,6 +64,7 @@ npm test
 npm run lint
 npm run build
 npm run test:e2e
+docker compose --profile tools run --rm mobile-tools
 ```
 
 ## Product rule

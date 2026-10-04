@@ -1,5 +1,6 @@
 ﻿import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
+import { toApiFailure } from "@/lib/apiErrors";
 
 export interface AdminUser {
   id: string;
@@ -22,11 +23,8 @@ export const adminUserService = {
     try {
       const response = await apiClient.get("/admin/users");
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        errors: error.response?.data?.errors || ["Failed to fetch users"],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Failed to fetch users");
     }
   },
 
@@ -34,11 +32,8 @@ export const adminUserService = {
     try {
       const response = await apiClient.post("/admin/users", request);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        errors: error.response?.data?.errors || [error.response?.data?.message || "Failed to create user"],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Failed to create user");
     }
   },
 
@@ -46,11 +41,8 @@ export const adminUserService = {
     try {
       const response = await apiClient.patch(`/admin/users/${userId}/toggle-active`);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        errors: error.response?.data?.errors || ["Failed to toggle user status"],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Failed to toggle user status");
     }
   },
 };

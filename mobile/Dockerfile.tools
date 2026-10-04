@@ -1,0 +1,22 @@
+FROM eclipse-temurin:17-jdk-jammy
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    FLUTTER_HOME=/opt/flutter-sdk/flutter \
+    ANDROID_HOME=/opt/android-sdk \
+    ANDROID_SDK_ROOT=/opt/android-sdk \
+    JAVA_HOME=/opt/java/openjdk \
+    PUB_CACHE=/root/.pub-cache \
+    GRADLE_USER_HOME=/root/.gradle \
+    PATH=/opt/flutter-sdk/flutter/bin:/opt/flutter-sdk/flutter/bin/cache/dart-sdk/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/root/.pub-cache/bin:${PATH}
+
+RUN apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates curl git libglu1-mesa unzip xz-utils zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/mobile-tools.sh /usr/local/bin/mobile-tools
+RUN chmod +x /usr/local/bin/mobile-tools
+
+WORKDIR /workspace/mobile
+ENTRYPOINT ["mobile-tools"]
+CMD ["verify"]

@@ -146,6 +146,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.TrackInventory).HasDefaultValue(true);
             entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.ImageDataUrl).HasColumnType("text");
             entity.HasIndex(e => new { e.TenantId, e.Name });
             entity.HasIndex(e => new { e.TenantId, e.Sku }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.IsActive });
@@ -243,6 +244,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.TotalAmount).HasPrecision(18, 4);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(1000);
+            entity.Property(e => e.InvoiceImageDataUrl).HasColumnType("text");
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
             entity.HasOne(e => e.Supplier).WithMany(s => s.Purchases).HasPrincipalKey(s => new { s.TenantId, s.Id })
@@ -313,6 +315,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Amount).HasPrecision(18, 4);
             entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.ReceiptImageDataUrl).HasColumnType("text");
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
             entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();

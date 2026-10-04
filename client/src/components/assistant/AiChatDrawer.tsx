@@ -116,6 +116,8 @@ export function AiChatDrawer({
         setMessages([greeting]);
         setSyncedAiConversationId(null);
       }
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể tải danh sách cuộc trò chuyện." : "Could not load conversations."));
     }
   };
 
@@ -128,6 +130,8 @@ export function AiChatDrawer({
       setShowHistory(false);
       setSyncedAiConversationId(id);
       if (broadcast) publishAiConversationSync({ activeConversationId: id, reason: "selected", source: syncSource });
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể tải cuộc trò chuyện." : "Could not load the conversation."));
     }
     setIsBusy(false);
   };
@@ -164,6 +168,8 @@ export function AiChatDrawer({
         publishAiConversationSync({ activeConversationId, reason: "deleted", source: syncSource });
       }
       toast.success(isVietnamese ? "Đã xoá cuộc trò chuyện" : "Conversation deleted");
+    } else {
+      toast.error(res.message || (isVietnamese ? "Không thể xoá cuộc trò chuyện." : "Could not delete the conversation."));
     }
   };
 

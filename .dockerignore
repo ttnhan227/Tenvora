@@ -3,5 +3,8 @@
 **/node_modules
 **/dist
 **/test-results
+**/.dart_tool
+**/build
+**/.flutter-plugins*
 .git
 .vscode

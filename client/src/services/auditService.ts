@@ -1,5 +1,6 @@
 import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
+import { toApiFailure } from "@/lib/apiErrors";
 
 export interface AuditLogItem {
   id: string;
@@ -26,11 +27,8 @@ export const auditService = {
 
       const response = await apiClient.get(`/audit?${params.toString()}`);
       return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        errors: error.response?.data?.errors || ["Failed to fetch audit records"],
-      };
+    } catch (error: unknown) {
+      return toApiFailure(error, "Failed to fetch audit records");
     }
   },
 };

@@ -196,7 +196,7 @@ describe("BusinessReportModal & ReportsPage", () => {
       </QueryClientProvider>
     );
 
-    expect(screen.getByRole("heading", { name: /Báo cáo kinh doanh|Business Statements/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Báo cáo kinh doanh|Business Statement/i })).toBeInTheDocument();
     expect(screen.getByText(/Tháng này|This Month/i)).toBeInTheDocument();
     expect(screen.getByText(/Tất cả|All Time/i)).toBeInTheDocument();
   });

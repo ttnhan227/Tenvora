@@ -91,6 +91,9 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${isVietnamese ? "Báo cáo kinh doanh" : "Business Statement"} - ${escapeHtml(companyName)} (${escapeHtml(periodLabel)})</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #fbf9f4;
@@ -120,7 +123,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
     body {
       background-color: var(--bg);
       color: var(--ink);
-      font-family: "Aptos", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+      font-family: "Be Vietnam Pro", "Plus Jakarta Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
       font-size: 14px;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
@@ -195,11 +198,11 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
       margin-bottom: 20px;
     }
     .company-title {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif;
       font-size: 26px;
       font-weight: 700;
       color: var(--teal-dark);
-      letter-spacing: -0.02em;
+      letter-spacing: -0.015em;
       margin-bottom: 4px;
     }
     .company-badge {
@@ -279,7 +282,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
       margin-bottom: 6px;
     }
     .kpi-value {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif;
       font-size: 22px;
       font-weight: 700;
       color: var(--ink);
@@ -312,7 +315,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
 
     /* Section Styling */
     .section-title {
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif;
       font-size: 17px;
       font-weight: 700;
       color: var(--teal-dark);
@@ -324,7 +327,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
       align-items: center;
     }
     .section-title span.count-tag {
-      font-family: "Aptos", sans-serif;
+      font-family: "Be Vietnam Pro", "Plus Jakarta Sans", sans-serif;
       font-size: 12px;
       font-weight: 600;
       color: var(--ink-muted);
@@ -612,7 +615,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
               ${unpaidCustomers.length} ${isVietnamese ? "khách hàng chưa thanh toán đủ" : "customers with balances"}
             </div>
           </div>
-          <div style="font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: var(--amber);" class="tabular">
+          <div style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif; font-size: 20px; font-weight: 700; color: var(--amber);" class="tabular">
             ${money(outstandingCustomers)}
           </div>
         </div>
@@ -626,7 +629,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
               ${unpaidSuppliers.length} ${isVietnamese ? "nhà cung cấp cần thanh toán" : "suppliers with balances"}
             </div>
           </div>
-          <div style="font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: var(--ink);" class="tabular">
+          <div style="font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif; font-size: 20px; font-weight: 700; color: var(--ink);" class="tabular">
             ${money(outstandingSuppliers)}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SafeDeleteDialogProps {
@@ -32,6 +32,11 @@ export function SafeDeleteDialog({
             <Trash2 className="h-5 w-5" />
             {isVietnamese ? `Xoá ${recordType}?` : `Delete ${recordType}?`}
           </DialogTitle>
+          <DialogDescription>
+            {isVietnamese
+              ? "Kiểm tra ảnh hưởng đến lịch sử trước khi xác nhận thao tác này."
+              : "Review the effect on record history before confirming this action."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>

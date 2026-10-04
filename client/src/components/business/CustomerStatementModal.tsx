@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Printer, Calendar, FileText, ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { businessMoney, businessService } from "@/services/businessService";
@@ -45,6 +45,9 @@ export function CustomerStatementModal({
             <FileText className="h-5 w-5 text-primary" />
             <span>{isVietnamese ? "Sổ chi tiết công nợ khách hàng" : "Customer Account Statement"}</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {isVietnamese ? "Chi tiết giao dịch và công nợ của khách hàng." : "Customer transaction and outstanding balance details."}
+          </DialogDescription>
           <Button size="sm" onClick={handlePrint} className="gap-1.5 font-bold">
             <Printer className="h-4 w-4" />
             <span>{isVietnamese ? "In sao kê / Lưu PDF" : "Print / Save PDF"}</span>

@@ -103,3 +103,10 @@ server/Uploads/
 recon-reports/
 .audit/
 client/playwright-report/
+client/test-results/
+
+# Mobile build binaries and artifacts (>100MB cannot be pushed to GitHub)
+*.apk
+*.aab
+phone_screen.png
+client/public/downloads/*.apk

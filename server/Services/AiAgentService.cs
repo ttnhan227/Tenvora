@@ -479,15 +479,8 @@ RULES:
 
             executedTools.Add(new AiAgentToolCallInfo(fnName, toolSummary, toolResultObj));
 
-            // Append model's functionCall and tool's functionResponse to conversation context
-            contents.Add(new
-            {
-                role = "model",
-                parts = new object[]
-                {
-                    new { functionCall = new { name = fnName, args = fnArgs } }
-                }
-            });
+            // Append model's exact content to preserve thought_signature, functionCall, and thoughts
+            contents.Add(candidate.GetProperty("content"));
 
             contents.Add(new
             {

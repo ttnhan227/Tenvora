@@ -57,6 +57,9 @@ namespace Tenvora.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ReceiptImageDataUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("RequestHash")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -246,6 +249,9 @@ namespace Tenvora.Api.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<string>("ImageDataUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -325,6 +331,9 @@ namespace Tenvora.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("InvoiceImageDataUrl")
+                        .HasColumnType("text");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)

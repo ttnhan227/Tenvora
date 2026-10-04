@@ -14,6 +14,7 @@ namespace Tenvora.Api.Data.Interceptors;
 
 public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 {
+    private const string StoredImageMarker = "[stored image omitted]";
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuditLogSaveChangesInterceptor(IHttpContextAccessor httpContextAccessor)
@@ -107,9 +108,20 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
                         if (!Equals(before, after))
                         {
-                            originalSnapshot[prop.Metadata.Name] = before;
-                            currentSnapshot[prop.Metadata.Name] = after;
-                            changesList.Add($"{prop.Metadata.Name}: {before} -> {after}");
+                            if (IsImageProperty(prop.Metadata.Name))
+                            {
+                                var hadImage = HasStoredImage(before);
+                                var hasImage = HasStoredImage(after);
+                                originalSnapshot[prop.Metadata.Name] = hadImage ? StoredImageMarker : null;
+                                currentSnapshot[prop.Metadata.Name] = hasImage ? StoredImageMarker : null;
+                                changesList.Add($"{prop.Metadata.Name}: {ImageState(hadImage)} -> {ImageState(hasImage)}");
+                            }
+                            else
+                            {
+                                originalSnapshot[prop.Metadata.Name] = before;
+                                currentSnapshot[prop.Metadata.Name] = after;
+                                changesList.Add($"{prop.Metadata.Name}: {before} -> {after}");
+                            }
                         }
                     }
                 }
@@ -127,7 +139,9 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 {
                     if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken")
                     {
-                        currentSnapshot[prop.Metadata.Name] = prop.CurrentValue;
+                        currentSnapshot[prop.Metadata.Name] = IsImageProperty(prop.Metadata.Name) && HasStoredImage(prop.CurrentValue)
+                            ? StoredImageMarker
+                            : prop.CurrentValue;
                     }
                 }
                 newValue = JsonSerializer.Serialize(currentSnapshot);
@@ -146,7 +160,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 Timestamp = DateTime.UtcNow,
                 OldValue = oldValue,
                 NewValue = newValue,
-                Notes = string.Join(" | ", changesList),
+                Notes = Truncate(string.Join(" | ", changesList), 1000),
                 IpAddress = ipAddress,
                 Origin = isAiAction ? "AI" : "Manual",
                 AiActionId = effectiveAiActionId,
@@ -162,4 +176,15 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
             context.Set<AuditLog>().AddRange(auditLogs);
         }
     }
+
+    private static bool IsImageProperty(string name) =>
+        name.EndsWith("ImageDataUrl", StringComparison.Ordinal);
+
+    private static bool HasStoredImage(object? value) =>
+        value is string text && !string.IsNullOrWhiteSpace(text);
+
+    private static string ImageState(bool present) => present ? "present" : "empty";
+
+    private static string Truncate(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..maxLength];
 }
