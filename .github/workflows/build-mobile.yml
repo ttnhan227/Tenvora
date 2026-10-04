@@ -73,16 +73,23 @@ jobs:
         env:
           INPUT_API_URL: ${{ inputs.api_base_url }}
           CONFIG_API_URL: ${{ vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
-          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID || '495244344153-g2s1rs8823l6tk14rjdn106tbcfdcac1.apps.googleusercontent.com' }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
-          API_URL="${INPUT_API_URL:-${CONFIG_API_URL:-https://tenvora-server.onrender.com/api}}"
+          API_URL="${INPUT_API_URL:-$CONFIG_API_URL}"
+          if [ -z "$API_URL" ]; then
+            echo "::error::MOBILE_API_BASE_URL is not set! Please configure MOBILE_API_BASE_URL in GitHub Settings -> Secrets and variables -> Actions -> Variables."
+            exit 1
+          fi
+
           DART_DEFINES="--dart-define=API_BASE_URL=$API_URL"
           if [ -n "$GOOGLE_CLIENT_ID" ]; then
             echo "Configuring GOOGLE_SERVER_CLIENT_ID in APK"
             DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_CLIENT_ID"
+          else
+            echo "Notice: GOOGLE_SERVER_CLIENT_ID variable not set. APK will build without Google Sign-In support."
           fi
-          echo "Building APK with API_BASE_URL=$API_URL"
 
+          echo "Building APK with API_BASE_URL=$API_URL"
           flutter build apk --release -PallowDebugReleaseSigning=true $DART_DEFINES
 
       - name: Stage APK Output
