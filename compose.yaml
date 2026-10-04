@@ -36,23 +36,15 @@ services:
       JwtSettings__Audience: ${JwtSettings__Audience:-Tenvora}
       CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost:3000,http://client}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      FINLIGHT_API_KEY: ${FINLIGHT_API_KEY:-}
-      NEWSAPIAI_API_KEY: ${NEWSAPIAI_API_KEY:-}
-      GNEWS_API_KEY: ${GNEWS_API_KEY:-}
       AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Google Gemini}
       AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
       AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/models}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-flash-latest}
-      AI_VISION_MODEL: ${AI_VISION_MODEL:-gemini-flash-latest}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-2.5-flash}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
-      SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Northstar Creative Studio}
+      SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Example Business}
       SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:?Set SEED_TENANT_API_KEY in .env}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?Set SEED_ADMIN_EMAIL in .env}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in .env}
-      SEED_OPS_EMAIL: ${SEED_OPS_EMAIL:-}
-      SEED_OPS_PASSWORD: ${SEED_OPS_PASSWORD:-}
-      SEED_COMPLIANCE_EMAIL: ${SEED_COMPLIANCE_EMAIL:-}
-      SEED_COMPLIANCE_PASSWORD: ${SEED_COMPLIANCE_PASSWORD:-}
     ports:
       - "${PORT:-5000}:5000"
     depends_on:
