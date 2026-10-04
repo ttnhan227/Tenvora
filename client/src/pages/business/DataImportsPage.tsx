@@ -504,8 +504,8 @@ export default function DataImportsPage() {
                 <div className="rounded-xl border bg-rose-500/8 p-3"><p className="text-xl font-bold text-rose-700 dark:text-rose-300">{errorCount}</p><p className="text-xs text-muted-foreground">{copy("Need attention", "Cần xử lý")}</p></div>
               </div>
 
-              <div className="max-h-[27rem] overflow-auto rounded-xl border">
-                <table className="w-full min-w-[42rem] text-left text-xs">
+              <div className="max-h-108 overflow-auto rounded-xl border">
+                <table className="w-full min-w-2xl text-left text-xs">
                   <thead className="sticky top-0 bg-muted"><tr><th className="p-3">{copy("Row", "Dòng")}</th><th className="p-3">{copy("Record", "Bản ghi")}</th><th className="p-3">{copy("Status", "Trạng thái")}</th><th className="p-3">{copy("Details", "Chi tiết")}</th></tr></thead>
                   <tbody className="divide-y">
                     {analyzedRows.map((row) => {

@@ -268,7 +268,7 @@ export default function BusinessExpensesPage() {
             <div className="divide-y">
               {query.data!.map((e) => (
                 <div key={e.id} className="grid gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/25 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center">
-                  <div className="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {new Date(e.expenseDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
                     <span className="mt-1 block text-[10px] font-medium tracking-normal opacity-70">{new Date(e.expenseDate).getFullYear()}</span>
                   </div>

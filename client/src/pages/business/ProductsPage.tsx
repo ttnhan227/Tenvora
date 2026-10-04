@@ -286,7 +286,7 @@ export default function ProductsPage() {
                     key={product.id}
                     className={`paper-card overflow-hidden transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}
                   >
-                    <div className="flex h-36 items-center justify-center overflow-hidden border-b bg-gradient-to-br from-secondary/80 to-accent/35">
+                    <div className="flex h-36 items-center justify-center overflow-hidden border-b bg-linear-to-br from-secondary/80 to-accent/35">
                       {product.imageDataUrl ? (
                         <img src={product.imageDataUrl} alt={product.name} className="h-full w-full object-cover" />
                       ) : (

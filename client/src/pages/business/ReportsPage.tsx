@@ -186,7 +186,7 @@ export default function ReportsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <section className="relative overflow-hidden rounded-[28px] border bg-card shadow-sm">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-[38px] border-primary/5" />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full border-38 border-primary/5" />
           <div className="relative grid gap-7 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[1fr_auto] lg:items-end">
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">
@@ -533,7 +533,7 @@ function ReportMetric({
   tone: "good" | "out";
 }) {
   return (
-    <article className="relative border-b p-5 last:border-b-0 sm:[&:nth-child(odd)]:border-r lg:border-b-0 lg:[&:nth-child(odd)]:border-r-0">
+    <article className="relative border-b p-5 last:border-b-0 sm:odd:border-r lg:border-b-0 lg:odd:border-r-0">
       <div className="flex items-center justify-between gap-3">
         <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-muted-foreground">{index}</span>
         <span className={cn("h-2 w-2 rounded-full", tone === "good" ? "bg-emerald-500" : "bg-rose-500")} />

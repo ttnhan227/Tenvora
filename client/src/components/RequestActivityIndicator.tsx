@@ -28,11 +28,11 @@ export function RequestActivityIndicator() {
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-[100] h-1 overflow-hidden bg-primary/15" aria-hidden="true">
+      <div className="fixed inset-x-0 top-0 z-100 h-1 overflow-hidden bg-primary/15" aria-hidden="true">
         <div className="h-full w-1/3 animate-[request-progress_1.1s_ease-in-out_infinite] rounded-full bg-primary" />
       </div>
       {showMessage && (
-        <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[100] flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-foreground shadow-2xl">
+        <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-100 flex max-w-xs items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-foreground shadow-2xl">
           <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
           <p className="text-xs font-bold">Working on your request…</p>
         </div>

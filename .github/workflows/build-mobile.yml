@@ -145,6 +145,8 @@ jobs:
           test -n "$APKSIGNER"
           ACTUAL=$("$APKSIGNER" verify --print-certs dist/tenvora-mobile.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')
           EXPECTED=$(tr -d '\r\n' < mobile/android/signing-certificate.sha256)
+          echo "APK certificate SHA-256: $ACTUAL"
+          echo "Expected certificate SHA-256: $EXPECTED"
           test "$ACTUAL" = "$EXPECTED" || { echo '::error::APK certificate does not match the distribution key.'; exit 1; }
 
       - name: Upload GitHub Actions Artifact

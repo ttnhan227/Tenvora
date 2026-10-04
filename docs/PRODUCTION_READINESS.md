@@ -4,9 +4,10 @@ The actionable repository gaps were repaired. A production launch still needs ac
 
 ## Completed
 
-- Fixed browser fixtures: valid expiring test tokens, onboarding state, paginated sales responses, and persisted AI conversations. All six browser workflows pass, including sales/payments and action persistence.
+- Fixed browser fixtures: valid expiring test tokens, onboarding state, paginated sales responses, and persisted AI conversations. All seven browser workflows pass, including sales/payments, action persistence, and light/dark form styling.
 - Backend: 100 tests passed, including migrations, simultaneous payments, duplicate retries, and application tenant boundaries on isolated PostgreSQL. An additional opt-in live AI test passed for both chat and the agent with synthetic data.
 - Web: 64 tests and production build passed; lint has zero errors and zero warnings. Async subscriptions now read current state.
+- Updated Axios and the CSS build toolchain to remove vulnerable dependencies. Tailwind 4 uses the migrated theme and compatible utility classes; the obsolete Bun lockfile was removed. npm audit reports zero vulnerabilities, including development dependencies. HIGH/CRITICAL vulnerability and credential scans gate deployment and APK builds.
 - Flutter: analysis found no issues; all four mobile tests passed through Docker.
 - Verified synthetic PostgreSQL backup/restore. Added a deployment/recovery runbook.
 - Mobile and manual Render workflows now require backend/web/PostgreSQL/browser verification. Pushes produce APK artifacts, not public releases. Mobile tests run before building.

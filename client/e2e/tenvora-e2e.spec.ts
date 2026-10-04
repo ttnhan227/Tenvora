@@ -222,6 +222,23 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await expect(page.getByText("Payment history", { exact: true })).toBeVisible();
   });
 
+  test("theme colors and form layout remain usable in light and dark mode", async ({ page }) => {
+    await businessFixture(page);
+    await page.goto("/customers");
+    await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Add customer", exact: true }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    const lightColor = await dialog.evaluate((element) => getComputedStyle(element).backgroundColor);
+    expect(lightColor).not.toBe("rgba(0, 0, 0, 0)");
+    await page.evaluate(() => document.documentElement.classList.add("dark"));
+    await expect.poll(() => dialog.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(lightColor);
+    const bounds = await dialog.boundingBox();
+    expect(bounds?.width).toBeGreaterThan(300);
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  });
+
   test("core business screens remain usable on a phone", async ({ page }) => {
     await businessFixture(page);
     await page.setViewportSize({ width: 390, height: 844 });

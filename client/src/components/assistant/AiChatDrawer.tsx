@@ -342,7 +342,7 @@ export function AiChatDrawer({
       {/* Slide-out Drawer Panel */}
       <aside
         aria-label="Tenvora Agent Drawer"
-        className="relative z-50 flex h-full w-full flex-col border-l bg-card shadow-2xl transition-transform duration-300 ease-in-out sm:w-[28rem] md:w-[32rem]"
+        className="relative z-50 flex h-full w-full flex-col border-l bg-card shadow-2xl transition-transform duration-300 ease-in-out sm:w-md md:w-lg"
       >
         {/* Drawer Header */}
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">

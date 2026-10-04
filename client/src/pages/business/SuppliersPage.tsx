@@ -230,7 +230,7 @@ export default function SuppliersPage() {
                     key={s.id}
                     className={`paper-card group relative flex min-h-52 flex-col overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md ${s.status === "Archived" ? "opacity-60" : ""}`}
                   >
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500/70 via-primary/50 to-transparent" />
+                    <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-sky-500/70 via-primary/50 to-transparent" />
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{isVietnamese ? "Đối tác cung ứng" : "Supply partner"}</p>

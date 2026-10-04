@@ -122,7 +122,7 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
           </div>
         </DialogHeader>
 
-        <div className="flex h-[26rem] flex-col gap-3 overflow-y-auto bg-secondary/15 p-4">
+        <div className="flex h-104 flex-col gap-3 overflow-y-auto bg-secondary/15 p-4">
           {messages.map((message) => (
             <div key={message.id} className={`flex items-start gap-2 ${message.sender === "user" ? "flex-row-reverse" : ""}`}>
               <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${message.sender === "user" ? "bg-primary text-primary-foreground" : "border bg-card text-primary"}`}>{message.sender === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}</span>

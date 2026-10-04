@@ -81,7 +81,7 @@ export function MoneyCard({ label, value, detail, icon: Icon, tone = "plain", fe
       </div>
       <p className={cn("metric-value mt-4 font-bold tracking-tight", featured ? "text-3xl sm:text-4xl" : "text-2xl")}>{value}</p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p>
-      {featured && <div className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full border-[18px] border-primary/5" />}
+      {featured && <div className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full border-18 border-primary/5" />}
     </article>
   );
 }

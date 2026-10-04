@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       {open && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-[hsl(var(--brand-ink)/.45)] backdrop-blur-[2px] md:hidden" onClick={() => setOpen(false)} />}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-68 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-20 items-center justify-between px-5">
           <BrandLogo to="" size="md" />
           <button type="button" aria-label="Close navigation" className="friendly-focus inline-flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setOpen(false)}><X size={20} /></button>
@@ -130,7 +130,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="md:pl-[17rem]">
+      <div className="md:pl-68">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/92 px-4 backdrop-blur-xl sm:px-6 md:px-8">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" aria-label="Open navigation" className="md:hidden" onClick={() => setOpen(true)}><Menu size={20} /></Button>
@@ -175,7 +175,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-[76rem] px-4 pb-28 pt-6 sm:px-6 md:px-8 md:pb-12 md:pt-8">
+        <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-304 px-4 pb-28 pt-6 sm:px-6 md:px-8 md:pb-12 md:pt-8">
           <ContextualAiBar pathname={pathname} isVietnamese={isVietnamese} onPrompt={openAi} />
           <div className="animate-fade-in">{children}</div>
         </main>

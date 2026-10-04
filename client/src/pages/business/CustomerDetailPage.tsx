@@ -295,7 +295,7 @@ export default function CustomerDetailPage() {
             <div className="relative space-y-4 before:absolute before:bottom-5 before:left-5 before:top-5 before:w-px before:bg-border sm:before:left-6">
               {sales.map((entry) => (
                 <article key={entry.id} className="paper-card relative ml-10 p-5 sm:ml-12 sm:p-6">
-                  <span className="absolute -left-[2.68rem] top-5 flex h-8 w-8 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground sm:-left-[3.17rem]">
+                  <span className="absolute left-[-2.68rem] top-5 flex h-8 w-8 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground sm:left-[-3.17rem]">
                     <ReceiptText size={13} />
                   </span>
                   <div className="flex flex-col justify-between gap-4 sm:flex-row">

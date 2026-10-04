@@ -15,10 +15,10 @@ export function PhoneMockup() {
   return (
     <div className="relative mx-auto w-full max-w-[320px] select-none">
       {/* Outer Glow */}
-      <div className="absolute -inset-4 rounded-[3.5rem] bg-gradient-to-tr from-primary/20 via-amber-500/10 to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute -inset-4 rounded-[3.5rem] bg-linear-to-tr from-primary/20 via-amber-500/10 to-transparent blur-2xl pointer-events-none" />
 
       {/* Phone Hardware Chassis */}
-      <div className="relative rounded-[3rem] border-[8px] border-zinc-900 bg-zinc-950 p-2 shadow-2xl ring-1 ring-white/10 dark:border-zinc-800">
+      <div className="relative rounded-[3rem] border-8 border-zinc-900 bg-zinc-950 p-2 shadow-2xl ring-1 ring-white/10 dark:border-zinc-800">
         {/* Dynamic Island / Camera Punch Hole */}
         <div className="absolute left-1/2 top-4 z-20 h-4 w-20 -translate-x-1/2 rounded-full bg-black flex items-center justify-end px-2">
           <div className="h-2 w-2 rounded-full bg-zinc-800/80 ring-1 ring-zinc-700/50" />
@@ -58,7 +58,7 @@ export function PhoneMockup() {
             </div>
 
             {/* Daily Financial Summary Card */}
-            <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/85 p-4 text-primary-foreground shadow-sm">
+            <div className="rounded-2xl bg-linear-to-br from-primary to-primary/85 p-4 text-primary-foreground shadow-sm">
               <div className="flex items-center justify-between text-primary-foreground/80">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">Today's Sales</span>
                 <span className="flex items-center gap-0.5 text-[10px] bg-white/15 px-2 py-0.5 rounded-full font-bold">

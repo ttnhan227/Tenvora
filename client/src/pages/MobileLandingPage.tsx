@@ -105,8 +105,8 @@ export default function MobileLandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border-b bg-gradient-to-b from-card/30 to-background pb-16 pt-12 sm:pb-24 sm:pt-20">
-          <div className="pointer-events-none absolute -right-32 -top-40 h-[36rem] w-[36rem] rounded-full bg-accent/40 blur-3xl" />
+        <section className="relative overflow-hidden border-b bg-linear-to-b from-card/30 to-background pb-16 pt-12 sm:pb-24 sm:pt-20">
+          <div className="pointer-events-none absolute -right-32 -top-40 h-144 w-xl rounded-full bg-accent/40 blur-3xl" />
           <div className="pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
 
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -266,7 +266,7 @@ export default function MobileLandingPage() {
         {/* Bottom Call to Action */}
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-primary px-6 py-12 text-primary-foreground sm:px-12 sm:py-16 shadow-xl">
-            <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full border-[36px] border-white/5" />
+            <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full border-36 border-white/5" />
             <div className="relative max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-wider text-primary-foreground/75">
                 {isVietnamese ? "Sẵn sàng quản lý sổ sách di động?" : "Ready to take your records mobile?"}

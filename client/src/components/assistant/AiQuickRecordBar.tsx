@@ -65,7 +65,7 @@ export function AiQuickRecordBar({ onRecordSuccess }: AiQuickRecordBarProps) {
     : ["Nam just paid 2 million", "Record 500k for transport today", "Sold Lan 5kg of rice for 125k"];
 
   return (
-    <section className="rounded-2xl border-2 border-primary/25 bg-gradient-to-r from-card via-card to-primary/5 p-4 shadow-sm sm:p-5">
+    <section className="rounded-2xl border-2 border-primary/25 bg-linear-to-r from-card via-card to-primary/5 p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Sparkles className="h-4 w-4" /></span>
         <div>

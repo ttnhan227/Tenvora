@@ -125,8 +125,8 @@ export default function Index() {
         ========================================================================= */}
         <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-32">
           {/* Subtle Ambient Backdrops */}
-          <div className="pointer-events-none absolute -right-24 -top-32 h-[38rem] w-[38rem] rounded-full bg-accent/45 blur-3xl opacity-75" />
-          <div className="pointer-events-none absolute -left-32 top-1/2 h-[32rem] w-[32rem] rounded-full bg-primary/5 blur-3xl opacity-60" />
+          <div className="pointer-events-none absolute -right-24 -top-32 h-152 w-152 rounded-full bg-accent/45 blur-3xl opacity-75" />
+          <div className="pointer-events-none absolute -left-32 top-1/2 h-128 w-lg rounded-full bg-primary/5 blur-3xl opacity-60" />
 
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-3xl text-center">
@@ -864,7 +864,7 @@ export default function Index() {
         ========================================================================= */}
         <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-primary px-6 py-14 text-primary-foreground sm:px-14 sm:py-18 shadow-2xl">
-            <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-white/10 blur-xs" />
+            <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-36 border-white/10 blur-xs" />
             <div className="pointer-events-none absolute -left-12 -bottom-20 h-64 w-64 rounded-full bg-white/5 blur-2xl" />
 
             <div className="relative max-w-2xl">

@@ -76,7 +76,7 @@ export function GettingStartedGuide({
   return (
     <section
       aria-label={isVietnamese ? "Hướng dẫn bắt đầu" : "Getting started guide"}
-      className="paper-card relative overflow-hidden border-primary/25 bg-gradient-to-br from-card via-card to-accent/25 p-5 sm:p-6"
+      className="paper-card relative overflow-hidden border-primary/25 bg-linear-to-br from-card via-card to-accent/25 p-5 sm:p-6"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
