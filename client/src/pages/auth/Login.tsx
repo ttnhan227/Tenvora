@@ -10,7 +10,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AuthAside } from "@/components/auth/AuthAside";
-import { GoogleSignInButton, isGoogleAuthEnabled } from "@/components/auth/GoogleSignInButton";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { isGoogleAuthEnabled } from "@/lib/googleAuthConfig";
 
 export default function Login() {
   const navigate = useNavigate();

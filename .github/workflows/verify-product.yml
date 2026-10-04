@@ -1,0 +1,49 @@
+name: Verify Product
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: readiness-local-only
+          POSTGRES_DB: tenvora_readiness
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TENVORA_TEST_DATABASE_URL: Host=localhost;Port=5432;Database=tenvora_readiness;Username=postgres;Password=readiness-local-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: dotnet test Tenvora.sln -c Release
+      - name: Verify database recovery
+        run: bash scripts/verify-postgres-recovery.sh '${{ job.services.postgres.id }}'
+      - run: npm ci
+        working-directory: client
+      - run: npm run lint && npm test -- --run && npm run build
+        working-directory: client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - run: npm run test:e2e
+        working-directory: client
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-report
+          path: client/test-results

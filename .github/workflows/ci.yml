@@ -15,6 +15,9 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  verify-product:
+    uses: ./.github/workflows/verify-product.yml
+
   # ===== BACKEND TESTS =====
   backend-test:
     name: Build & Test .NET Solution
@@ -96,7 +99,7 @@ jobs:
   # ===== BUILD & VALIDATE DOCKER IMAGES =====
   build-docker:
     name: Build & Push Docker Images
-    needs: [backend-test, frontend-test]
+    needs: [backend-test, frontend-test, verify-product]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -161,20 +164,3 @@ jobs:
           labels: ${{ steps.meta-client.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  # ===== DEPLOY TO RENDER =====
-  deploy:
-    name: Deploy to Render
-    needs: [build-docker]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Trigger Render Deploy Hook
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "Warning: RENDER_DEPLOY_HOOK_URL not configured"
-            exit 0
-          fi
-          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"

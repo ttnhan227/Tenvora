@@ -12,7 +12,7 @@
   <a href="https://github.com/ttnhan227/Tenvora/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ttnhan227/Tenvora/ci.yml?branch=main&label=CI%2FCD&style=flat-square" alt="CI/CD Status" /></a>
   <a href="https://github.com/ttnhan227/Tenvora/actions/workflows/build-mobile.yml"><img src="https://img.shields.io/github/actions/workflow/status/ttnhan227/Tenvora/build-mobile.yml?branch=main&label=Mobile%20APK&style=flat-square" alt="Mobile Build Status" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet" alt=".NET 10" />
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" />
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=flat-square&logo=flutter" alt="Flutter" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
 </p>
@@ -43,18 +43,18 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 
 | Component | Stack | Responsibilities |
 | :--- | :--- | :--- |
-| **Web Frontend** | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query | Web workspace, financial reports, catalog, store management. |
+| **Web Frontend** | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query | Web workspace, financial reports, catalog, store management. |
 | **Backend API** | ASP.NET Core (.NET 10), Entity Framework Core, Npgsql | Ledger engine, atomic writes, concurrency locks, JWT authentication. |
 | **Database** | PostgreSQL 16 (Supabase / Self-hosted) | Multi-tenant relational storage, transaction logs, audit history. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Google Gemini API (`gemini-3.5-flash`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (161+ tests), Docker images, automated APK releases. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (161+ tests), Docker images, verified APK builds; explicit publication. |
 
 ---
 
 ## 📱 Mobile App (Android APK)
 
-The mobile client is automatically built and published to GitHub Releases on push:
+Pushes verify the backend, web workflows, PostgreSQL payments/recovery, and mobile tests, then build an APK as a GitHub Actions artifact. They do not publish an APK. When ready, run **Build & Release Mobile APK** manually with **publish** enabled; publication requires production signing secrets, an HTTPS backend URL, and the Google server client ID.
 
 * **Direct Download:** [Latest Android APK (`tenvora-mobile.apk`)](https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk)
 * **Release Channel:** [GitHub Releases (`mobile-latest`)](https://github.com/ttnhan227/Tenvora/releases/tag/mobile-latest)
@@ -104,7 +104,7 @@ docker compose up --build
 The codebase includes an automated test suite enforcing ledger invariants, concurrency limits, and UI functionality:
 
 ```bash
-# Backend Tests (97 xUnit tests verifying ledger math & tenant boundaries)
+# Backend Tests (100 xUnit tests verifying ledger math & tenant boundaries)
 dotnet test Tenvora.sln
 
 # Frontend Unit Tests (64 Vitest tests covering UI components & business services)
@@ -122,7 +122,7 @@ npm run build
 
 ```
 Tenvora/
-├── client/                 # React 19 + TypeScript frontend application
+├── client/                 # React 18 + TypeScript frontend application
 │   ├── src/
 │   │   ├── components/     # UI components, modals, and design system
 │   │   ├── contexts/       # Auth & Language (EN / VI) providers
@@ -133,13 +133,15 @@ Tenvora/
 │   ├── Data/               # AppDbContext, migrations, audit interceptors
 │   ├── Domain/Entities/    # Tenant-scoped domain models
 │   └── Services/           # Ledger calculations, business rules, AI services
-├── server.Tests/           # 97 xUnit unit & integration tests
+├── server.Tests/           # 100 xUnit unit & integration tests
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration
 └── .github/workflows/      # Automated CI/CD & Mobile release pipelines
-    ├── ci.yml              # Test runner, Docker publisher, Render deployment
-    └── build-mobile.yml    # Automated Flutter APK compilation & GitHub Release
+    ├── ci.yml              # Tests and Docker images
+    ├── verify-product.yml  # PostgreSQL, recovery, backend and browser checks
+    ├── deploy-render.yml   # Manual Render deployment after verification
+    └── build-mobile.yml    # APK verification; publication is explicitly selected
 ```
 
 ---

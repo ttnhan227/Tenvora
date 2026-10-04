@@ -423,13 +423,15 @@ RULES:
                 generationConfig = new { temperature = 0.2 }
             };
 
-            var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent?key={apiKey}";
-            var response = await client.PostAsJsonAsync(url, requestBody, ct);
+            var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent";
+            using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            providerRequest.Headers.Add("x-goog-api-key", apiKey);
+            providerRequest.Content = JsonContent.Create(requestBody);
+            using var response = await client.SendAsync(providerRequest, ct);
 
             if (!response.IsSuccessStatusCode)
             {
-                var err = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("Gemini API call failed: {StatusCode} {Error}", response.StatusCode, err);
+                _logger.LogWarning("Gemini API call failed: {StatusCode}", response.StatusCode);
                 throw new InvalidOperationException($"Gemini API returned {response.StatusCode}");
             }
 
@@ -444,7 +446,7 @@ RULES:
 
             // Check if model returned a functionCall
             JsonElement? functionCallPart = null;
-            string? textPart = null;
+            var answerParts = new List<string>();
 
             foreach (var part in parts.EnumerateArray())
             {
@@ -453,16 +455,19 @@ RULES:
                     functionCallPart = fc;
                     break;
                 }
-                if (part.TryGetProperty("text", out var t))
+                if (!(part.TryGetProperty("thought", out var thought) && thought.ValueKind == JsonValueKind.True)
+                    && part.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String)
                 {
-                    textPart = t.GetString();
+                    answerParts.Add(t.GetString() ?? "");
                 }
             }
 
             if (functionCallPart == null)
             {
                 // Terminal response: no further tool calls
-                return new AgentTurnResult(textPart?.Trim() ?? "Đã xử lý thông tin cho bạn.", capturedProposal, executedTools);
+                var answer = string.Join("\n", answerParts).Trim();
+                if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException("Gemini returned no answer text.");
+                return new AgentTurnResult(answer, capturedProposal, executedTools);
             }
 
             // Execute Tool Call

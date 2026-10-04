@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,11 +53,7 @@ export default function UserManagement() {
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  async function loadUsers() {
+  const loadUsers = useLatestCallback(async () => {
     setLoading(true);
     const res = await adminUserService.getUsers();
     if (res.success && res.data) {
@@ -64,7 +61,9 @@ export default function UserManagement() {
     }
     if (!res.success) setErrorMessage(res.errors?.join(" ") || (isVietnamese ? "Không thể tải danh sách nhân viên." : "Unable to load team members."));
     setLoading(false);
-  }
+  });
+
+  useEffect(() => { void loadUsers(); }, [loadUsers]);
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();

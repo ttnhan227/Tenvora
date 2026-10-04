@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,11 +51,7 @@ export default function AuditLogView() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
-
-  async function loadLogs() {
+  const loadLogs = useLatestCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -69,7 +66,9 @@ export default function AuditLogView() {
     } finally {
       setLoading(false);
     }
-  }
+  });
+
+  useEffect(() => { void loadLogs(); }, [loadLogs]);
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {

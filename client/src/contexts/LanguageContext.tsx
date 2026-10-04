@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
 
 export type Language = "vi" | "en";
 
@@ -306,7 +306,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = (key: string, fallback?: string): string => {
+  const t = useCallback((key: string, fallback?: string): string => {
     const dictionary = language === "vi" ? viTranslations : enTranslations;
     if (key in dictionary) {
       return dictionary[key];
@@ -316,7 +316,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
       return viTranslations[key];
     }
     return fallback ?? key;
-  };
+  }, [language]);
 
   const isVietnamese = language === "vi";
 
@@ -327,7 +327,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
       isVietnamese,
       t,
     }),
-    [language, isVietnamese]
+    [language, isVietnamese, t]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

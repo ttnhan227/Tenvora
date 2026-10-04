@@ -8,6 +8,10 @@ on:
       - '.github/workflows/build-mobile.yml'
   workflow_dispatch:
     inputs:
+      publish:
+        description: 'Publish a signed APK after verification (only when ready to release)'
+        type: boolean
+        default: false
       api_base_url:
         description: 'Backend API Base URL (leave empty to use default)'
         required: false
@@ -18,9 +22,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-product:
+    uses: ./.github/workflows/verify-product.yml
   build-apk:
     name: Build & Publish Android APK
     runs-on: ubuntu-latest
+    needs: verify-product
     permissions:
       contents: write
 
@@ -39,6 +46,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.47.5'
           cache: true
 
       - name: Verify Environment
@@ -54,17 +62,28 @@ jobs:
         working-directory: mobile
         run: flutter analyze
 
+      - name: Test Mobile Workflows
+        working-directory: mobile
+        run: flutter test
+
       - name: Setup Signing Keystore (if secrets provided)
+        id: signing
         working-directory: mobile/android
         env:
           KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_PROPERTIES" ]; then
             echo "Decoded production upload keystore from GitHub Secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > tenvora-upload-key.jks
             echo "$KEY_PROPERTIES" > key.properties
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
           else
+            if [ "$PUBLISH" = "true" ]; then
+              echo "::error::Publishing requires ANDROID_KEY_PROPERTIES and ANDROID_KEYSTORE_BASE64."
+              exit 1
+            fi
             echo "No production upload key secrets detected; building with debug-signed release configuration."
           fi
 
@@ -74,6 +93,7 @@ jobs:
           INPUT_API_URL: ${{ inputs.api_base_url }}
           CONFIG_API_URL: ${{ vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID }}
+          PUBLISH: ${{ inputs.publish }}
         run: |
           API_URL="${INPUT_API_URL:-$CONFIG_API_URL}"
           if [ -z "$API_URL" ]; then
@@ -86,11 +106,20 @@ jobs:
             echo "Configuring GOOGLE_SERVER_CLIENT_ID in APK"
             DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_CLIENT_ID"
           else
+            if [ "$PUBLISH" = "true" ]; then
+              echo "::error::Publishing requires GOOGLE_SERVER_CLIENT_ID."
+              exit 1
+            fi
             echo "Notice: GOOGLE_SERVER_CLIENT_ID variable not set. APK will build without Google Sign-In support."
           fi
 
           echo "Building APK with API_BASE_URL=$API_URL"
-          flutter build apk --release -PallowDebugReleaseSigning=true $DART_DEFINES
+          if [ "$PUBLISH" = "true" ]; then
+            case "$API_URL" in https://*) ;; *) echo "::error::Published APK requires an HTTPS backend."; exit 1 ;; esac
+            flutter build apk --release $DART_DEFINES
+          else
+            flutter build apk --release -PallowDebugReleaseSigning=true $DART_DEFINES
+          fi
 
       - name: Stage APK Output
         run: |
@@ -108,6 +137,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify distribution signing certificate
+        if: steps.signing.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          ACTUAL=$("$APKSIGNER" verify --print-certs dist/tenvora-mobile.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:upper:]' '[:lower:]')
+          EXPECTED=$(tr -d '\r\n' < mobile/android/signing-certificate.sha256)
+          test "$ACTUAL" = "$EXPECTED" || { echo '::error::APK certificate does not match the distribution key.'; exit 1; }
+
       - name: Upload GitHub Actions Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -116,6 +155,7 @@ jobs:
           retention-days: 30
 
       - name: Generate Product Release Notes
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
         run: |
           cat << 'EOF' > release_body.md
           ## What's New in Tenvora Mobile
@@ -133,6 +173,7 @@ jobs:
           git log -n 6 --no-merges --pretty=format:"* %s" >> release_body.md
 
       - name: Publish to GitHub Releases (mobile-latest)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-latest

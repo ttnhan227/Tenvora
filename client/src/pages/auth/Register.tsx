@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GoogleSignInButton, isGoogleAuthEnabled } from "@/components/auth/GoogleSignInButton";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { isGoogleAuthEnabled } from "@/lib/googleAuthConfig";
 
 type Field = "companyName" | "email" | "password" | "baseCurrency";
 type Errors = Partial<Record<Field, string>>;

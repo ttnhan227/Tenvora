@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -70,15 +71,6 @@ export default function AgentChatPage() {
   };
 
   useEffect(() => {
-    const target = initialId ?? getSyncedAiConversationId();
-    void loadConversations(target);
-    if (initialId) {
-      setSyncedAiConversationId(initialId);
-      publishAiConversationSync({ activeConversationId: initialId, reason: "selected", source: syncSource });
-    }
-  }, []);
-
-  useEffect(() => {
     if (initialPrompt) {
       setInput(initialPrompt);
       window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -86,16 +78,10 @@ export default function AgentChatPage() {
   }, [initialPrompt]);
 
   useEffect(() => {
-    if (initialId && initialId !== activeId) {
-      loadConversation(initialId);
-    }
-  }, [initialId]);
-
-  useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = async (preferredId?: string | null) => {
+  const loadConversations = useLatestCallback(async (preferredId?: string | null) => {
     const res = await aiAssistantService.getConversations();
     if (res.success && res.data) {
       setConversations(res.data);
@@ -120,7 +106,7 @@ export default function AgentChatPage() {
     } else {
       toast.error(res.message || (isVietnamese ? "Không thể tải danh sách cuộc trò chuyện." : "Could not load conversations."));
     }
-  };
+  });
 
   const loadConversation = async (id: string, broadcast = true) => {
     setIsBusy(true);
@@ -149,7 +135,16 @@ export default function AgentChatPage() {
   useEffect(() => subscribeToAiConversationSync((event) => {
     if (event.source === syncSource) return;
     void loadConversations(event.activeConversationId);
-  }), [syncSource]);
+  }), [syncSource, loadConversations]);
+
+  useEffect(() => {
+    const target = initialId ?? getSyncedAiConversationId();
+    void loadConversations(target);
+    if (initialId) {
+      setSyncedAiConversationId(initialId);
+      publishAiConversationSync({ activeConversationId: initialId, reason: "selected", source: syncSource });
+    }
+  }, [initialId, loadConversations, syncSource]);
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

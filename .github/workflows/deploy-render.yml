@@ -1,8 +1,6 @@
 name: Deploy (Render)
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 concurrency:
@@ -10,7 +8,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-product:
+    uses: ./.github/workflows/verify-product.yml
   deploy:
+    needs: verify-product
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy hook

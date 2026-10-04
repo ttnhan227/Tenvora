@@ -115,8 +115,11 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
                     }
                 };
 
-                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent?key={apiKey}";
-                var response = await client.PostAsJsonAsync(url, requestBody, ct);
+                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent";
+                using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
+                providerRequest.Headers.Add("x-goog-api-key", apiKey);
+                providerRequest.Content = JsonContent.Create(requestBody);
+                using var response = await client.SendAsync(providerRequest, ct);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -126,15 +129,7 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
                         candidates[0].TryGetProperty("content", out var content) &&
                         content.TryGetProperty("parts", out var parts))
                     {
-                        string? replyText = null;
-                        foreach (var part in parts.EnumerateArray())
-                        {
-                            if (part.TryGetProperty("text", out var textEl))
-                            {
-                                replyText = textEl.GetString();
-                                break;
-                            }
-                        }
+                        var replyText = ReadAnswerParts(parts);
 
                         if (!string.IsNullOrWhiteSpace(replyText))
                         {
@@ -218,8 +213,11 @@ Output JSON only.";
                     }
                 };
 
-                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent?key={apiKey}";
-                var response = await client.PostAsJsonAsync(url, requestBody, ct);
+                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent";
+                using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
+                providerRequest.Headers.Add("x-goog-api-key", apiKey);
+                providerRequest.Content = JsonContent.Create(requestBody);
+                using var response = await client.SendAsync(providerRequest, ct);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -229,15 +227,7 @@ Output JSON only.";
                         candidates[0].TryGetProperty("content", out var content) &&
                         content.TryGetProperty("parts", out var parts))
                     {
-                        string? rawJson = null;
-                        foreach (var part in parts.EnumerateArray())
-                        {
-                            if (part.TryGetProperty("text", out var textEl))
-                            {
-                                rawJson = textEl.GetString();
-                                break;
-                            }
-                        }
+                        var rawJson = ReadAnswerParts(parts);
 
                         if (!string.IsNullOrWhiteSpace(rawJson))
                         {
@@ -260,6 +250,11 @@ Output JSON only.";
         var fallbackParsed = ParseRecordLocally(text, currency);
         return ApiResult<AiParseRecordResponse>.Ok(fallbackParsed);
     }
+
+    private static string ReadAnswerParts(JsonElement parts) => string.Join("\n", parts.EnumerateArray()
+        .Where(part => !(part.TryGetProperty("thought", out var thought) && thought.ValueKind == JsonValueKind.True))
+        .Where(part => part.TryGetProperty("text", out var text) && text.ValueKind == JsonValueKind.String)
+        .Select(part => part.GetProperty("text").GetString()));
 
     public async Task<ApiResult<AiInterpretedAction>> InterpretActionAsync(
         Guid tenantId, string text, AiUiContext? uiContext = null, CancellationToken ct = default)

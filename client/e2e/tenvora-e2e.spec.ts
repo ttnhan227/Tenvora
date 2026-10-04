@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const now = "2026-09-25T10:00:00Z";
+const now = new Date().toISOString();
 
 function customer(overrides: Record<string, unknown> = {}) {
   return {
@@ -25,10 +25,12 @@ async function businessFixture(page: Page) {
   const expenses: any[] = [];
 
   await page.addInitScript(() => {
-    localStorage.setItem("accessToken", "browser-test-token");
+    // API calls are mocked, but the real auth guard still checks token expiry.
+    const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
+    localStorage.setItem("accessToken", `test.${payload}.test-signature`);
     localStorage.setItem("user", JSON.stringify({
       id: "operator", tenantId: "tenant-1", role: "OperationsManager",
-      email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND",
+      email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true,
     }));
     localStorage.setItem("theme", "light");
     localStorage.setItem("tenvora_lang", "en");
@@ -40,7 +42,7 @@ async function businessFixture(page: Page) {
     const method = request.method();
 
     if (path.endsWith("/auth/me")) {
-      await route.fulfill({ json: { success: true, data: { id: "operator", tenantId: "tenant-1", role: "OperationsManager", email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND" } } });
+      await route.fulfill({ json: { success: true, data: { id: "operator", tenantId: "tenant-1", role: "OperationsManager", email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true } } });
       return;
     }
     if (path.endsWith("/business-dashboard")) {
@@ -80,7 +82,8 @@ async function businessFixture(page: Page) {
       return;
     }
     if (path.endsWith("/sales") && method === "GET") {
-      await route.fulfill({ json: { success: true, data: sales } });
+      const paged = new URL(request.url()).searchParams.has("page");
+      await route.fulfill({ json: { success: true, data: paged ? { items: sales, totalCount: sales.length, page: 1, pageSize: 20 } : sales } });
       return;
     }
     if (path.endsWith("/sales") && method === "POST") {
@@ -259,6 +262,7 @@ test.describe("Tenvora 2.0 golden workflow", () => {
   test("a completed customer action stays closed after refreshing chat", async ({ page }) => {
     await businessFixture(page);
     let executed = false;
+    let conversationCreated = false;
     let confirmationBody: Record<string, unknown> | undefined;
 
     await page.route("**/api/ai/assistant/**", async (route) => {
@@ -266,10 +270,11 @@ test.describe("Tenvora 2.0 golden workflow", () => {
       const path = new URL(request.url()).pathname;
 
       if (path.endsWith("/conversations") && request.method() === "GET") {
-        await route.fulfill({ json: { success: true, data: [] } });
+        await route.fulfill({ json: { success: true, data: conversationCreated ? [{ id: "conversation-1", title: "add a customer", createdAt: now, updatedAt: now, messageCount: 2 }] : [] } });
         return;
       }
       if (path.endsWith("/agent-chat") && request.method() === "POST") {
+        conversationCreated = true;
         await route.fulfill({ json: {
           success: true,
           data: {
@@ -349,7 +354,7 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await composer.press("Enter");
 
     await expect(page.getByText("Create a customer?", { exact: true }).first()).toBeVisible();
-    await expect(page.locator("strong", { hasText: "Create a customer?" })).toBeVisible();
+    await expect(page.getByText("Customer Details", { exact: true })).toBeVisible();
     await page.getByPlaceholder(/Enter customer name/i).fill("Anh Minh");
     await page.getByPlaceholder("Phone...").fill("0901234567");
     await page.getByRole("button", { name: "Save & Create Customer" }).click();

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -78,13 +79,6 @@ export function AiChatDrawer({
     createdAt: new Date().toISOString(),
   };
 
-  // Load conversations on drawer open
-  useEffect(() => {
-    if (open) {
-      loadConversations(getSyncedAiConversationId());
-    }
-  }, [open]);
-
   useEffect(() => {
     if (!open || !draftPrompt) return;
     setInput(draftPrompt);
@@ -96,7 +90,7 @@ export function AiChatDrawer({
     endRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages, isBusy]);
 
-  const loadConversations = async (preferredId?: string | null) => {
+  const loadConversations = useLatestCallback(async (preferredId?: string | null) => {
     const res = await aiAssistantService.getConversations();
     if (res.success && res.data) {
       setConversations(res.data);
@@ -119,7 +113,7 @@ export function AiChatDrawer({
     } else {
       toast.error(res.message || (isVietnamese ? "Không thể tải danh sách cuộc trò chuyện." : "Could not load conversations."));
     }
-  };
+  });
 
   const loadConversation = async (id: string, broadcast = true) => {
     setIsBusy(true);
@@ -145,7 +139,11 @@ export function AiChatDrawer({
     if (broadcast) publishAiConversationSync({ activeConversationId: null, reason: "new", source: syncSource });
   };
 
-  useEffect(() => subscribeToAiConversationSync((event) => {
+  useEffect(() => {
+    if (open) void loadConversations(getSyncedAiConversationId());
+  }, [open, loadConversations]);
+
+  const onConversationSync = useLatestCallback((event: Parameters<Parameters<typeof subscribeToAiConversationSync>[0]>[0]) => {
     if (event.source === syncSource) return;
     setActiveConversationId(event.activeConversationId);
     if (open) {
@@ -155,7 +153,8 @@ export function AiChatDrawer({
     } else {
       setMessages([]);
     }
-  }), [open, syncSource]);
+  });
+  useEffect(() => subscribeToAiConversationSync(onConversationSync), [onConversationSync]);
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

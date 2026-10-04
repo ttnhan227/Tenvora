@@ -1,9 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export const GOOGLE_CLIENT_ID =
-  (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() ?? "";
-
-export const isGoogleAuthEnabled = Boolean(GOOGLE_CLIENT_ID);
+import { GOOGLE_CLIENT_ID } from "@/lib/googleAuthConfig";
 
 export type GoogleCredentialResponse = { credential: string };
 
