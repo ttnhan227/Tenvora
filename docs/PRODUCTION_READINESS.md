@@ -13,6 +13,7 @@ The actionable repository gaps were repaired. A production launch still needs ac
 - Verified synthetic PostgreSQL backup/restore. Added a deployment/recovery runbook.
 - Mobile and manual Render workflows now require backend/web/PostgreSQL/browser verification. Pushes produce APK artifacts, not public releases. Mobile tests run before building.
 - Configured GitHub Android signing secrets securely from the existing local upload keystore. Signed APKs must match the checked-in public certificate fingerprint. Publication requires signing, HTTPS, and Google configuration.
+- GitHub's [verified APK build](https://github.com/ttnhan227/Tenvora/actions/runs/37198621589) passed all gates, built the release APK, and confirmed that its signing certificate matches the distribution key. The APK is a workflow artifact; this run did not publish a GitHub Release. The [CI pipeline](https://github.com/ttnhan227/Tenvora/actions/runs/37198621585) also passed.
 - Gemini credentials use request headers, not URLs. Answer handling excludes internal reasoning and combines text parts; provider error bodies are not logged by the agent.
 - The currently deployed backend readiness endpoint returned HTTP 200.
 
