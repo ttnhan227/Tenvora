@@ -106,19 +106,33 @@ jobs:
           path: dist/tenvora-mobile.apk
           retention-days: 30
 
+      - name: Generate Product Release Notes
+        run: |
+          cat << 'EOF' > release_body.md
+          ## What's New in Tenvora Mobile
+
+          ### ✨ Key Features
+          * **Fast Sales & Expense Entry:** Record counter sales and cash payments in seconds with automatic debt tracking.
+          * **Camera Receipt Capture:** Photograph supplier receipts and paper invoices to attach them directly to your permanent records.
+          * **Customer & Supplier Balances:** Check who owes what in real time, view purchase history, and log payments on the go.
+          * **Instant Web & Cloud Sync:** Transactions logged on your phone sync instantly with your web dashboard and ledger.
+          * **Bilingual (English & Tiếng Việt):** Native VND currency formatting, Vietnamese phone numbers, and language toggle.
+
+          ### 📱 Download & Install
+          Download the latest Android APK below and tap to install or update on your device:
+          👉 **[Download tenvora-mobile.apk](https://github.com/${{ github.repository }}/releases/download/mobile-latest/tenvora-mobile.apk)**
+
+          ---
+          ### 🛠️ What's Changed
+          EOF
+          git log -n 6 --no-merges --pretty=format:"* %s" >> release_body.md
+
       - name: Publish to GitHub Releases (mobile-latest)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-latest
-          name: "Tenvora Mobile (Latest Android Build)"
-          body: |
-            ### Tenvora Mobile Latest Release
-            - **Commit:** `${{ github.sha }}`
-            - **Branch:** `${{ github.ref_name }}`
-            - **Updated at:** ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-
-            #### Download
-            - **Direct APK:** [tenvora-mobile.apk](https://github.com/${{ github.repository }}/releases/download/mobile-latest/tenvora-mobile.apk)
+          name: "Tenvora Mobile for Android"
+          body_path: release_body.md
           draft: false
           prerelease: false
           files: dist/tenvora-mobile.apk
