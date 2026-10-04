@@ -118,10 +118,6 @@ jobs:
           * **Instant Web & Cloud Sync:** Transactions logged on your phone sync instantly with your web dashboard and ledger.
           * **Bilingual (English & Tiếng Việt):** Native VND currency formatting, Vietnamese phone numbers, and language toggle.
 
-          ### 📱 Download & Install
-          Download the latest Android APK below and tap to install or update on your device:
-          👉 **[Download tenvora-mobile.apk](https://github.com/${{ github.repository }}/releases/download/mobile-latest/tenvora-mobile.apk)**
-
           ---
           ### 🛠️ What's Changed
           EOF
