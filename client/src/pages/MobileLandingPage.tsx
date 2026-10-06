@@ -1,3 +1,4 @@
+import { APK_DOWNLOAD_URL, MOBILE_INSTALL_URL, PLAY_STORE_URL } from "@/lib/mobileDownloads";
 import { Link } from "react-router-dom";
 import {
   Download,
@@ -15,13 +16,14 @@ import {
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
+import { QrCodeCard } from "@/components/mobile/QrCodeCard";
 import { GooglePlayButton } from "@/components/mobile/GooglePlayButton";
 import { PhoneMockup } from "@/components/mobile/PhoneMockup";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function MobileLandingPage() {
   const { isVietnamese } = useLanguage();
-  const downloadApkUrl = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk";
+  const downloadApkUrl = APK_DOWNLOAD_URL;
 
   const mobileFeatures = [
     {
@@ -139,18 +141,6 @@ export default function MobileLandingPage() {
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button
-                  asChild
-                  size="lg"
-                  className="h-14 px-6 text-base font-bold shadow-md hover:shadow-lg active:scale-[0.98]"
-                >
-                  <a href={downloadApkUrl} download="tenvora-mobile.apk">
-                    <Download className="mr-2 h-5 w-5" />
-                    {isVietnamese ? "Tải file APK Android" : "Download Android APK"}
-                  </a>
-                </Button>
-
-                {/* Google Play Store Badge (with Coming Soon dialog) */}
                 <GooglePlayButton downloadUrl={downloadApkUrl} />
               </div>
 
@@ -166,7 +156,7 @@ export default function MobileLandingPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
-                  {isVietnamese ? "Google Play sắp ra mắt" : "Google Play coming soon"}
+                  {PLAY_STORE_URL ? (isVietnamese ? "Có trên Google Play" : "Available on Google Play") : (isVietnamese ? "APK chính thức có sẵn" : "Official APK available")}
                 </span>
               </div>
             </div>
@@ -286,9 +276,9 @@ export default function MobileLandingPage() {
                   size="lg"
                   className="border-card bg-card text-foreground hover:bg-card/90 font-bold"
                 >
-                  <a href={downloadApkUrl} download="tenvora-mobile.apk">
+                  <a href={MOBILE_INSTALL_URL} download={PLAY_STORE_URL ? undefined : "tenvora-mobile.apk"}>
                     <Download className="mr-2 h-4 w-4" />
-                    {isVietnamese ? "Tải file APK ngay" : "Download APK Now"}
+                    {PLAY_STORE_URL ? (isVietnamese ? "Tải trên Google Play" : "Get it on Google Play") : (isVietnamese ? "Tải file APK ngay" : "Download APK Now")}
                   </a>
                 </Button>
                 <Button
@@ -307,6 +297,7 @@ export default function MobileLandingPage() {
         </section>
       </main>
 
+      <section className="mx-auto max-w-sm px-5 py-10"><QrCodeCard /></section>
       <Footer />
     </div>
   );

@@ -1,3 +1,4 @@
+import { APK_DOWNLOAD_URL } from "@/lib/mobileDownloads";
 import { Link } from "react-router-dom";
 import { Smartphone, Download, ShieldCheck, Heart, ArrowUpRight } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -119,7 +120,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk"
+                  href={APK_DOWNLOAD_URL}
                   download="tenvora-mobile.apk"
                   className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                 >

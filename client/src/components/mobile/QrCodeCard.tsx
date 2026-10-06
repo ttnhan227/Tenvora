@@ -1,3 +1,4 @@
+import { MOBILE_INSTALL_URL, PLAY_STORE_URL } from "@/lib/mobileDownloads";
 import { useState, useEffect } from "react";
 import { QrCode, Copy, Check, Smartphone, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ interface QrCodeCardProps {
 
 export function QrCodeCard({
   className = "",
-  apkPath = "https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk",
+  apkPath = MOBILE_INSTALL_URL,
 }: QrCodeCardProps) {
   const [downloadUrl, setDownloadUrl] = useState(apkPath);
   const [copied, setCopied] = useState(false);
@@ -52,7 +53,7 @@ export function QrCodeCard({
         Scan to Install on Mobile
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Point your phone camera at this QR code to download the APK directly.
+        {PLAY_STORE_URL ? "Scan to open Tenvora on Google Play." : "Scan to download the official Android APK."}
       </p>
 
       {/* QR Code Container */}
@@ -90,11 +91,11 @@ export function QrCodeCard({
 
         <a
           href={apkPath}
-          download="tenvora-mobile.apk"
+          download={PLAY_STORE_URL ? undefined : "tenvora-mobile.apk"}
           className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline py-1"
         >
           <ArrowDownToLine className="h-3.5 w-3.5" />
-          Direct Download from Browser
+          {PLAY_STORE_URL ? "Open Google Play" : "Direct APK download"}
         </a>
       </div>
     </div>

@@ -1,3 +1,5 @@
+import { PLAY_STORE_URL } from "@/lib/mobileDownloads";
+import { GooglePlayButton } from "@/components/mobile/GooglePlayButton";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -715,12 +717,7 @@ export default function Index() {
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" size="lg" className="font-semibold">
-                      <a href="https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk" download="tenvora-mobile.apk">
-                        <Download className="mr-2 h-4 w-4 text-primary" />
-                        <span>{isVietnamese ? "Tải trực tiếp file APK" : "Direct APK Download"}</span>
-                      </a>
-                    </Button>
+                    <GooglePlayButton />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground pt-2">
@@ -730,7 +727,7 @@ export default function Index() {
                     </span>
                     <span className="flex items-center gap-1.5 font-medium">
                       <Check className="h-4 w-4 text-[hsl(var(--success))]" />
-                      {isVietnamese ? "Phiên bản Google Play Store sắp ra mắt" : "Google Play Store release coming soon"}
+                      {PLAY_STORE_URL ? (isVietnamese ? "Có trên Google Play" : "Available on Google Play") : (isVietnamese ? "Cài đặt trực tiếp trên Android" : "Install directly on Android")}
                     </span>
                   </div>
                 </div>

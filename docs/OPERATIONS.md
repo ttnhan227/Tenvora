@@ -1,6 +1,10 @@
 # Deployment and recovery
 
-Pushes run checks and produce build artifacts. Public APK publication and the GitHub Render deploy hook require manually starting their workflows. Render's own auto-deploy setting is separate: disable it in the Render dashboard if every deployment should wait for your approval.
+Pushes run checks and produce build artifacts. Publishing a GitHub release also runs the verified APK workflow and replaces the public `mobile-latest` installer and checksum; alternatively run `Build & Release Mobile APK` with `publish=true`. Pushes alone do not publish APKs. The existing Render services auto-deploy backend/frontend changes from `main`; the separate GitHub Render deploy-hook workflow requires a configured hook.
+
+Landing-page buttons use the stable public APK release URL, so publishing an APK updates downloads on both local and hosted sites without copying an installer into the website. Once the Play listing is publicly available, set `VITE_GOOGLE_PLAY_URL=https://play.google.com/store/apps/details?id=com.tenvora.app` in Render's frontend build environment and the local `.env`, then rebuild. The primary install button and QR code switch to Play together; direct APK download remains available. Invalid or unrelated store URLs fall back to the APK. Until configured, the site offers the real APK directly without a placeholder Play dialog.
+
+For local Docker services, run `./scripts/update-local.ps1` to rebuild and start the backend/frontend with health checks while preserving the database volume. Add `-Pull` to pull with fast-forward only before rebuilding. A GitHub push cannot rebuild a process running on your computer. This script does not delete volumes or reset database data.
 
 Before a public APK release, configure `MOBILE_API_BASE_URL`, `GOOGLE_SERVER_CLIENT_ID`, `ANDROID_KEY_PROPERTIES`, and `ANDROID_KEYSTORE_BASE64` in GitHub Actions. Keep the same upload keystore for updates. Verify the signed certificate's SHA fingerprint in Google's Android OAuth client. Release publication fails if signing secrets or sign-in configuration are missing.
 
