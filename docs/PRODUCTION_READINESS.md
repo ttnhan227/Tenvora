@@ -11,10 +11,12 @@ The Play preparation audit adds recovery and store-readiness fixes while retaini
 - Added reporting for assistant replies with tenant/ownership checks, persisted review records and an operations handoff.
 - Temporary refresh failures preserve credentials; late refreshes cannot restore a signed-out session. The device stores each token pair atomically. Identical ambiguous financial retries reuse a durable request ID, including across app restarts.
 - Fixed the Play bundle command's configuration parsing. Added a manual signed AAB workflow with bundle validation, certificate matching, API/permission checks and 16 KB native-library checks. No Play publishing credentials or publication steps are included.
-- Fixed the live Render website's missing React rewrite (`/*` to `/index.html`); direct routes now return HTTP 200. The new pages and API endpoints require deployment of these source changes.
+- Fixed the live Render website's missing React rewrite (`/*` to `/index.html`); direct routes now return HTTP 200. The matching website and backend deployed commit `00a8759`. The published policy renders correctly; a disposable live account passed registration/profile sync, exact-email deletion, invalidation of its prior token and rejection of subsequent password sign-in. The fixture was erased.
 - Removed the unverified landing-page uptime percentage. Added privacy/account-deletion links to web Settings and disclosure on registration.
 
 Fresh Play-installed Google sign-in, physical-device acceptance, Play pre-launch results and production access remain owner steps. The public support email still needs owner configuration. Previously deferred production backup scheduling and alerts remain outstanding.
+
+The local signed bundle passed bundletool validation, certificate matching, version/package/API/permissions checks, and 16 KB packaging and ELF alignment for eight 64-bit native libraries. Its embedded API, Google client ID and policy URL match production. Version is `1.0.0`, version code `1`, SHA-256 `9bb7cb1986586943c0caeea44f5cd97912aee0c7bb92d4b717c22ad18cdb11d5`, size 55,191,284 bytes. CI passed for `00a8759`; the dedicated bundle workflow provides a reproducible checked artifact separately.
 
 ## Previous acceptance — 4 October 2026
 
