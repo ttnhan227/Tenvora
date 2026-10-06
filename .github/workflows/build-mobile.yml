@@ -24,10 +24,11 @@ on:
 
 concurrency:
   group: mobile-release-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify-product:
+    if: github.event_name != 'release' || !github.event.release.prerelease
     uses: ./.github/workflows/verify-product.yml
   build-apk:
     name: Build & Publish Android APK
@@ -203,16 +204,13 @@ jobs:
 
       - name: Publish to GitHub Releases (mobile-latest)
         if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: mobile-latest
-          name: "Tenvora Mobile for Android"
-          body_path: release_body.md
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
-          files: |
-            dist/tenvora-mobile.apk
-            dist/tenvora-mobile.apk.sha256
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view mobile-latest >/dev/null 2>&1; then
+            gh release upload mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 --clobber
+            gh release edit mobile-latest --title "Tenvora Mobile for Android" --notes-file release_body.md
+          else
+            gh release create mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 --title "Tenvora Mobile for Android" --notes-file release_body.md
+          fi

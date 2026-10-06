@@ -1,3 +1,4 @@
+import { useLanguage } from "@/contexts/LanguageContext";
 import { MOBILE_INSTALL_URL, PLAY_STORE_URL } from "@/lib/mobileDownloads";
 import { useState, useEffect } from "react";
 import { QrCode, Copy, Check, Smartphone, ArrowDownToLine } from "lucide-react";
@@ -13,6 +14,7 @@ export function QrCodeCard({
   className = "",
   apkPath = MOBILE_INSTALL_URL,
 }: QrCodeCardProps) {
+  const { isVietnamese } = useLanguage();
   const [downloadUrl, setDownloadUrl] = useState(apkPath);
   const [copied, setCopied] = useState(false);
 
@@ -27,10 +29,10 @@ export function QrCodeCard({
     try {
       await navigator.clipboard.writeText(downloadUrl);
       setCopied(true);
-      toast.success("Download link copied to clipboard!");
+      toast.success(isVietnamese ? "Đã sao chép liên kết cài đặt." : "Install link copied.");
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      toast.error("Could not copy link to clipboard.");
+      toast.error(isVietnamese ? "Không thể sao chép liên kết." : "Could not copy link.");
     }
   };
 
@@ -50,10 +52,10 @@ export function QrCodeCard({
       </div>
 
       <h3 className="mt-3 text-base font-bold text-foreground">
-        Scan to Install on Mobile
+        {isVietnamese ? "Quét để cài trên điện thoại" : "Scan to install on your phone"}
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        {PLAY_STORE_URL ? "Scan to open Tenvora on Google Play." : "Scan to download the official Android APK."}
+        {PLAY_STORE_URL ? (isVietnamese ? "Quét để mở Tenvora trên Google Play." : "Scan to open Tenvora on Google Play.") : (isVietnamese ? "Quét để tải APK Android chính thức." : "Scan to download the official Android APK.")}
       </p>
 
       {/* QR Code Container */}
@@ -79,12 +81,12 @@ export function QrCodeCard({
           {copied ? (
             <>
               <Check className="mr-1.5 h-3.5 w-3.5 text-[hsl(var(--success))]" />
-              Link Copied!
+              {isVietnamese ? "Đã sao chép!" : "Link copied!"}
             </>
           ) : (
             <>
               <Copy className="mr-1.5 h-3.5 w-3.5" />
-              Copy Download Link
+              {isVietnamese ? "Sao chép liên kết" : "Copy install link"}
             </>
           )}
         </Button>
@@ -95,7 +97,7 @@ export function QrCodeCard({
           className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline py-1"
         >
           <ArrowDownToLine className="h-3.5 w-3.5" />
-          {PLAY_STORE_URL ? "Open Google Play" : "Direct APK download"}
+          {PLAY_STORE_URL ? (isVietnamese ? "Mở Google Play" : "Open Google Play") : (isVietnamese ? "Tải APK trực tiếp" : "Direct APK download")}
         </a>
       </div>
     </div>

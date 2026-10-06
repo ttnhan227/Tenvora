@@ -63,14 +63,18 @@ export default function MobileLandingPage() {
     },
     {
       icon: ShieldCheck,
-      title: isVietnamese ? "Riêng tư, bảo mật & cục bộ" : "Private, Secure & Local-First",
+      title: isVietnamese ? "Bảo mật tài khoản và doanh nghiệp" : "Secure account and workspace access",
       description: isVietnamese
-        ? "Mã xác thực và phiên làm việc được mã hóa an toàn trên thiết bị với bảo mật sinh trắc học. Không quảng cáo, không chia sẻ dữ liệu."
-        : "Sensitive tokens and session states are safely encrypted on-device with secure biometric storage. No ads, no trackers, no shared data.",
+        ? "Thông tin đăng nhập được lưu bảo mật trên thiết bị. Sổ sách đồng bộ qua máy chủ và thành viên được cấp quyền có thể truy cập."
+        : "Sign-in credentials are stored securely on your device. Business records sync through the hosted service and are available to authorized workspace members.",
     },
   ];
 
-  const installSteps = [
+  const installSteps = PLAY_STORE_URL ? [
+    { step: "1", title: isVietnamese ? "Mở Google Play" : "Open Google Play", desc: isVietnamese ? "Nhấn nút Google Play hoặc quét mã QR để mở trang Tenvora." : "Tap the Google Play button or scan the QR code to open Tenvora's listing." },
+    { step: "2", title: isVietnamese ? "Cài đặt Tenvora" : "Install Tenvora", desc: isVietnamese ? "Nhấn Cài đặt trong Google Play, rồi mở ứng dụng." : "Tap Install in Google Play, then open the app." },
+    { step: "3", title: isVietnamese ? "Đăng nhập" : "Sign in", desc: isVietnamese ? "Dùng email hoặc tài khoản Google để truy cập sổ sách của bạn." : "Use your email or Google account to access your business records." },
+  ] : [
     {
       step: "1",
       title: isVietnamese ? "Tải file APK Android" : "Download the Android APK",
@@ -206,7 +210,7 @@ export default function MobileLandingPage() {
             <div className="max-w-2xl mx-auto text-center mb-12">
               <p className="micro-label text-primary">{isVietnamese ? "Cài đặt nhanh" : "Quick Setup"}</p>
               <h2 className="display-type mt-2 text-3xl font-bold sm:text-4xl">
-                {isVietnamese ? "Cách cài đặt file APK trên Android" : "How to install the APK on Android"}
+                {PLAY_STORE_URL ? (isVietnamese ? "Cài đặt từ Google Play" : "Install from Google Play") : (isVietnamese ? "Cách cài đặt file APK trên Android" : "How to install the APK on Android")}
               </h2>
               <p className="mt-3 text-sm text-muted-foreground sm:text-base">
                 {isVietnamese
@@ -244,8 +248,8 @@ export default function MobileLandingPage() {
                   </h5>
                   <p className="mt-1 text-xs leading-relaxed opacity-90">
                     {isVietnamese
-                      ? "Android hiển thị lời nhắc bảo vệ tiêu chuẩn bất cứ khi nào bạn cài đặt ứng dụng trực tiếp từ file APK bên ngoài kho ứng dụng Google Play. File APK Tenvora này được đóng gói chính thức từ hệ thống mã nguồn dự án, an toàn tuyệt đối và không chứa quảng cáo hay mã độc."
-                      : "Android displays a standard protection prompt whenever you install an app outside the Google Play Store (known as side-loading). This Tenvora APK is officially built from our open source repository and contains no third-party ads or spyware."}
+                      ? "Android hiển thị lời nhắc bảo vệ tiêu chuẩn bất cứ khi nào bạn cài đặt ứng dụng trực tiếp từ file APK bên ngoài kho ứng dụng Google Play. File APK Tenvora này được đóng gói chính thức từ hệ thống mã nguồn dự án, có chữ ký phát hành được kiểm tra. Chỉ cài từ liên kết chính thức này."
+                      : "Android displays a standard protection prompt whenever you install an app outside the Google Play Store (known as side-loading). This Tenvora APK is officially built from our open source repository and has a verified distribution signature. Install only from this official download link."}
                   </p>
                 </div>
               </div>

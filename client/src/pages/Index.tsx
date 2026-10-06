@@ -711,13 +711,13 @@ export default function Index() {
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <Button asChild size="lg" className="font-bold">
+                    <GooglePlayButton />
+                    <Button asChild variant="outline" size="lg" className="font-bold">
                       <Link to="/mobile">
                         <span>{isVietnamese ? "Khám phá ứng dụng Mobile" : "Explore Mobile App"}</span>
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Link>
                     </Button>
-                    <GooglePlayButton />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground pt-2">
