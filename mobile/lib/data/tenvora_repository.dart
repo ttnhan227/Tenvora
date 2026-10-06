@@ -1,4 +1,7 @@
 import 'package:uuid/uuid.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/network/api_client.dart';
 import '../domain/models.dart';
@@ -9,7 +12,84 @@ class TenvoraRepository {
   final ApiClient _api;
   static const _uuid = Uuid();
 
-  Map<String, dynamic> get _mutationHeaders => {'Idempotency-Key': _uuid.v4()};
+  final Map<String, String> _pendingWrites = {};
+  Future<SharedPreferences>? _pendingStore;
+  Future<SharedPreferences> _loadPending() => _pendingStore ??= _readPending();
+  Future<SharedPreferences> _readPending() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString('tenvora_pending_writes');
+    if (stored != null) {
+      final entries = jsonDecode(stored) as Map<String, dynamic>;
+      _pendingWrites.addAll(
+        entries.map((key, value) => MapEntry(key, value as String)),
+      );
+    }
+    return prefs;
+  }
+
+  Object? _canonical(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.cast<String>().toList()..sort();
+      return {for (final key in keys) key: _canonical(value[key])};
+    }
+    if (value is List) return value.map(_canonical).toList();
+    return value;
+  }
+
+  Future<dynamic> _financialPost(String path, {required Object? data}) async {
+    final scope = _api.sessionScope;
+    final fingerprint =
+        '$scope:${sha256.convert(utf8.encode('$path:${jsonEncode(_canonical(data))}'))}';
+    final prefs = await _loadPending();
+    final key = _pendingWrites.putIfAbsent(fingerprint, _uuid.v4);
+    if (!await prefs.setString(
+      'tenvora_pending_writes',
+      jsonEncode(_pendingWrites),
+    )) {
+      throw const ApiFailure(
+        'Could not save a safe retry ID. Please try again.',
+      );
+    }
+    if (_api.sessionScope != scope) {
+      throw const ApiFailure('Your account changed. Open the form again.');
+    }
+    try {
+      final result = await _api.post(
+        path,
+        data: data,
+        headers: {'Idempotency-Key': key},
+      );
+      _pendingWrites.remove(fingerprint);
+      try {
+        await prefs.setString(
+          'tenvora_pending_writes',
+          jsonEncode(_pendingWrites),
+        );
+      } catch (_) {
+        // A confirmed server success must not be presented as an uncertain write.
+        // A stale persisted retry ID remains safe through server idempotency.
+      }
+      return result;
+    } on ApiFailure catch (failure) {
+      final status = failure.statusCode;
+      if (status != null &&
+          status >= 400 &&
+          status < 500 &&
+          status != 408 &&
+          status != 429) {
+        _pendingWrites.remove(fingerprint);
+        await prefs.setString(
+          'tenvora_pending_writes',
+          jsonEncode(_pendingWrites),
+        );
+        rethrow;
+      }
+      throw ApiFailure(
+        'Could not confirm whether this was saved. Check your records; retrying the same details uses the original request ID.',
+        statusCode: status,
+      );
+    }
+  }
 
   List<Json> _items(Json body, [String key = 'value']) {
     final raw = body[key];
@@ -49,6 +129,13 @@ class TenvoraRepository {
 
   Future<UserProfile> profile() async =>
       UserProfile.fromJson(await _api.get('/auth/me'));
+
+  Future<void> deleteAccount(String email) async {
+    await _api.post(
+      '/account/delete',
+      data: {'confirmationEmail': email.trim()},
+    );
+  }
 
   Future<void> logout(String? refreshToken) async {
     if (refreshToken != null) {
@@ -124,8 +211,8 @@ class TenvoraRepository {
     query: {'from': from?.toIso8601String(), 'to': to?.toIso8601String()},
   );
 
-  Future<Json> recordCustomerPayment(String id, Json input) async => await _api
-      .post('/customers/$id/payments', data: input, headers: _mutationHeaders);
+  Future<Json> recordCustomerPayment(String id, Json input) async =>
+      await _financialPost('/customers/$id/payments', data: input);
 
   Future<PagedResult<Product>> products({
     String search = '',
@@ -190,25 +277,18 @@ class TenvoraRepository {
       ).map(Sale.fromJson).toList();
   Future<Sale> sale(String id) async =>
       Sale.fromJson(await _api.get('/sales/$id'));
-  Future<Sale> createSale(Json input) async => Sale.fromJson(
-    await _api.post('/sales', data: input, headers: _mutationHeaders),
-  );
-  Future<Sale> recordSalePayment(String id, Json input) async => Sale.fromJson(
-    await _api.post(
-      '/sales/$id/payments',
-      data: input,
-      headers: _mutationHeaders,
-    ),
-  );
+  Future<Sale> createSale(Json input) async =>
+      Sale.fromJson(await _financialPost('/sales', data: input));
+  Future<Sale> recordSalePayment(String id, Json input) async =>
+      Sale.fromJson(await _financialPost('/sales/$id/payments', data: input));
   Future<Sale> reverseSalePayment(
     String saleId,
     String paymentId,
     String reason,
   ) async => Sale.fromJson(
-    await _api.post(
+    await _financialPost(
       '/sales/$saleId/payments/$paymentId/reverse',
       data: {'reason': reason},
-      headers: _mutationHeaders,
     ),
   );
   Future<Sale> voidSale(
@@ -216,10 +296,9 @@ class TenvoraRepository {
     required bool reversePayments,
     String? reason,
   }) async => Sale.fromJson(
-    await _api.post(
+    await _financialPost(
       '/sales/$id/void',
       data: {'reversePayments': reversePayments, 'reason': reason},
-      headers: _mutationHeaders,
     ),
   );
 
@@ -285,26 +364,20 @@ class TenvoraRepository {
       ).map(Purchase.fromJson).toList();
   Future<Purchase> purchase(String id) async =>
       Purchase.fromJson(await _api.get('/purchases/$id'));
-  Future<Purchase> createPurchase(Json input) async => Purchase.fromJson(
-    await _api.post('/purchases', data: input, headers: _mutationHeaders),
-  );
+  Future<Purchase> createPurchase(Json input) async =>
+      Purchase.fromJson(await _financialPost('/purchases', data: input));
   Future<Purchase> recordPurchasePayment(String id, Json input) async =>
       Purchase.fromJson(
-        await _api.post(
-          '/purchases/$id/payments',
-          data: input,
-          headers: _mutationHeaders,
-        ),
+        await _financialPost('/purchases/$id/payments', data: input),
       );
   Future<Purchase> reversePurchasePayment(
     String purchaseId,
     String paymentId,
     String reason,
   ) async => Purchase.fromJson(
-    await _api.post(
+    await _financialPost(
       '/purchases/$purchaseId/payments/$paymentId/reverse',
       data: {'reason': reason},
-      headers: _mutationHeaders,
     ),
   );
   Future<Purchase> voidPurchase(
@@ -312,10 +385,9 @@ class TenvoraRepository {
     required bool reversePayments,
     String? reason,
   }) async => Purchase.fromJson(
-    await _api.post(
+    await _financialPost(
       '/purchases/$id/void',
       data: {'reversePayments': reversePayments, 'reason': reason},
-      headers: _mutationHeaders,
     ),
   );
 
@@ -343,13 +415,8 @@ class TenvoraRepository {
       _items(
         await _api.get('/business-expenses', query: {'from': from, 'to': to}),
       ).map(Expense.fromJson).toList();
-  Future<Expense> createExpense(Json input) async => Expense.fromJson(
-    await _api.post(
-      '/business-expenses',
-      data: input,
-      headers: _mutationHeaders,
-    ),
-  );
+  Future<Expense> createExpense(Json input) async =>
+      Expense.fromJson(await _financialPost('/business-expenses', data: input));
   Future<Expense> updateExpense(String id, Json input) async =>
       Expense.fromJson(await _api.put('/business-expenses/$id', data: input));
   Future<void> deleteExpense(String id) async {
@@ -361,6 +428,13 @@ class TenvoraRepository {
         '/ai/assistant/agent-chat',
         data: {'message': message, 'conversationId': conversationId},
       );
+  Future<void> reportAiMessage(String id, String reason) async {
+    await _api.post(
+      '/ai-feedback/messages/$id/report',
+      data: {'reason': reason},
+    );
+  }
+
   Future<List<Json>> conversations() async =>
       _items(await _api.get('/ai/assistant/conversations'));
   Future<Json> conversation(String id) async =>

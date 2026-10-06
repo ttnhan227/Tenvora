@@ -21,13 +21,13 @@ export default function Footer() {
             <div className="flex items-center gap-2 pt-2">
               <span className="flex h-2 w-2 rounded-full bg-[hsl(var(--success))]" />
               <span className="text-xs font-semibold text-muted-foreground">
-                {isVietnamese ? "Hệ thống hoạt động bình thường · Sẵn sàng 99.98%" : "All Systems Operational · 99.98% Uptime"}
+                {isVietnamese ? "Sổ sách dùng chung trên Android và web" : "Shared business records on Android and web"}
               </span>
             </div>
             <div className="pt-2 flex flex-wrap gap-2 text-xs">
               <span className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-background/50 px-2.5 py-1 font-medium text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                PostgreSQL RLS Protected
+                {isVietnamese ? "Phân quyền theo doanh nghiệp" : "Workspace access controls"}
               </span>
               <span className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-background/50 px-2.5 py-1 font-medium text-muted-foreground">
                 Android & Web Cloud Sync
@@ -41,6 +41,8 @@ export default function Footer() {
               {isVietnamese ? "Sản phẩm" : "Product"}
             </h4>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
+              <li><Link to="/privacy" className="hover:underline">{isVietnamese ? "Quyền riêng tư" : "Privacy"}</Link></li>
+              <li><Link to="/delete-account" className="hover:underline">{isVietnamese ? "Xóa tài khoản" : "Delete account"}</Link></li>
               <li>
                 <a href="#features" className="hover:text-foreground transition-colors">
                   {isVietnamese ? "Sổ bán hàng & POS" : "Sales & POS Ledger"}

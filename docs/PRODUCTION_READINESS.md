@@ -1,4 +1,22 @@
-# Tenvora readiness — 4 October 2026
+# Tenvora readiness
+
+## Google Play preparation — 6 October 2026
+
+The Play preparation audit adds recovery and store-readiness fixes while retaining version 1.0.0. It does not publish to Google Play. Follow [the upload handoff](GOOGLE_PLAY_HANDOFF.md) before submitting.
+
+- Backend: 107 tests passed, including isolated PostgreSQL deletion, tenant boundaries, financial concurrency and preservation of a team's final active administrator. One opt-in live AI provider test was skipped in this run.
+- Web: 69 tests and all seven browser workflows passed. Lint and the production build passed. Updated `source-map-js`; npm audit reports no known vulnerabilities.
+- Mobile: analysis reports no issues and all 24 tests passed. Coverage includes secure-session migration, interrupted writes and logout races, expired-session recovery, durable financial retry IDs, narrow screens with large text, saved custom settings and deletion confirmation.
+- Added authenticated account deletion, public privacy/deletion pages and an in-app privacy disclosure. Shared records remain available to other members with actor identity removed; sole-member workspaces are erased.
+- Added reporting for assistant replies with tenant/ownership checks, persisted review records and an operations handoff.
+- Temporary refresh failures preserve credentials; late refreshes cannot restore a signed-out session. The device stores each token pair atomically. Identical ambiguous financial retries reuse a durable request ID, including across app restarts.
+- Fixed the Play bundle command's configuration parsing. Added a manual signed AAB workflow with bundle validation, certificate matching, API/permission checks and 16 KB native-library checks. No Play publishing credentials or publication steps are included.
+- Fixed the live Render website's missing React rewrite (`/*` to `/index.html`); direct routes now return HTTP 200. The new pages and API endpoints require deployment of these source changes.
+- Removed the unverified landing-page uptime percentage. Added privacy/account-deletion links to web Settings and disclosure on registration.
+
+Fresh Play-installed Google sign-in, physical-device acceptance, Play pre-launch results and production access remain owner steps. The public support email still needs owner configuration. Previously deferred production backup scheduling and alerts remain outstanding.
+
+## Previous acceptance — 4 October 2026
 
 The actionable repository gaps were repaired. On 4 October 2026, the owner approved Tenvora for release after the device checks below. Production backups/restore and alert setup were explicitly deferred and remain outstanding.
 

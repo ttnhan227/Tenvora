@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Store,
@@ -670,6 +671,10 @@ export default function SettingsPage() {
           </div>
         )}
 
+        <div className="flex flex-wrap gap-5 border-t pt-5 text-sm">
+          <Link className="underline" to="/privacy">{isVietnamese ? "Quyền riêng tư" : "Privacy policy"}</Link>
+          <Link className="text-destructive underline" to="/delete-account">{isVietnamese ? "Xóa tài khoản" : "Delete account"}</Link>
+        </div>
       </div>
     </DashboardLayout>
   );

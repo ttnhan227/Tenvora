@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../more/privacy_screen.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../state/app_controller.dart';
@@ -314,6 +315,16 @@ class _AuthScreenState extends State<AuthScreen> {
                             'Mới dùng Tenvora? Tạo tài khoản',
                           ),
                     ),
+                  ),
+                  TextButton(
+                    onPressed:
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyScreen(),
+                          ),
+                        ),
+                    child: Text(tr(context, 'Privacy', 'Quyền riêng tư')),
                   ),
                 ],
               ),

@@ -1,0 +1,80 @@
+name: Prepare verified Google Play bundle
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Unused Play version code (leave 1 for the first upload)'
+        default: '1'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: play-bundle-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify-product:
+    uses: ./.github/workflows/verify-product.yml
+  bundle:
+    needs: verify-product
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Analyze and test mobile workflows
+        working-directory: mobile
+        run: flutter pub get && dart format --set-exit-if-changed lib test && flutter analyze && flutter test
+      - name: Prepare production signing
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE" && test -n "$KEY_PROPERTIES"
+          printf '%s' "$KEYSTORE" | base64 -d > mobile/android/tenvora-upload-key.jks
+          printf '%s' "$KEY_PROPERTIES" > mobile/android/key.properties
+          chmod 600 mobile/android/tenvora-upload-key.jks mobile/android/key.properties
+      - name: Build signed Play bundle
+        working-directory: mobile
+        env:
+          API_URL: ${{ vars.MOBILE_API_BASE_URL }}
+          GOOGLE_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          [[ "$API_URL" == https://* && "$API_URL" != *localhost* && "$API_URL" != *example.com* ]]
+          [[ "$GOOGLE_ID" == *.apps.googleusercontent.com ]]
+          flutter build appbundle --release --build-number="$BUILD_NUMBER" "--dart-define=API_BASE_URL=$API_URL" "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_ID"
+      - name: Verify bundle, certificate, permissions and 16 KB compatibility
+        run: |
+          set -euo pipefail
+          mkdir -p play-release
+          cp mobile/build/app/outputs/bundle/release/app-release.aab play-release/tenvora-1.0.0.aab
+          curl -fsSL --retry 3 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$RUNNER_TEMP/bundletool.jar"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $RUNNER_TEMP/bundletool.jar" | sha256sum -c -
+          java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle=play-release/tenvora-1.0.0.aab
+          java -jar "$RUNNER_TEMP/bundletool.jar" dump manifest --bundle=play-release/tenvora-1.0.0.aab > play-release/manifest.xml
+          java -jar "$RUNNER_TEMP/bundletool.jar" dump config --bundle=play-release/tenvora-1.0.0.aab > play-release/bundle-config.json
+          jarsigner -verify play-release/tenvora-1.0.0.aab | grep 'jar verified'
+          keytool -printcert -jarfile play-release/tenvora-1.0.0.aab > play-release/certificate.txt
+          python mobile/scripts/verify-play-bundle.py play-release/tenvora-1.0.0.aab --manifest play-release/manifest.xml --config play-release/bundle-config.json --certificate-report play-release/certificate.txt --expected-certificate mobile/android/signing-certificate.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tenvora-play-bundle
+          path: play-release/
+          if-no-files-found: error
+      - name: Remove signing material
+        if: always()
+        run: rm -f mobile/android/key.properties mobile/android/tenvora-upload-key.jks

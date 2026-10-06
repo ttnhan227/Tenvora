@@ -6,6 +6,8 @@ namespace Tenvora.Api.Data;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    // Account erasure must not recreate deleted personal data as audit snapshots.
+    internal bool ErasingAccount { get; set; }
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();

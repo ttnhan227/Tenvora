@@ -9,6 +9,7 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../more/privacy_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -250,18 +251,35 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final _company = TextEditingController(
-    text: AppScope.of(context).user!.companyName,
-  );
-  late final _name = TextEditingController(
-    text: AppScope.of(context).user!.fullName,
-  );
-  late final _phone = TextEditingController(
-    text: AppScope.of(context).user!.phoneNumber,
-  );
-  late String _currency = AppScope.of(context).user!.preferredCurrency;
-  late String _type = AppScope.of(context).user!.businessType ?? 'Retail';
+  final _company = TextEditingController();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  String _currency = 'VND';
+  String _type = 'Retail';
   bool _busy = false;
+  bool _loaded = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = AppScope.of(context).user;
+    if (!_loaded && user != null) {
+      _company.text = user.companyName;
+      _name.text = user.fullName ?? '';
+      _phone.text = user.phoneNumber ?? '';
+      _currency = user.preferredCurrency;
+      _type = user.businessType ?? 'Retail';
+      _loaded = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _company.dispose();
+    _name.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
@@ -292,29 +310,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder:
           (c) => AlertDialog(
             title: Text(tr(context, 'Change password', 'Đổi mật khẩu')),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: current,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: tr(
-                      context,
-                      'Current password',
-                      'Mật khẩu hiện tại',
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: current,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: tr(
+                        context,
+                        'Current password',
+                        'Mật khẩu hiện tại',
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: next,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: tr(context, 'New password', 'Mật khẩu mới'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: next,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'New password', 'Mật khẩu mới'),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -368,6 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
+    if (app.user == null) return const Scaffold();
     return Scaffold(
       appBar: AppBar(title: Text(tr(context, 'Settings', 'Cài đặt'))),
       body: PagePadding(
@@ -377,88 +398,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: tr(context, 'Workspace details', 'Thông tin doanh nghiệp'),
               subtitle: app.user!.email,
             ),
-            const SizedBox(height: 18),
-            TextField(
-              controller: _company,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Company name', 'Tên doanh nghiệp'),
+            if (app.user!.isAdmin) ...[
+              const SizedBox(height: 18),
+              TextField(
+                controller: _company,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Company name', 'Tên doanh nghiệp'),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Your name', 'Tên của bạn'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Your name', 'Tên của bạn'),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _phone,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Phone', 'Số điện thoại'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phone,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Phone', 'Số điện thoại'),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _type,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Business type', 'Loại hình'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _type,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Business type', 'Loại hình'),
+                ),
+                items:
+                    [
+                          'Retail',
+                          'Wholesale',
+                          'Services',
+                          'Food & Beverage',
+                          'Other',
+                          if (![
+                            'Retail',
+                            'Wholesale',
+                            'Services',
+                            'Food & Beverage',
+                            'Other',
+                          ].contains(_type))
+                            _type,
+                        ]
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                onChanged: (v) => _type = v!,
               ),
-              items:
-                  [
-                        'Retail',
-                        'Wholesale',
-                        'Services',
-                        'Food & Beverage',
-                        'Other',
-                      ]
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                      .toList(),
-              onChanged: (v) => _type = v!,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _currency,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Base currency', 'Tiền tệ cơ sở'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _currency,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Base currency', 'Tiền tệ cơ sở'),
+                ),
+                items:
+                    {'VND', 'USD', 'EUR', 'GBP', 'SGD', _currency}
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                onChanged: (v) => _currency = v!,
               ),
-              items:
-                  const ['VND', 'USD', 'EUR', 'GBP', 'SGD']
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                      .toList(),
-              onChanged: (v) => _currency = v!,
-            ),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: _busy ? null : _save,
-              child: Text(tr(context, 'Save changes', 'Lưu thay đổi')),
-            ),
+              const SizedBox(height: 18),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(tr(context, 'Save changes', 'Lưu thay đổi')),
+              ),
+            ],
             const SizedBox(height: 22),
             Text(
               tr(context, 'Appearance', 'Giao diện'),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            SegmentedButton<ThemeMode>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.system,
-                  label: Text(tr(context, 'System', 'Hệ thống')),
-                  icon: const Icon(Icons.phone_android),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  label: Text(tr(context, 'Light', 'Sáng')),
-                  icon: const Icon(Icons.light_mode_outlined),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  label: Text(tr(context, 'Dark', 'Tối')),
-                  icon: const Icon(Icons.dark_mode_outlined),
-                ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in [
+                  (ThemeMode.system, 'System', 'Hệ thống', Icons.phone_android),
+                  (ThemeMode.light, 'Light', 'Sáng', Icons.light_mode_outlined),
+                  (ThemeMode.dark, 'Dark', 'Tối', Icons.dark_mode_outlined),
+                ])
+                  ChoiceChip(
+                    label: Text(tr(context, option.$2, option.$3)),
+                    avatar: Icon(option.$4, size: 18),
+                    selected: app.themeMode == option.$1,
+                    onSelected: (_) => app.setTheme(option.$1),
+                  ),
               ],
-              selected: {app.themeMode},
-              onSelectionChanged: (v) => app.setTheme(v.first),
             ),
             const SizedBox(height: 22),
             OutlinedButton.icon(
@@ -466,10 +495,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.lock_outline),
               label: Text(tr(context, 'Change password', 'Đổi mật khẩu')),
             ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: Text(tr(context, 'Privacy', 'Quyền riêng tư')),
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrivacyScreen()),
+                  ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : _deleteAccount,
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: Text(tr(context, 'Delete account', 'Xóa tài khoản')),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _deleteAccount() async {
+    final app = AppScope.of(context);
+    final email = app.user!.email;
+    String confirmation = '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  title: Text(
+                    tr(
+                      context,
+                      'Permanently delete account?',
+                      'Xóa vĩnh viễn tài khoản?',
+                    ),
+                  ),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          tr(
+                            context,
+                            'Your account and AI conversations will be deleted. If you are the only member, all workspace records and photos will also be deleted. Shared business records remain for other members. Export what you need first. This cannot be undone.',
+                            'Tài khoản và hội thoại AI sẽ bị xóa. Nếu bạn là thành viên duy nhất, mọi sổ sách và ảnh của doanh nghiệp cũng bị xóa. Dữ liệu dùng chung được giữ cho thành viên khác. Hãy xuất dữ liệu cần giữ trước. Không thể hoàn tác.',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          autofocus: true,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: tr(
+                              context,
+                              'Enter your email to confirm',
+                              'Nhập email để xác nhận',
+                            ),
+                            helperText: email,
+                          ),
+                          onChanged:
+                              (value) =>
+                                  setDialogState(() => confirmation = value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      child: Text(tr(context, 'Cancel', 'Hủy')),
+                    ),
+                    FilledButton(
+                      onPressed:
+                          confirmation.trim().toLowerCase() ==
+                                  email.toLowerCase()
+                              ? () => Navigator.pop(dialogContext, true)
+                              : null,
+                      child: Text(
+                        tr(context, 'Delete permanently', 'Xóa vĩnh viễn'),
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await app.deleteAccount(confirmation);
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (error) {
+      if (mounted) showMessage(context, readableError(error), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 

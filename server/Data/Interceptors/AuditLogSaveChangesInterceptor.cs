@@ -41,7 +41,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
     private void OnBeforeSaveChanges(DbContext? context)
     {
-        if (context == null) return;
+        if (context == null || context is AppDbContext { ErasingAccount: true }) return;
 
         context.ChangeTracker.DetectChanges();
         var auditLogs = new List<AuditLog>();

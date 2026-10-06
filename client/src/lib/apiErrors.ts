@@ -139,6 +139,7 @@ export function toApiFailure(error: unknown, fallback: string, isVietnamese?: bo
   const info = getApiErrorInfo(error, fallback, isVietnamese);
   return {
     success: false as const,
+    status: info.status,
     message: info.message,
     errors: info.errors,
     fieldErrors: info.fieldErrors,

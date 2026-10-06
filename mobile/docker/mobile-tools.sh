@@ -83,8 +83,8 @@ case "${1:-verify}" in
     google_client_id=""
     for argument in "$@"; do
       case "$argument" in
-        --dart-define=API_BASE_URL=*) production_api="${argument#*=}" ;;
-        --dart-define=GOOGLE_SERVER_CLIENT_ID=*) google_client_id="${argument#*=}" ;;
+        --dart-define=API_BASE_URL=*) production_api="${argument#--dart-define=API_BASE_URL=}" ;;
+        --dart-define=GOOGLE_SERVER_CLIENT_ID=*) google_client_id="${argument#--dart-define=GOOGLE_SERVER_CLIENT_ID=}" ;;
       esac
     done
     if [[ ! "$production_api" =~ ^https:// ]] ||

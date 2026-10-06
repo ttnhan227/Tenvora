@@ -26,12 +26,56 @@ class TenvoraApp extends StatelessWidget {
             home:
                 controller.initializing
                     ? const _StartupScreen()
+                    : !controller.isAuthenticated && controller.startupFailed
+                    ? _RecoveryScreen(controller: controller)
                     : !controller.isAuthenticated
                     ? const AuthScreen()
                     : !(controller.user?.onboardingCompleted ?? false)
                     ? const OnboardingScreen()
                     : const AppShell(),
           ),
+    ),
+  );
+}
+
+class _RecoveryScreen extends StatelessWidget {
+  const _RecoveryScreen({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const TenvoraMark(size: 58),
+              const SizedBox(height: 24),
+              Text(
+                controller.isVietnamese
+                    ? 'Không thể kết nối Tenvora. Thử lại khi có mạng.'
+                    : 'Could not open Tenvora. Check your connection and try again.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: controller.initialize,
+                child: Text(controller.isVietnamese ? 'Thử lại' : 'Try again'),
+              ),
+              TextButton(
+                onPressed: controller.logout,
+                child: Text(
+                  controller.isVietnamese
+                      ? 'Đăng nhập tài khoản khác'
+                      : 'Sign in with another account',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     ),
   );
 }

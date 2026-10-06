@@ -73,6 +73,7 @@ export interface AuthResponse {
 }
 
 export interface ApiResponse<T> {
+  status?: number;
   success: boolean;
   data?: T;
   message?: string;
@@ -87,11 +88,16 @@ export const authService = {
 
     try {
       const response = await apiClient.post("/auth/refresh-token", { refreshToken });
+      if (localStorage.getItem("refreshToken") !== refreshToken) return !!localStorage.getItem("accessToken");
+      if (!response.data.data?.accessToken || !response.data.data?.refreshToken) throw new Error("Incomplete session response");
       localStorage.setItem("accessToken", response.data.data.accessToken);
       localStorage.setItem("refreshToken", response.data.data.refreshToken);
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      const failure = toApiFailure(error, "Could not restore your session");
+      if (localStorage.getItem("refreshToken") !== refreshToken) return !!localStorage.getItem("accessToken");
+      if (failure.status === 401 || failure.status === 403) return false;
+      throw error;
     }
   },
 
@@ -161,16 +167,15 @@ export const authService = {
 
   logout: async () => {
     const refreshToken = localStorage.getItem("refreshToken");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
     try {
       if (refreshToken) {
         await apiClient.post("/auth/logout", { refreshToken });
       }
     } catch {
       // Ignore network errors on logout
-    } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
     }
   },
 };

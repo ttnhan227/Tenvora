@@ -315,12 +315,69 @@ class _AgentScreenState extends State<AgentScreen> {
                 ),
                 if (message.proposal != null)
                   _proposalCard(context, message.proposal!),
+                if (!isUser)
+                  TextButton.icon(
+                    onPressed: () => _report(message),
+                    icon: const Icon(Icons.flag_outlined, size: 16),
+                    label: Text(
+                      tr(context, 'Report reply', 'Báo cáo câu trả lời'),
+                    ),
+                  ),
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  Future<void> _report(AgentMessage message) async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder:
+          (dialogContext) => SimpleDialog(
+            title: Text(
+              tr(context, 'Report AI reply', 'Báo cáo câu trả lời AI'),
+            ),
+            children: [
+              for (final item in [
+                (
+                  'Harmful or inappropriate',
+                  'Nội dung có hại hoặc không phù hợp',
+                ),
+                (
+                  'Incorrect business information',
+                  'Thông tin kinh doanh không đúng',
+                ),
+                ('Privacy concern', 'Vấn đề quyền riêng tư'),
+              ])
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, item.$1),
+                  child: Text(tr(context, item.$1, item.$2)),
+                ),
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(tr(context, 'Cancel', 'Hủy')),
+              ),
+            ],
+          ),
+    );
+    if (reason == null || !mounted) return;
+    try {
+      await AppScope.of(context).repository.reportAiMessage(message.id, reason);
+      if (mounted) {
+        showMessage(
+          context,
+          tr(
+            context,
+            'Report received. Thank you.',
+            'Đã nhận báo cáo. Cảm ơn bạn.',
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) showMessage(context, readableError(error), error: true);
+    }
   }
 
   Widget _proposalCard(BuildContext context, AgentProposal proposal) {

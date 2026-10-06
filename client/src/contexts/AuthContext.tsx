@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { UserProfile, authService, AuthResponse, ApiResponse } from "@/services/authService";
 
 interface AuthContextType {
@@ -40,38 +40,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem("accessToken"));
+  const [sessionError, setSessionError] = useState(false);
+  const [retrySession, setRetrySession] = useState(0);
+  const authEpoch = useRef(0);
 
   useEffect(() => {
+    let active = true;
+    const epoch = authEpoch.current;
     const initializeAuth = async () => {
       const token = localStorage.getItem("accessToken");
-      if (token) {
-        setIsLoading(true);
+      if (!token) { setIsLoading(false); return; }
+      setIsLoading(true);
+      setSessionError(false);
+      try {
         if (accessTokenNeedsRefresh(token) && !(await authService.refreshSession())) {
-          authService.logout();
-          setUser(null);
-          setIsLoading(false);
+          if (active && authEpoch.current === epoch) { void authService.logout(); setUser(null); }
           return;
         }
         const result = await authService.getProfile();
+        if (!active || !localStorage.getItem("accessToken") || authEpoch.current !== epoch) return;
         if (result.success && result.data) {
           setUser(result.data);
           localStorage.setItem("user", JSON.stringify(result.data));
+        } else if (result.status === 401 || result.status === 403) {
+          void authService.logout(); setUser(null);
         } else {
-          authService.logout();
-          setUser(null);
+          setSessionError(true);
         }
-        setIsLoading(false);
+      } catch {
+        if (active) setSessionError(true);
+      } finally {
+        if (active) setIsLoading(false);
       }
     };
-
-    initializeAuth();
-  }, []);
+    void initializeAuth();
+    return () => { active = false; };
+  }, [retrySession]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const result = await authService.login({ email, password });
       if (result.success && result.data) {
+        authEpoch.current++;
+        setSessionError(false);
         localStorage.setItem("accessToken", result.data.accessToken);
         localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
@@ -104,6 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await authService.googleLogin({ credential });
       if (result.success && result.data) {
+        authEpoch.current++;
+        setSessionError(false);
         localStorage.setItem("accessToken", result.data.accessToken);
         localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
@@ -140,6 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const result = await authService.register({ companyName, email, password, baseCurrency });
       if (result.success && result.data) {
+        authEpoch.current++;
+        setSessionError(false);
         localStorage.setItem("accessToken", result.data.accessToken);
         localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
@@ -250,7 +266,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    authEpoch.current++;
     authService.logout();
+    setSessionError(false);
     setUser(null);
   };
 
@@ -277,7 +295,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>
+    {sessionError && <div role="alert" className="bg-muted p-3 text-center text-sm">
+      {localStorage.getItem("tenvora_lang") === "vi" ? "Không thể kết nối. Phiên đăng nhập vẫn được giữ lại." : "Could not connect. Your saved session has been kept."}{" "}
+      <button className="underline font-semibold" onClick={() => setRetrySession(n => n + 1)}>
+        {localStorage.getItem("tenvora_lang") === "vi" ? "Thử lại" : "Try again"}
+      </button>
+    </div>}
+    {children}
+  </AuthContext.Provider>;
 };
 
 export const useAuth = () => {

@@ -204,6 +204,9 @@ export default function Register() {
               </Button>
             </form>
 
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              <Link to="/privacy" className="underline">{isVietnamese ? "Cách Tenvora xử lý dữ liệu của bạn" : "How Tenvora handles your data"}</Link>
+            </p>
             <p className="mt-6 border-t pt-5 text-center text-sm text-muted-foreground">
               {isVietnamese ? "Đã có tài khoản? " : "Already have an account? "}
               <Link to="/login" className="font-bold text-primary hover:underline">

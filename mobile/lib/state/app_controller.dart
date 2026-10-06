@@ -3,6 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/storage/session_store.dart';
+import '../core/network/api_client.dart';
 import '../data/tenvora_repository.dart';
 import '../domain/models.dart';
 
@@ -14,6 +15,7 @@ class AppController extends ChangeNotifier {
 
   UserProfile? user;
   bool initializing = true;
+  bool startupFailed = false;
   bool busy = false;
   bool isVietnamese = false;
   ThemeMode themeMode = ThemeMode.system;
@@ -23,23 +25,38 @@ class AppController extends ChangeNotifier {
   bool get isAuthenticated => user != null;
 
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    isVietnamese = prefs.getString('tenvora_lang') == 'vi';
-    themeMode = switch (prefs.getString('tenvora_theme')) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
-    await sessionStore.initialize();
-    if (sessionStore.accessToken != null) {
-      try {
-        user = await repository.profile();
-      } catch (_) {
-        await sessionStore.clear();
-      }
-    }
-    initializing = false;
+    initializing = true;
+    startupFailed = false;
+    lastError = null;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isVietnamese = prefs.getString('tenvora_lang') == 'vi';
+      themeMode = switch (prefs.getString('tenvora_theme')) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      };
+      await sessionStore.initialize();
+      if (sessionStore.accessToken != null) {
+        try {
+          user = await repository.profile();
+        } on ApiFailure catch (error) {
+          if (error.statusCode == 401 || error.statusCode == 403) {
+            await sessionStore.clear();
+          } else {
+            lastError = error.message;
+            startupFailed = true;
+          }
+        }
+      }
+    } catch (_) {
+      lastError = 'Could not open your session. Please try again.';
+      startupFailed = true;
+    } finally {
+      initializing = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> login(String email, String password) async {
@@ -144,6 +161,9 @@ class AppController extends ChangeNotifier {
 
   Future<void> logout() async {
     final refresh = sessionStore.refreshToken;
+    await sessionStore.clear();
+    startupFailed = false;
+    lastError = null;
     user = null;
     notifyListeners();
     try {
@@ -151,7 +171,19 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       // Local sign-out must still complete while offline.
     }
-    await sessionStore.clear();
+  }
+
+  Future<void> deleteAccount(String email) async {
+    await repository.deleteAccount(email);
+    try {
+      await sessionStore.clear();
+    } finally {
+      // The server has erased the account even if the device vault is unavailable.
+      user = null;
+      startupFailed = false;
+      lastError = null;
+      notifyListeners();
+    }
   }
 
   Future<void> toggleLanguage() async {

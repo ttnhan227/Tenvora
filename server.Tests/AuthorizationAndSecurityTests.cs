@@ -32,7 +32,7 @@ public sealed class AuthorizationAndSecurityTests
     public async Task TeamCreationRejectsUnknownRoles()
     {
         await using var db = Db();
-        var service = new AdminUserService(new UserRepository(db));
+        var service = new AdminUserService(new UserRepository(db), db);
         Assert.False((await service.CreateUserAsync(Guid.NewGuid(), new("member@example.test", "Password123!", "SuperUser"))).Success);
         Assert.Empty(db.Users);
     }

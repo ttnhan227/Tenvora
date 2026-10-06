@@ -21,7 +21,7 @@ public sealed class PostgresFactAttribute : FactAttribute
 public sealed class PostgresWorkflowTests
 {
     // Each test owns a new database. Never migrate or clear the supplied database.
-    private sealed class Database : IAsyncDisposable
+    internal sealed class Database : IAsyncDisposable
     {
         private readonly string admin;
         private readonly string name = "tenvora_readiness_" + Guid.NewGuid().ToString("N");

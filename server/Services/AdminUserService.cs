@@ -2,20 +2,24 @@ using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Models;
 using Tenvora.Api.Repositories;
+using Tenvora.Api.Data;
 
 namespace Tenvora.Api.Services;
 
 public sealed class AdminUserService : IAdminUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly AppDbContext _context;
 
-    public AdminUserService(IUserRepository userRepository)
+    public AdminUserService(IUserRepository userRepository, AppDbContext context)
     {
         _userRepository = userRepository;
+        _context = context;
     }
 
     public async Task<ApiResult<AdminUserResponse>> CreateUserAsync(Guid tenantId, AdminCreateUserRequest request)
     {
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
         if (!new[] { "TenantAdmin", "OperationsManager", "ReadOnly" }.Contains(request.Role))
             return ApiResult<AdminUserResponse>.Fail("Choose a supported workspace role.");
         var existing = await _userRepository.GetByEmailAndTenantAsync(request.Email.Trim().ToLowerInvariant(), tenantId);
@@ -39,6 +43,7 @@ public sealed class AdminUserService : IAdminUserService
         };
 
         await _userRepository.AddAsync(user);
+        if (write != null) await write.CommitAsync();
 
         return ApiResult<AdminUserResponse>.Ok(new AdminUserResponse(
             user.Id,
@@ -69,6 +74,7 @@ public sealed class AdminUserService : IAdminUserService
 
     public async Task<ApiResult> ToggleUserActiveAsync(Guid tenantId, Guid userId)
     {
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null || user.TenantId != tenantId)
         {
@@ -87,6 +93,7 @@ public sealed class AdminUserService : IAdminUserService
 
         user.IsActive = !user.IsActive;
         await _userRepository.UpdateAsync(user);
+        if (write != null) await write.CommitAsync();
 
         return ApiResult.Ok();
     }

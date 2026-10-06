@@ -54,6 +54,8 @@ async function performTokenRefresh(): Promise<string> {
   });
 
   const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+  if (localStorage.getItem("refreshToken") !== currentRefreshToken) throw new Error("Session changed during refresh");
+  if (!accessToken || !newRefreshToken) throw new Error("Incomplete session response");
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", newRefreshToken);
   return accessToken;
@@ -77,6 +79,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isPublicAuthRequest(originalRequest.url)) {
       originalRequest._retry = true;
+      const refreshTokenAtStart = localStorage.getItem("refreshToken");
 
       try {
         if (!refreshPromise) {
@@ -89,6 +92,9 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
+        const status = axios.isAxiosError(refreshError) ? refreshError.response?.status : undefined;
+        if (status !== 401 && status !== 403) return Promise.reject(refreshError);
+        if (localStorage.getItem("refreshToken") !== refreshTokenAtStart) return Promise.reject(refreshError);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");

@@ -31,6 +31,8 @@ const AgentChatPage = lazy(() => import("./pages/business/AgentChatPage"));
 const DataImportsPage = lazy(() => import("./pages/business/DataImportsPage"));
 const MobileLandingPage = lazy(() => import("./pages/MobileLandingPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 
 const currentLanguageIsVietnamese = () => {
   try {
@@ -84,6 +86,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/mobile" element={<MobileLandingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/download" element={<Navigate to="/mobile" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

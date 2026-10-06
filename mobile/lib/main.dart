@@ -14,6 +14,6 @@ Future<void> main() async {
     repository: TenvoraRepository(api),
     sessionStore: store,
   );
-  await controller.initialize();
   runApp(TenvoraApp(controller: controller));
+  await controller.initialize();
 }
