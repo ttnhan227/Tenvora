@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { getApiErrorInfo } from "@/lib/apiErrors";
+import { AiDataConsent } from "@/components/assistant/AiDataConsent";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/auth/Login"));
@@ -81,7 +82,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return <QueryClientProvider client={queryClient}><AuthProvider><LanguageProvider><TooltipProvider>
-    <Toaster /><Sonner /><RequestActivityIndicator />
+    <Toaster /><Sonner /><RequestActivityIndicator /><AiDataConsent />
     <BrowserRouter><ErrorBoundary><Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-background p-8 text-sm font-bold text-muted-foreground"><span className="mr-3 h-3 w-3 animate-pulse rounded-full bg-primary" />Opening Tenvora…</div>}>
       <Routes>
         <Route path="/" element={<Index />} />

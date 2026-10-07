@@ -18,6 +18,50 @@ class _AgentScreenState extends State<AgentScreen> {
   final List<AgentMessage> _messages = [];
   String? _conversationId;
   bool _busy = false;
+  bool _consentDialogOpen = false;
+  String? _consentedUserId;
+
+  Future<bool> _ensureAiConsent() async {
+    final userId = AppScope.of(context).user?.id;
+    if (userId == null) return false;
+    if (_consentedUserId == userId) return true;
+    _consentDialogOpen = true;
+    try {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: Text(tr(context, 'Before using AI', 'Trước khi dùng AI')),
+              content: SingleChildScrollView(
+                child: Text(
+                  tr(
+                    context,
+                    'Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy',
+                    'Tenvora gửi câu hỏi, lịch sử hội thoại và dữ liệu kinh doanh liên quan (gồm tên khách hàng, nhà cung cấp, số dư, giao dịch và kho hàng) tới Google Gemini để trả lời và chuẩn bị thao tác. Hội thoại được lưu trên máy chủ Tenvora. Bạn xác nhận trước khi thay đổi sổ sách. AI có thể trả lời sai; tránh nhập thông tin nhạy cảm không cần thiết. Chính sách quyền riêng tư: https://tenvora-client.onrender.com/privacy',
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(tr(context, 'Not now', 'Để sau')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: Text(
+                    tr(context, 'Agree and continue', 'Đồng ý và tiếp tục'),
+                  ),
+                ),
+              ],
+            ),
+      );
+      if (!mounted || AppScope.of(context).user?.id != userId) return false;
+      if (accepted == true) _consentedUserId = userId;
+      return accepted == true;
+    } finally {
+      _consentDialogOpen = false;
+    }
+  }
 
   @override
   void dispose() {
@@ -28,7 +72,8 @@ class _AgentScreenState extends State<AgentScreen> {
 
   Future<void> _send([String? suggested]) async {
     final text = (suggested ?? _input.text).trim();
-    if (text.isEmpty || _busy) return;
+    if (text.isEmpty || _busy || _consentDialogOpen) return;
+    if (!await _ensureAiConsent() || !mounted) return;
     _input.clear();
     setState(() {
       _messages.add(

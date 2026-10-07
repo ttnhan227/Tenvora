@@ -1,6 +1,7 @@
 import apiClient from "./apiClient";
 import { ApiResponse } from "./authService";
 import { toApiFailure } from "@/lib/apiErrors";
+import { AI_CONSENT_DECLINED, requireAiConsent } from "@/lib/aiConsent";
 
 export interface AiChatRequest {
   message: string;
@@ -188,6 +189,7 @@ export interface AiConversationDetail {
 
 export const aiAssistantService = {
   agentChat: async (request: AiAgentChatRequest): Promise<ApiResponse<AiAgentChatResponse>> => {
+    if (!await requireAiConsent()) return { success: false, errors: [AI_CONSENT_DECLINED] };
     try {
       const response = await apiClient.post<ApiResponse<AiAgentChatResponse>>("/ai/assistant/agent-chat", request);
       return response.data;
@@ -224,6 +226,7 @@ export const aiAssistantService = {
   },
 
   chat: async (message: string, uiContext?: AiUiContext): Promise<ApiResponse<AiChatResponse>> => {
+    if (!await requireAiConsent()) return { success: false, errors: [AI_CONSENT_DECLINED] };
     try {
       const response = await apiClient.post<ApiResponse<AiChatResponse>>("/ai/assistant/chat", { message, uiContext });
       return response.data;
@@ -233,6 +236,7 @@ export const aiAssistantService = {
   },
 
   parseRecord: async (text: string): Promise<ApiResponse<AiParseRecordResponse>> => {
+    if (!await requireAiConsent()) return { success: false, errors: [AI_CONSENT_DECLINED] };
     try {
       const response = await apiClient.post<ApiResponse<AiParseRecordResponse>>("/ai/assistant/parse-record", { text });
       return response.data;
@@ -242,6 +246,7 @@ export const aiAssistantService = {
   },
 
   proposeAction: async (text: string, uiContext?: AiUiContext): Promise<ApiResponse<AiActionProposalResponse>> => {
+    if (!await requireAiConsent()) return { success: false, errors: [AI_CONSENT_DECLINED] };
     try {
       const response = await apiClient.post<ApiResponse<AiActionProposalResponse>>("/ai/assistant/actions/propose", { text, uiContext });
       return response.data;

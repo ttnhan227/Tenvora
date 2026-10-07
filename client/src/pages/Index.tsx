@@ -492,27 +492,27 @@ export default function Index() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid grid-cols-2 gap-6 md:grid-cols-4 text-center">
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums">₫24.8B+</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-foreground">{isVietnamese ? "Bán hàng" : "Sales"}</p>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-medium">
-                  {isVietnamese ? "Doanh số được quản lý" : "Commerce volume recorded"}
+                  {isVietnamese ? "Ghi đơn hàng và thanh toán" : "Record orders and payments"}
                 </p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums">1,200+</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-foreground">{isVietnamese ? "Kho hàng" : "Inventory"}</p>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-medium">
-                  {isVietnamese ? "Cửa hàng & Nhà phân phối" : "Active stores & warehouses"}
+                  {isVietnamese ? "Theo dõi hàng nhập và tồn kho" : "Track purchases and stock"}
                 </p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums">&lt; 30s</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-foreground">{isVietnamese ? "Công nợ" : "Balances"}</p>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-medium">
-                  {isVietnamese ? "Thời gian đối soát mỗi ngày" : "Daily balance reconciliation"}
+                  {isVietnamese ? "Xem khoản phải thu và phải trả" : "Review receivables and payables"}
                 </p>
               </div>
               <div>
-                <p className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums">99.98%</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-foreground">{isVietnamese ? "Báo cáo" : "Reports"}</p>
                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground font-medium">
-                  {isVietnamese ? "Thời gian sẵn sàng đám mây" : "Cloud infrastructure uptime"}
+                  {isVietnamese ? "Xem doanh thu và chi phí" : "Review revenue and expenses"}
                 </p>
               </div>
             </div>
@@ -875,8 +875,8 @@ export default function Index() {
               </h2>
               <p className="mt-4 text-base sm:text-lg text-primary-foreground/80 leading-relaxed">
                 {isVietnamese
-                  ? "Cùng hơn 1.200 chủ kinh doanh độc lập thay thế sổ sách lộn xộn bằng sự rõ ràng, an tâm về tài chính."
-                  : "Join over 1,200 independent merchants and shopkeepers who replaced chaotic notebooks with calm, automated financial clarity."}
+                  ? "Quản lý đơn hàng, kho hàng, công nợ và chi phí trong một không gian làm việc."
+                  : "Keep sales, inventory, balances and expenses together in one workspace."}
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">

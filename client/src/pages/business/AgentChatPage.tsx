@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
+import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -196,6 +197,14 @@ export default function AgentChatPage() {
       message: text,
       conversationId: activeId ?? undefined,
     });
+
+    if (isAiConsentDeclined(response)) {
+      setMessages((previous) => previous.filter((message) => message.id !== userMsg.id));
+      setInput(text);
+      setCurrentTool(null);
+      setIsBusy(false);
+      return;
+    }
 
     if (response.success && response.data) {
       const data = response.data;

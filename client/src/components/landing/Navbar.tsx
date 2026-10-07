@@ -65,14 +65,14 @@ export default function Navbar() {
           <ThemeToggle />
 
           {auth?.isAuthenticated ? (
-            <Button asChild size="sm" className="font-semibold shadow-xs">
+            <Button asChild size="sm" className="hidden sm:inline-flex font-semibold shadow-xs">
               <Link to="/dashboard">
                 <span>{isVietnamese ? "Vào sổ tay" : "Workspace"}</span>
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-xs font-semibold">
                 <Link to="/login">{isVietnamese ? "Đăng nhập" : "Sign in"}</Link>
               </Button>

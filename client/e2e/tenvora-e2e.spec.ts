@@ -157,6 +157,11 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     const pageComposer = page.getByPlaceholder(/Ask or tell Tenvora Agent/i);
     await pageComposer.fill("Message from full page");
     await pageComposer.press("Enter");
+    await expect(page.getByRole("heading", { name: "Before using AI" })).toBeVisible();
+    await page.getByRole("button", { name: "Not now" }).click();
+    await expect(pageComposer).toHaveValue("Message from full page");
+    await pageComposer.press("Enter");
+    await page.getByRole("button", { name: "Agree and continue" }).click();
     await expect(page.getByText("Synced reply 1", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "AI Assistant" }).last().click();
@@ -373,6 +378,9 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     const composer = page.getByPlaceholder(/Ask or tell Tenvora Agent/i);
     await composer.fill("add a customer");
     await composer.press("Enter");
+
+    await expect(page.getByRole("heading", { name: "Before using AI" })).toBeVisible();
+    await page.getByRole("button", { name: "Agree and continue" }).click();
 
     await expect(page.getByText("Create a customer?", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Customer Details", { exact: true })).toBeVisible();

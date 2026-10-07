@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Loader2, Send, Sparkles, X } from "lucide-react";
@@ -34,7 +35,7 @@ export function AiQuickRecordBar({ onRecordSuccess }: AiQuickRecordBarProps) {
     setProposal(null);
     const response = await aiAssistantService.proposeAction(source, uiContext);
     if (response.success && response.data) setProposal(response.data);
-    else setErrorMessage(response.message || (isVietnamese ? "Không thể chuẩn bị thao tác." : "Could not prepare that action."));
+    else if (!isAiConsentDeclined(response)) setErrorMessage(response.message || (isVietnamese ? "Không thể chuẩn bị thao tác." : "Could not prepare that action."));
     setIsWorking(false);
   };
 

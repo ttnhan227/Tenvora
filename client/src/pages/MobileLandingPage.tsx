@@ -156,7 +156,7 @@ export default function MobileLandingPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />
-                  {isVietnamese ? "File APK độc lập (~180 MB)" : "Direct Standalone APK (~180 MB)"}
+                  {isVietnamese ? "Tải APK Android trực tiếp" : "Direct Android APK download"}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />

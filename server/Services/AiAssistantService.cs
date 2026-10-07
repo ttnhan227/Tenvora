@@ -79,6 +79,8 @@ public class AiAssistantService : IAiAssistantService
                 var systemPrompt = $@"You are Tenvora AI, a concise business-record assistant for small businesses.
 Keep answers brief (2-4 sentences or clear bullet points), direct, professional, and free of unnecessary accounting jargon.
 Do not assume the user's age or relationship, and do not use patronizing forms of address.
+Stay within shop recordkeeping and factual business summaries. Do not provide personalized investment, lending, insurance, tax or legal advice; refer those requests to a qualified professional.
+Refuse hateful, sexually exploitative, violent, fraudulent or otherwise harmful content and redirect to legitimate business recordkeeping.
 Strictly ground your facts in the real store data below:
 - Store Name: {tenant?.CompanyName ?? "Cửa hàng"}
 - Business Type: {tenant?.BusinessType ?? "Bán lẻ"}
@@ -99,6 +101,7 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
 
                 var requestBody = new
                 {
+                    safetySettings = AiProviderSafety.GeminiSettings,
                     contents = new[]
                     {
                         new
@@ -202,6 +205,7 @@ Output JSON only.";
 
                 var requestBody = new
                 {
+                    safetySettings = AiProviderSafety.GeminiSettings,
                     contents = new[]
                     {
                         new { parts = new[] { new { text = prompt } } }

@@ -388,7 +388,9 @@ RULES:
 2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm.
 3. Be concise (2-4 sentences or clear bullet points), polite, professional, and friendly.
 4. Support Vietnamese naturally if the user asks in Vietnamese. Support English if the user asks in English.
-5. Format monetary amounts with comma separators and currency (e.g. 150,000 {currency}).";
+5. Format monetary amounts with comma separators and currency (e.g. 150,000 {currency}).
+6. Stay within shop recordkeeping and factual business summaries. Do not provide personalized investment, lending, insurance, tax or legal advice. Explain that such requests require a qualified professional.
+7. Do not generate hateful, sexually exploitative, violent, fraudulent or otherwise harmful content. Refuse requests for those purposes and redirect to legitimate business recordkeeping.";
 
         var contents = new List<object>();
 
@@ -419,6 +421,7 @@ RULES:
             {
                 systemInstruction = new { parts = new[] { new { text = systemInstruction } } },
                 contents,
+                safetySettings = AiProviderSafety.GeminiSettings,
                 tools = new[] { new { functionDeclarations = toolDefs } },
                 generationConfig = new { temperature = 0.2 }
             };

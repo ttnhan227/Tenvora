@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot, CheckCircle2, Loader2, Send, Sparkles, User, X } from "lucide-react";
@@ -48,7 +49,15 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
     const pendingMessage = [...messages].reverse().find(
       (message) => message.proposal?.actionId && message.proposal.requiresConfirmation
     );
-    setMessages((current) => [...current, { id: crypto.randomUUID(), sender: "user", text }]);
+    const sentId = crypto.randomUUID();
+    const cancelled = (response: { errors?: string[] }) => {
+      if (!isAiConsentDeclined(response)) return false;
+      setMessages((current) => current.filter((message) => message.id !== sentId));
+      setInput(text);
+      setBusy(false);
+      return true;
+    };
+    setMessages((current) => [...current, { id: sentId, sender: "user", text }]);
     setInput("");
     if (pendingMessage?.proposal && /^(yes|y|confirm|confirmed|ok|okay|đồng ý|dong y|xác nhận|xac nhan|ừ|uh|có)$/i.test(text)) {
       await decide(pendingMessage.id, pendingMessage.proposal, true);
@@ -69,11 +78,13 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
       }]);
     } else if (looksLikeAction(text)) {
       const response = await aiAssistantService.proposeAction(text, uiContext);
+      if (cancelled(response)) return;
       setMessages((current) => [...current, response.success && response.data
         ? { id: crypto.randomUUID(), sender: "tenvora", text: response.data.summary, proposal: response.data }
         : { id: crypto.randomUUID(), sender: "tenvora", text: response.message || fallbackError(isVietnamese) }]);
     } else {
       const response = await aiAssistantService.chat(text, uiContext);
+      if (cancelled(response)) return;
       setMessages((current) => [...current, {
         id: crypto.randomUUID(), sender: "tenvora",
         text: response.success && response.data ? response.data.reply : response.message || fallbackError(isVietnamese),

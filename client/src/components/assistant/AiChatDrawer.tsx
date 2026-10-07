@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -204,6 +205,14 @@ export function AiChatDrawer({
       conversationId: activeConversationId ?? undefined,
       uiContext,
     });
+
+    if (isAiConsentDeclined(response)) {
+      setMessages((previous) => previous.filter((message) => message.id !== userMsg.id));
+      setInput(text);
+      setCurrentToolSummary(null);
+      setIsBusy(false);
+      return;
+    }
 
     if (response.success && response.data) {
       const data = response.data;

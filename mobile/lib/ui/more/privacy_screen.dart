@@ -44,6 +44,15 @@ class PrivacyScreen extends StatelessWidget {
           Text(
             tr(
               context,
+              'Support and privacy contact',
+              'Hỗ trợ và liên hệ quyền riêng tư',
+            ),
+          ),
+          const SelectableText('ccleemon227@gmail.com'),
+          const SizedBox(height: 8),
+          Text(
+            tr(
+              context,
               'After uninstalling, use the account-deletion page on the website.',
               'Sau khi gỡ ứng dụng, dùng trang xóa tài khoản trên website.',
             ),
