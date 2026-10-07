@@ -1,0 +1,68 @@
+{
+  "icon": {
+    "file": "app-icon.png",
+    "width": 512,
+    "height": 512,
+    "color_type": 6,
+    "bytes": 12216,
+    "sha256": "5f407b3ec1293f18a618e20cb5460c22719b3d8dcbe05c295bfa60aeaae810c1"
+  },
+  "feature_graphic": {
+    "file": "feature-graphic.png",
+    "width": 1024,
+    "height": 500,
+    "color_type": 2,
+    "bytes": 28218,
+    "sha256": "34616213f61eacd3edbfbb785cc58b9181d56a23d4a008ff6e02fb4d2e1c4bdc"
+  },
+  "screenshots": [
+    {
+      "file": "screenshots/en-US/01-overview.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 125223,
+      "sha256": "3fad198fb1a9f621e7609e0b881c8af32215d8d570e6f25eefd44368ab1919a3"
+    },
+    {
+      "file": "screenshots/en-US/02-sale.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 119896,
+      "sha256": "3d3cd609f7bce414a5b0f5487629f27ec4c381db2de67aaed2d49336a9065796"
+    },
+    {
+      "file": "screenshots/en-US/03-customers.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 68623,
+      "sha256": "91d7eab4de32a6ce0a811775768db6f952e516139cd8d2f870db7170ea7e764e"
+    },
+    {
+      "file": "screenshots/en-US/04-products.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 66020,
+      "sha256": "6e09746c6a764c930a82eca5c0b58b4fce7c5f470ba700fe3330f0da86fb688b"
+    },
+    {
+      "file": "screenshots/en-US/05-reports.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 117727,
+      "sha256": "b1de854b6e0e13e3e73a6431fb00fb941a91affe7014be4abfd6f84b98a5b413"
+    },
+    {
+      "file": "screenshots/en-US/06-assistant.png",
+      "width": 1080,
+      "height": 1920,
+      "color_type": 2,
+      "bytes": 159209,
+      "sha256": "3534fd3c43b712a60447bf7e923d1cb4fe4425a71b723152bb8e998c17865ada"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+Quản lý bán hàng, tồn kho, công nợ, nhập hàng và chi phí. Xem báo cáo và dùng trợ lý AI tùy chọn với thông báo dữ liệu, xác nhận trước khi thay đổi sổ sách. Giao diện Android hỗ trợ tiếng Anh, Việt, Tây Ban Nha, Pháp, Đức, Bồ Đào Nha (Brazil) và Indonesia.

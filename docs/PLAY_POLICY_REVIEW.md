@@ -1,11 +1,11 @@
 # Google Play policy preflight — October 7, 2026
 
-Decision: the verified bundle can enter Play testing, but policy readiness is not fully cleared. This review does not publish the app or certify Google approval. No local mobile rebuild was performed.
+Decision: the verified bundle can enter Play testing, but policy readiness is not fully cleared. This review does not publish the app or certify Google approval. Signed builds run in GitHub Actions; the installed Android release was tested locally in an isolated Android 16 emulator.
 
 ## Evidence checked
 
 - Signed retained 1.0.0 bundle: package `com.tenvora.app`, version code 1, target API 36, verified upload certificate, eight 64-bit native libraries checked for 16 KB alignment/packaging. Receipt: `mobile/build/play-release-ci/tenvora-1.0.0.verification.json`.
-- Prior product validation: 107 backend, 72 web and 24 mobile tests passed; one opt-in live AI test was skipped. Automated checks do not establish acceptance on a Play-installed physical device.
+- Final mobile validation: 46 tests passed, with clean analysis and formatting, including seven-language sign-in/settings at 150% text scaling. Web validation passed 75 unit tests and seven browser tests. Backend regressions cover fractional money, supplier balances, period-aware summaries and read-only AI fallback intent; local backend validation passed 109 tests with five infrastructure/live-provider tests skipped. Hosted synthetic reviewer login and read-only English AI summary are checked separately. These checks do not establish acceptance on a Play-installed physical device.
 - Privacy text exists in mobile and at `/privacy`; account deletion exists in Settings and at `/delete-account`. Both public web URLs returned HTTP 200 in this review; that response alone does not prove all browser interactions work.
 - The mobile assistant includes in-app reply reporting. Reports need developer review through the process in `GOOGLE_PLAY_HANDOFF.md`.
 - The merged bundle receipt lists camera, internet and secure-storage biometric permissions. It does not list broad photo-library, contacts, SMS, location or advertising-ID permissions. Camera access is optional and photo selection is user initiated.

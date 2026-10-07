@@ -14,7 +14,7 @@ Tenvora brings your shop records together in a compact mobile workspace. Record 
 
 The optional AI assistant can answer questions about your business records and prepare changes for you to review. Before AI requests, Tenvora explains which information is sent to Google Gemini and asks for your agreement. You confirm proposed record changes before execution. AI answers may be incorrect and should be checked against your records.
 
-Use English or Vietnamese and access your hosted workspace from Android and the web. An account and internet connection are required for hosted business features. Camera and image selection are optional for receipt and product photos.
+The Android interface supports English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Access your hosted workspace from Android and the web; the web interface supports English and Vietnamese. An account and internet connection are required for hosted business features. Camera and image selection are optional for receipt and product photos.
 
 Tenvora records business transactions; it does not transfer money, provide banking or originate loans. The assistant is intended for recordkeeping and factual summaries, not investment, lending, insurance, tax or legal advice.
 
@@ -24,7 +24,7 @@ Privacy: https://tenvora-client.onrender.com/privacy
 
 Account deletion: https://tenvora-client.onrender.com/delete-account
 
-Use screenshots captured from the final Play-installed Android build. Do not use the illustrative website dashboards as screenshots or claim unverified merchant counts, uptime, speed or revenue.
+Use screenshots captured from the current signed Android release. Recheck them against the Play-installed build before submission. Do not use the illustrative website dashboards as screenshots or claim unverified merchant counts, uptime, speed or revenue.
 
 ## App access instructions (English)
 

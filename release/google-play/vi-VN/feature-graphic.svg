@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+<rect width="1024" height="500" fill="#2F6F5E"/>
+<circle cx="1020" cy="70" r="240" fill="#387D69"/><circle cx="18" cy="500" r="210" fill="#286451"/>
+<g font-family="Segoe UI,Arial,sans-serif" fill="#FFF9E9">
+<text x="104" y="142" font-size="27" font-weight="600" letter-spacing="3">TENVORA</text>
+<text x="100" y="219" font-size="51" font-weight="700">Sổ sách cửa hàng,</text>
+<text x="100" y="284" font-size="51" font-weight="700">cùng một nơi.</text>
+<text x="104" y="346" font-size="23" fill="#DCE9DF">Bán hàng · Kho · Chi phí · Công nợ</text>
+</g>
+<g transform="translate(728 155)">
+<rect width="186" height="191" rx="20" fill="#FFF9E9"/>
+<path d="M33 53h120M33 84h83M33 114h120" stroke="#B9C9B9" stroke-width="9" stroke-linecap="round"/>
+<path d="M35 154h22M78 154h22M121 154h22" stroke="#2F6F5E" stroke-width="10" stroke-linecap="round"/>
+<circle cx="166" cy="174" r="34" fill="#E4A64F"/>
+<path d="m150 174 11 11 21-23" fill="none" stroke="#234F43" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</g></svg>

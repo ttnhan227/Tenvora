@@ -10,6 +10,8 @@ Release configuration requires the public HTTPS API URL and Google server client
 
 ## Before uploading
 
+The prepared listing files, feature graphics, icon and actual Android screenshots are in `release/google-play/`. Read its README and run `python release/google-play/validate_assets.py` after editing assets. `ANDROID_RELEASE_ACCEPTANCE.md` records the installed-app checks and their limits.
+
 - Deploy the matching backend and website changes. Verify `/privacy` and `/delete-account` publicly, and test account deletion with a disposable account. The new bundle's deletion and AI-reporting endpoints require the updated backend.
 - Public support and privacy contact: `ccleemon227@gmail.com`. Use the same contact in Play Console. The website defaults to this owner-approved address; `VITE_SUPPORT_EMAIL` can override it at build time.
 - In Play App Signing, register the **Play app-signing certificate** SHA-1/SHA-256 with the Android OAuth configuration for `com.tenvora.app`. It may differ from the upload certificate. Test Google sign-in on the version installed through Play testing.

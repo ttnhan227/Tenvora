@@ -1,0 +1,11 @@
+Tenvora tập hợp sổ sách cửa hàng trong một không gian làm việc trên điện thoại. Ghi nhận bán hàng và thanh toán, quản lý tồn kho và nhập hàng, theo dõi chi phí vận hành, công nợ khách hàng và nhà cung cấp. Báo cáo giúp bạn xem lại dữ liệu do nhóm nhập.
+
+Trợ lý AI tùy chọn trả lời câu hỏi về sổ sách và đề xuất thao tác để bạn kiểm tra. Trước khi gửi yêu cầu AI, Tenvora giải thích dữ liệu được gửi tới Google Gemini và xin sự đồng ý của bạn. Bạn xác nhận trước khi thay đổi sổ sách. AI có thể trả lời sai; hãy đối chiếu với dữ liệu gốc.
+
+Giao diện Android hỗ trợ tiếng Anh, Việt, Tây Ban Nha, Pháp, Đức, Bồ Đào Nha (Brazil) và Indonesia. Truy cập không gian làm việc từ Android hoặc web; giao diện web hỗ trợ tiếng Anh và tiếng Việt. Các tính năng kinh doanh trên máy chủ cần tài khoản và kết nối internet. Chụp hoặc chọn ảnh hóa đơn, sản phẩm là tùy chọn.
+
+Tenvora ghi nhận giao dịch kinh doanh; ứng dụng không chuyển tiền, cung cấp dịch vụ ngân hàng hay cho vay. Trợ lý hỗ trợ ghi sổ và tóm tắt dữ liệu, không cung cấp lời khuyên đầu tư, vay vốn, bảo hiểm, thuế hoặc pháp lý.
+
+Hỗ trợ: ccleemon227@gmail.com
+Quyền riêng tư: https://tenvora-client.onrender.com/privacy
+Xóa tài khoản: https://tenvora-client.onrender.com/delete-account

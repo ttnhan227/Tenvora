@@ -1,0 +1,20 @@
+{
+  "source_commit": "6d24248",
+  "capture_date": "2026-10-07",
+  "package": "com.tenvora.app",
+  "version_name": "1.0.0",
+  "version_code": 1,
+  "apk_sha256": "cea409e87b085c1e3ceaddb308d4afbc7e93cf0aa0d0ff3836640681ee5d9919",
+  "device": "Android 16 API 36 emulator; 4 KB pages",
+  "language": "English",
+  "records": "Fictional reviewer shop",
+  "processing": "PNG RGB encoding conversion only; no content alteration, cropping or overlays",
+  "screenshots": [
+    "01-overview.png",
+    "02-sale.png",
+    "03-customers.png",
+    "04-products.png",
+    "05-reports.png",
+    "06-assistant.png"
+  ]
+}

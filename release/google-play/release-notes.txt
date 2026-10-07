@@ -1,0 +1,1 @@
+Manage sales, stock, customer and supplier balances, purchases and expenses. Review business reports and use the optional AI assistant with data disclosure and confirmation before record changes. The Android interface supports English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian.
