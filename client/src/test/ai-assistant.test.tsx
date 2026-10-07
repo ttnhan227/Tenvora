@@ -86,6 +86,29 @@ describe("Tenvora AI action workflow", () => {
     });
   });
 
+  it("blocks rapid repeat confirmations and unlocks after an unexpected rejection", async () => {
+    vi.mocked(aiAssistantService.proposeAction).mockResolvedValueOnce({
+      success: true, data: { actionId: "repeat", intent: "create_customer", status: "PendingConfirmation", riskLevel: "Low", requiresConfirmation: true, summary: "Create Hoang Anh?", details: {} },
+    });
+    let rejectRequest!: (reason: Error) => void;
+    vi.mocked(aiAssistantService.confirmAction).mockImplementationOnce(() => new Promise((_, reject) => { rejectRequest = reject; }));
+    renderWithProviders(<AiQuickRecordBar />);
+    fireEvent.change(screen.getByPlaceholderText(/anh Nam vừa trả 2 triệu/i), { target: { value: "Create Hoang Anh" } });
+    fireEvent.click(screen.getByRole("button", { name: /Kiểm tra/i }));
+    const button = await screen.findByRole("button", { name: /Xác nhận ghi sổ/i });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(aiAssistantService.confirmAction).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+    rejectRequest(new Error("offline"));
+    await waitFor(() => expect(button).not.toBeDisabled());
+    vi.mocked(aiAssistantService.confirmAction).mockResolvedValueOnce({ success: true, data: { actionId: "repeat", status: "Executed", message: "Customer created: Hoang Anh" } });
+    fireEvent.click(button);
+    await screen.findByText("Customer created: Hoang Anh");
+    expect(screen.queryByRole("button", { name: /Xác nhận ghi sổ/i })).not.toBeInTheDocument();
+    expect(aiAssistantService.confirmAction).toHaveBeenCalledTimes(2);
+  });
+
   it("sends current customer context with an action proposal", async () => {
     vi.mocked(aiAssistantService.proposeAction).mockResolvedValueOnce({
       success: true,

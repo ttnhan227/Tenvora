@@ -3,8 +3,8 @@
 const Map<String, Map<String, String>> languageCatalogs = {
   "de": {
     "Before using AI": "Vor der Nutzung von KI",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora sendet Ihre Frage, den Gesprächsverlauf und relevante Geschäftsdaten (einschließlich Kunden- und Lieferantennamen, Salden, Buchungen und Bestand) an Google Gemini, um Antworten und Aktionen vorzubereiten. Gespräche werden auf dem Tenvora-Server gespeichert. Änderungen an Datensätzen erfordern Ihre Bestätigung. KI kann Fehler machen; vermeiden Sie unnötige sensible Informationen. Datenschutzerklärung: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora sendet Ihre Frage, den Gesprächsverlauf und relevante Geschäftsdaten (einschließlich Kunden- und Lieferantennamen, Salden, Buchungen und Bestand) an Google Gemini (und Mistral AI, wenn Gemini nicht verfügbar ist), um Antworten und Aktionen vorzubereiten. Gespräche werden auf dem Tenvora-Server gespeichert. Änderungen an Datensätzen erfordern Ihre Bestätigung. KI kann Fehler machen; vermeiden Sie unnötige sensible Informationen. Datenschutzerklärung: https://tenvora-client.onrender.com/privacy",
     "Not now": "Jetzt nicht",
     "Agree and continue": "Zustimmen und fortfahren",
     "Conversation history": "Gesprächsverlauf",
@@ -390,8 +390,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "en": {
     "Before using AI": "Before using AI",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy",
     "Not now": "Not now",
     "Agree and continue": "Agree and continue",
     "Conversation history": "Conversation history",
@@ -772,8 +772,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "es": {
     "Before using AI": "Antes de usar la IA",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora envía tu pregunta, el historial de conversación y los registros comerciales pertinentes (incluidos nombres de clientes y proveedores, saldos, transacciones e inventario) a Google Gemini para responder y preparar acciones. Las conversaciones se almacenan en el servidor de Tenvora. Debes confirmar antes de modificar registros. La IA puede equivocarse; evita información sensible innecesaria. Política de privacidad: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora envía tu pregunta, el historial de conversación y los registros comerciales pertinentes (incluidos nombres de clientes y proveedores, saldos, transacciones e inventario) a Google Gemini (y Mistral AI si Gemini no está disponible) para responder y preparar acciones. Las conversaciones se almacenan en el servidor de Tenvora. Debes confirmar antes de modificar registros. La IA puede equivocarse; evita información sensible innecesaria. Política de privacidad: https://tenvora-client.onrender.com/privacy",
     "Not now": "Ahora no",
     "Agree and continue": "Aceptar y continuar",
     "Conversation history": "Historial de conversaciones",
@@ -1156,8 +1156,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "fr": {
     "Before using AI": "Avant d’utiliser l’IA",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora envoie votre question, l’historique de conversation et les données commerciales pertinentes (noms des clients et fournisseurs, soldes, transactions et stocks) à Google Gemini pour répondre et préparer des actions. Les conversations sont stockées sur le serveur de Tenvora. Vous confirmez avant toute modification des données. L’IA peut se tromper ; évitez les informations sensibles inutiles. Politique de confidentialité : https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora envoie votre question, l’historique de conversation et les données commerciales pertinentes (noms des clients et fournisseurs, soldes, transactions et stocks) à Google Gemini (et Mistral AI si Gemini est indisponible) pour répondre et préparer des actions. Les conversations sont stockées sur le serveur de Tenvora. Vous confirmez avant toute modification des données. L’IA peut se tromper ; évitez les informations sensibles inutiles. Politique de confidentialité : https://tenvora-client.onrender.com/privacy",
     "Not now": "Pas maintenant",
     "Agree and continue": "Accepter et continuer",
     "Conversation history": "Historique des conversations",
@@ -1544,8 +1544,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "id": {
     "Before using AI": "Sebelum menggunakan AI",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora mengirim pertanyaan, riwayat percakapan, dan catatan bisnis terkait (termasuk nama pelanggan dan pemasok, saldo, transaksi, serta persediaan) ke Google Gemini untuk menjawab dan menyiapkan tindakan. Percakapan disimpan di server Tenvora. Anda harus mengonfirmasi sebelum catatan diubah. AI dapat salah; hindari informasi sensitif yang tidak diperlukan. Kebijakan privasi: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora mengirim pertanyaan, riwayat percakapan, dan catatan bisnis terkait (termasuk nama pelanggan dan pemasok, saldo, transaksi, serta persediaan) ke Google Gemini (dan Mistral AI jika Gemini tidak tersedia) untuk menjawab dan menyiapkan tindakan. Percakapan disimpan di server Tenvora. Anda harus mengonfirmasi sebelum catatan diubah. AI dapat salah; hindari informasi sensitif yang tidak diperlukan. Kebijakan privasi: https://tenvora-client.onrender.com/privacy",
     "Not now": "Tidak sekarang",
     "Agree and continue": "Setuju dan lanjutkan",
     "Conversation history": "Riwayat percakapan",
@@ -1927,8 +1927,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "pt-BR": {
     "Before using AI": "Antes de usar a IA",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "O Tenvora envia sua pergunta, o histórico da conversa e os registros comerciais relevantes (incluindo nomes de clientes e fornecedores, saldos, transações e estoque) ao Google Gemini para responder e preparar ações. As conversas ficam armazenadas no servidor do Tenvora. Você confirma antes de alterar registros. A IA pode errar; evite informações sensíveis desnecessárias. Política de privacidade: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "O Tenvora envia sua pergunta, o histórico da conversa e os registros comerciais relevantes (incluindo nomes de clientes e fornecedores, saldos, transações e estoque) ao Google Gemini (e Mistral AI se o Gemini estiver indisponível) para responder e preparar ações. As conversas ficam armazenadas no servidor do Tenvora. Você confirma antes de alterar registros. A IA pode errar; evite informações sensíveis desnecessárias. Política de privacidade: https://tenvora-client.onrender.com/privacy",
     "Not now": "Agora não",
     "Agree and continue": "Concordar e continuar",
     "Conversation history": "Histórico de conversas",
@@ -2311,8 +2311,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
   },
   "vi": {
     "Before using AI": "Trước khi dùng AI",
-    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
-        "Tenvora gửi câu hỏi, lịch sử hội thoại và dữ liệu kinh doanh liên quan (gồm tên khách hàng, nhà cung cấp, số dư, giao dịch và kho hàng) tới Google Gemini để trả lời và chuẩn bị thao tác. Hội thoại được lưu trên máy chủ Tenvora. Bạn xác nhận trước khi thay đổi sổ sách. AI có thể trả lời sai; tránh nhập thông tin nhạy cảm không cần thiết. Chính sách quyền riêng tư: https://tenvora-client.onrender.com/privacy",
+    "Tenvora sends your question, conversation history and relevant business records (including customer and supplier names, balances, transactions and inventory) to Google Gemini (and Mistral AI if Gemini is unavailable) to answer and prepare actions. Conversations are stored on Tenvora’s server. You confirm before records change. AI can make mistakes; avoid unnecessary sensitive information. Privacy policy: https://tenvora-client.onrender.com/privacy":
+        "Tenvora gửi câu hỏi, lịch sử hội thoại và dữ liệu kinh doanh liên quan (gồm tên khách hàng, nhà cung cấp, số dư, giao dịch và kho hàng) tới Google Gemini (và Mistral AI nếu Gemini không khả dụng) để trả lời và chuẩn bị thao tác. Hội thoại được lưu trên máy chủ Tenvora. Bạn xác nhận trước khi thay đổi sổ sách. AI có thể trả lời sai; tránh nhập thông tin nhạy cảm không cần thiết. Chính sách quyền riêng tư: https://tenvora-client.onrender.com/privacy",
     "Not now": "Để sau",
     "Agree and continue": "Đồng ý và tiếp tục",
     "Conversation history": "Lịch sử trò chuyện",

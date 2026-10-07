@@ -51,16 +51,18 @@ export function AiQuickRecordBar({ onRecordSuccess }: AiQuickRecordBarProps) {
     try {
       const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
       if (response.success && response.data) {
+        setProposal(null);
         if (confirmed) {
           setSuccessMessage(response.data.message);
           setText("");
           await queryClient.invalidateQueries();
           onRecordSuccess?.();
         }
-        setProposal(null);
       } else {
         setErrorMessage(response.message || (isVietnamese ? "Không thể hoàn tất thao tác." : "Could not complete the action."));
       }
+    } catch {
+      setErrorMessage(isVietnamese ? "Không thể hoàn tất thao tác. Vui lòng thử lại." : "Could not complete the action. Please try again.");
     } finally {
       decisionInFlight.current = false;
       setIsWorking(false);

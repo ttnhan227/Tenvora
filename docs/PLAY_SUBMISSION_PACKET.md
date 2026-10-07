@@ -12,7 +12,7 @@ Full description:
 
 Tenvora brings your shop records together in a compact mobile workspace. Record sales and payments, track inventory and supplier purchases, keep operating expenses, and review customer receivables and supplier payables. Business reports help you review the records entered by your team.
 
-The optional AI assistant can answer questions about your business records and prepare changes for you to review. Before AI requests, Tenvora explains which information is sent to Google Gemini and asks for your agreement. You confirm proposed record changes before execution. AI answers may be incorrect and should be checked against your records.
+The optional AI assistant can answer questions about your business records and prepare changes for you to review. Before AI requests, Tenvora explains which information is sent to Google Gemini and, if unavailable, Mistral AI and asks for your agreement. You confirm proposed record changes before execution. AI answers may be incorrect and should be checked against your records.
 
 The Android interface supports English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Access your hosted workspace from Android and the web; the web interface supports English and Vietnamese. An account and internet connection are required for hosted business features. Camera and image selection are optional for receipt and product photos.
 
@@ -56,7 +56,7 @@ Purposes to assess: app functionality, account management, security/fraud preven
 
 HTTPS release API and disabled cleartext traffic support encryption in transit; this is not an end-to-end encryption claim. Account deletion is available in-app and on the public website. Explain shared-record and backup retention as in the privacy policy.
 
-Third-party processing: Render hosting/database, Google sign-in and Google Gemini. The owner confirmed on October 7 that the Gemini API Cloud project has billing enabled. Google's paid-service terms say prompts/responses are not used for product improvement; limited abuse/security/legal retention still applies. Evaluate Google's service-provider and user-initiated/disclosure-and-consent sharing exceptions against actual processing. An exception to the form's “sharing” definition does not remove the requirement to disclose off-device collection or describe providers in Privacy. Keep this billing configuration active and verify future provider changes before updating declarations.
+Third-party processing: Render frontend hosting, Google Cloud Run backend hosting, Supabase database, Google sign-in, Google Gemini and Mistral AI fallback. Mistral data processing and account-level data-use settings must match the consent/privacy disclosures; do not assume Google terms apply to Mistral. The owner confirmed on October 7 that the Gemini API Cloud project has billing enabled. Google's paid-service terms say prompts/responses are not used for product improvement; limited abuse/security/legal retention still applies. Evaluate Google's service-provider and user-initiated/disclosure-and-consent sharing exceptions against actual processing. An exception to the form's “sharing” definition does not remove the requirement to disclose off-device collection or describe providers in Privacy. Keep this billing configuration active and verify future provider changes before updating declarations.
 
 Reference: https://support.google.com/googleplay/android-developer/answer/10787469
 

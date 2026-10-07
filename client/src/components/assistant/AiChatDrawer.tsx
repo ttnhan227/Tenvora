@@ -277,6 +277,7 @@ export function AiChatDrawer({
     decisionInFlight.current = true;
     setIsBusy(true);
 
+    try {
     const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed, input);
 
     if (response.success && response.data) {
@@ -325,6 +326,13 @@ export function AiChatDrawer({
       await handleSend(pendingSale);
     }
     return Boolean(response.success && response.data);
+    } catch {
+      toast.error(isVietnamese ? "Không thể hoàn tất thao tác. Vui lòng thử lại." : "Could not complete the action. Please try again.");
+      return false;
+    } finally {
+      decisionInFlight.current = false;
+      setIsBusy(false);
+    }
   };
 
   const handleExpandToFullPage = () => {

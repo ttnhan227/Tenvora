@@ -93,9 +93,13 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
     setBusy(false);
   };
 
+  const decisionInFlight = useRef(false);
+
   const decide = async (messageId: string, proposal: AiActionProposalResponse, confirmed: boolean) => {
-    if (!proposal.actionId || busy) return;
+    if (!proposal.actionId || busy || decisionInFlight.current || !proposal.requiresConfirmation) return;
+    decisionInFlight.current = true;
     setBusy(true);
+    try {
     const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
     if (response.success && response.data) {
       setMessages((current) => current.map((message) =>
@@ -117,6 +121,12 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
     }
     if (response.success && confirmed) await queryClient.invalidateQueries();
     setBusy(false);
+    } catch {
+      setMessages((current) => [...current, { id: crypto.randomUUID(), sender: "tenvora", text: fallbackError(isVietnamese) }]);
+    } finally {
+      decisionInFlight.current = false;
+      setBusy(false);
+    }
   };
 
   const quickQuestions = isVietnamese

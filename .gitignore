@@ -111,3 +111,6 @@ client/test-results/
 *.aab
 phone_screen.png
 client/public/downloads/*.apk
+
+# Short-lived GitHub GCP authentication files
+gha-creds-*.json
