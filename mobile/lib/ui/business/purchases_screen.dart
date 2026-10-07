@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
+import 'suppliers_screen.dart';
+import 'products_screen.dart';
 import '../widgets/common.dart';
 import '../widgets/action_guard.dart';
 import '../widgets/search_controller.dart';
@@ -253,6 +255,8 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
   String _method = 'Cash';
   String? _invoiceImage;
   bool _loading = true;
+  bool _bootstrapping = false;
+  Object? _loadError;
   bool _busy = false;
   double get total => _lines.fold(0, (sum, line) => sum + line.total);
   @override
@@ -262,6 +266,12 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
   }
 
   Future<void> _bootstrap() async {
+    if (_bootstrapping || !mounted) return;
+    _bootstrapping = true;
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final repo = AppScope.of(context).repository;
       final values = await Future.wait([
@@ -278,9 +288,13 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _loading = false);
-        showMessage(context, readableError(e), error: true);
+        setState(() {
+          _loading = false;
+          _loadError = e;
+        });
       }
+    } finally {
+      _bootstrapping = false;
     }
   }
 
@@ -493,9 +507,45 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
       body:
           _loading
               ? const Center(child: CircularProgressIndicator())
+              : _loadError != null
+              ? ErrorState(error: _loadError!, onRetry: _bootstrap)
               : PagePadding(
                 child: ListView(
                   children: [
+                    if (_suppliers.isEmpty)
+                      EmptyState(
+                        icon: Icons.person_add_alt_1,
+                        title: tr(context, 'Suppliers', 'Nhà cung cấp'),
+                        message: '',
+                        action: FilledButton(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SuppliersScreen(),
+                              ),
+                            );
+                            if (mounted) await _bootstrap();
+                          },
+                          child: Text(tr(context, 'Suppliers', 'Nhà cung cấp')),
+                        ),
+                      ),
+                    if (_products.isEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProductsScreen(),
+                            ),
+                          );
+                          if (mounted) await _bootstrap();
+                        },
+                        icon: const Icon(Icons.add),
+                        label: Text(
+                          tr(context, 'Products & stock', 'Sản phẩm & kho'),
+                        ),
+                      ),
                     DropdownButtonFormField<Supplier>(
                       initialValue: _supplier,
                       isExpanded: true,
