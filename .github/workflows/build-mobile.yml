@@ -5,12 +5,6 @@ on:
     types: [published]
   push:
     branches: [main]
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/build-mobile.yml'
-      - 'server/**'
-      - 'client/**'
-      - 'server.Tests/**'
   workflow_dispatch:
     inputs:
       publish:
@@ -34,6 +28,9 @@ jobs:
     name: Build & Publish Android APK
     runs-on: ubuntu-latest
     needs: verify-product
+    concurrency:
+      group: tenvora-public-mobile-build
+      cancel-in-progress: false
     permissions:
       contents: write
 
@@ -78,7 +75,7 @@ jobs:
         env:
           KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          PUBLISH: ${{ inputs.publish || github.event_name == 'release' }}
+          PUBLISH: ${{ inputs.publish || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_PROPERTIES" ]; then
             echo "Decoded production upload keystore from GitHub Secrets..."
@@ -99,7 +96,7 @@ jobs:
           INPUT_API_URL: ${{ inputs.api_base_url }}
           CONFIG_API_URL: ${{ vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID }}
-          PUBLISH: ${{ inputs.publish || github.event_name == 'release' }}
+          PUBLISH: ${{ inputs.publish || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
           API_URL="${INPUT_API_URL:-$CONFIG_API_URL}"
           if [ -z "$API_URL" ]; then
@@ -164,8 +161,33 @@ jobs:
           path: dist/tenvora-mobile.apk
           retention-days: 30
 
+      - name: Wait for matching backend deployment and reject stale builds
+        id: publication
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 120); do
+            MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+            if [ "$MAIN" != "$GITHUB_SHA" ]; then
+              echo 'A newer main commit exists; keeping the current public installer.'
+              echo 'current=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            RESULT=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --branch main --event push --limit 1 --json status,conclusion --jq '.[0] | if .status == "completed" then .conclusion else "waiting" end')
+            if [ "$RESULT" = 'success' ]; then
+              echo 'current=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            case "$RESULT" in failure|cancelled|timed_out|action_required) echo 'Matching CI/GCP deployment did not pass.'; exit 1 ;; esac
+            sleep 10
+          done
+          echo 'Timed out waiting for matching CI/GCP deployment.'
+          exit 1
+
       - name: Generate Product Release Notes
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: |
           cat << 'EOF' > release_body.md
           ## Verified Tenvora Android build
@@ -190,7 +212,7 @@ jobs:
         run: sha256sum dist/tenvora-mobile.apk > dist/tenvora-mobile.apk.sha256
 
       - name: Record published build provenance
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
           API_URL: ${{ inputs.api_base_url || vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
         run: |
@@ -204,14 +226,20 @@ jobs:
           printf '\n\nSource commit: `%s`\n' "$GITHUB_SHA" >> release_body.md
 
       - name: Publish to GitHub Releases (mobile-latest)
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
+        if: steps.publication.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          MAIN=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')
+          test "$MAIN" = "$GITHUB_SHA" || { echo 'Superseded before upload; skipping publication.'; exit 0; }
           if gh release view mobile-latest >/dev/null 2>&1; then
             gh release upload mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 dist/tenvora-mobile.build.json --clobber
             gh release edit mobile-latest --title "Tenvora Mobile for Android" --notes-file release_body.md
           else
             gh release create mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 dist/tenvora-mobile.build.json --title "Tenvora Mobile for Android" --notes-file release_body.md
           fi
+
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f mobile/android/key.properties mobile/android/tenvora-upload-key.jks
