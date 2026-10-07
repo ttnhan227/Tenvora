@@ -199,4 +199,4 @@ jobs:
           set -euo pipefail
           gcloud run deploy tenvora-api --project tenvora --region asia-southeast1 --image "$IMAGE" --quiet
           URL=$(gcloud run services describe tenvora-api --project tenvora --region asia-southeast1 --format='value(status.url)')
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 "$URL/api/health" | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "ready"'
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 "$URL/api/health/ready" | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "ready"'
