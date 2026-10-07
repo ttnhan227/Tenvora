@@ -7,3 +7,5 @@ Service: tenvora-api. Project: tenvora. Region: asia-southeast1. API: https://te
 Frontend remains on Render and uses its configured GCP API URL. Local services require scripts/update-local.ps1; pushes do not replace local running containers. Google Play submission remains manual. The Build & Release Mobile APK workflow must run with Publish enabled to replace the public mobile-latest download; both APK and AAB read MOBILE_API_BASE_URL from GitHub variables.
 
 The deployment service account can update the existing Cloud Run service, push to the designated Artifact Registry repository, and act as the existing runtime service account. The federation provider restricts repository and owner by immutable numeric IDs and requires main.
+
+The mobile-latest tag is a stable distribution channel. Its Git ref is not moved during publication; the attached tenvora-mobile.build.json and release notes record the actual installer source commit, API address and checksum. This avoids GitHub workflow-token restrictions on moving tags across workflow changes.

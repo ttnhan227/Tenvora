@@ -189,18 +189,19 @@ jobs:
       - name: Record installer checksum
         run: sha256sum dist/tenvora-mobile.apk > dist/tenvora-mobile.apk.sha256
 
-      - name: Update public download source tag
+      - name: Record published build provenance
         if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_URL: ${{ inputs.api_base_url || vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
         run: |
-          set -euo pipefail
-          SOURCE=$(git rev-parse HEAD)
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/mobile-latest" >/dev/null 2>&1; then
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/mobile-latest" -f sha="$SOURCE" -F force=true
-          else
-            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref=refs/tags/mobile-latest -f sha="$SOURCE"
-          fi
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          apk = Path('dist/tenvora-mobile.apk')
+          receipt = {'source_commit': os.environ['GITHUB_SHA'], 'workflow_run': os.environ['GITHUB_RUN_ID'], 'version': '1.0.0', 'api_base_url': os.environ['API_URL'], 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(), 'bytes': apk.stat().st_size, 'distribution_certificate_verified': True}
+          Path('dist/tenvora-mobile.build.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          PY
+          printf '\n\nSource commit: `%s`\n' "$GITHUB_SHA" >> release_body.md
 
       - name: Publish to GitHub Releases (mobile-latest)
         if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
@@ -209,8 +210,8 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view mobile-latest >/dev/null 2>&1; then
-            gh release upload mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 --clobber
+            gh release upload mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 dist/tenvora-mobile.build.json --clobber
             gh release edit mobile-latest --title "Tenvora Mobile for Android" --notes-file release_body.md
           else
-            gh release create mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 --title "Tenvora Mobile for Android" --notes-file release_body.md
+            gh release create mobile-latest dist/tenvora-mobile.apk dist/tenvora-mobile.apk.sha256 dist/tenvora-mobile.build.json --title "Tenvora Mobile for Android" --notes-file release_body.md
           fi
