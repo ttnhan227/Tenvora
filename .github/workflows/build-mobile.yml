@@ -200,8 +200,8 @@ jobs:
           ### ✨ Key Features
           * **Fast Sales & Expense Entry:** Record counter sales and cash payments in seconds with automatic debt tracking.
           * **Camera Receipt Capture:** Photograph supplier receipts and paper invoices to attach them directly to your permanent records.
-          * **Customer & Supplier Balances:** Check who owes what in real time, view purchase history, and log payments on the go.
-          * **Instant Web & Cloud Sync:** Transactions logged on your phone sync instantly with your web dashboard and ledger.
+          * **Customer & Supplier Balances:** Check balances, view purchase history, and log payments on the go.
+          * **Shared Web & Mobile Records:** Transactions saved on your phone are available to the web dashboard and ledger on refresh.
           * **Seven Android interface languages:** English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian, with locale-aware formatting.
 
           ---
