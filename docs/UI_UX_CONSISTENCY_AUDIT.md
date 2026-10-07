@@ -39,6 +39,8 @@ inventory adjustments, expenses, reports, AI confirmations, and refresh behavior
 - Search controllers/form controllers and post-navigation reloads now respect
   screen disposal. Empty later pages provide a return to the first page.
 - The native empty-sales creation shortcut now respects read-only permissions.
+- Native refresh callbacks no longer return Futures to Flutter setState. Product
+  forms accept valid zero prices consistently with web/backend validation.
 
 ## Shared operation contract
 
