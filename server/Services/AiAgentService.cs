@@ -151,7 +151,12 @@ public sealed class AiAgentService : IAiAgentService
             .OrderBy(m => m.CreatedAt)
             .ToListAsync(ct);
 
-        // 5. Run agent with tools: Gemini first, Mistral as fallback
+        // A clarification reply is part of the previous action, not a brand-new
+        // dashboard question. Recover older dead-end product clarifications and
+        // turn the supplied product description into an inline catalog draft.
+        var clarificationRecovery = TryRecoverMissingProductClarification(history, rawText, currency);
+
+        // 5. Run Agent: Gemini first, Mistral as fallback, Local Agent as safety/offline net
         var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
         var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
         var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
@@ -162,51 +167,63 @@ public sealed class AiAgentService : IAiAgentService
         string providerName = "Google Gemini";
         bool isFallback = false;
 
-        AgentTurnResult? agentResult = null;
-
-        if (!string.IsNullOrWhiteSpace(apiKey))
+        if (clarificationRecovery != null)
         {
-            try
-            {
-                agentResult = await RunGeminiAgentLoopAsync(
-                    tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
-                    apiKey, endpoint, model, ct);
-                providerName = "Google Gemini";
-            }
-            catch (Exception ex) when (!ct.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex, "Gemini agent failed; trying Mistral fallback.");
-            }
+            reply = clarificationRecovery.Reply;
+            proposal = clarificationRecovery.Proposal;
+            toolCalls = clarificationRecovery.ToolCalls;
+            providerName = "Tenvora Local Agent";
+            isFallback = true;
         }
-
-        var mistralKey = _config["MISTRAL_API_KEY"] ?? Environment.GetEnvironmentVariable("MISTRAL_API_KEY");
-        if (agentResult == null && !string.IsNullOrWhiteSpace(mistralKey))
+        else
         {
-            var mistralModel = _config["MISTRAL_MODEL"] ?? Environment.GetEnvironmentVariable("MISTRAL_MODEL") ?? "ministral-8b-latest";
-            var mistralEndpoint = _config["MISTRAL_ENDPOINT"] ?? Environment.GetEnvironmentVariable("MISTRAL_ENDPOINT") ?? "https://api.mistral.ai/v1/chat/completions";
-            try
+            AgentTurnResult? agentResult = null;
+
+            if (!string.IsNullOrWhiteSpace(apiKey))
             {
-                agentResult = await RunMistralAgentLoopAsync(
-                    tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
-                    mistralKey, mistralEndpoint, mistralModel, ct);
-                providerName = "Mistral AI";
-                model = mistralModel;
+                try
+                {
+                    agentResult = await RunGeminiAgentLoopAsync(
+                        tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
+                        apiKey, endpoint, model, ct);
+                    providerName = "Google Gemini";
+                }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Gemini agent failed; trying Mistral fallback.");
+                }
             }
-            catch (Exception ex) when (!ct.IsCancellationRequested)
+
+            var mistralKey = _config["MISTRAL_API_KEY"] ?? Environment.GetEnvironmentVariable("MISTRAL_API_KEY");
+            if (agentResult == null && !string.IsNullOrWhiteSpace(mistralKey))
             {
-                _logger.LogWarning(ex, "Mistral fallback agent failed.");
+                var mistralModel = _config["MISTRAL_MODEL"] ?? Environment.GetEnvironmentVariable("MISTRAL_MODEL") ?? "ministral-8b-latest";
+                var mistralEndpoint = _config["MISTRAL_ENDPOINT"] ?? Environment.GetEnvironmentVariable("MISTRAL_ENDPOINT") ?? "https://api.mistral.ai/v1/chat/completions";
+                try
+                {
+                    agentResult = await RunMistralAgentLoopAsync(
+                        tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
+                        mistralKey, mistralEndpoint, mistralModel, ct);
+                    providerName = "Mistral AI";
+                    model = mistralModel;
+                }
+                catch (Exception ex) when (!ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning(ex, "Mistral fallback agent failed.");
+                }
             }
+
+            if (agentResult == null)
+            {
+                agentResult = await RunLocalAgentAsync(tenantId, userId, userRole, tenant, currency, rawText, request.UiContext, ct);
+                providerName = "Tenvora Local Agent";
+                isFallback = true;
+            }
+
+            reply = agentResult.Reply;
+            proposal = agentResult.Proposal;
+            toolCalls = agentResult.ToolCalls;
         }
-
-        if (agentResult == null)
-        {
-            return ApiResult<AiAgentChatResponse>.Fail("The AI assistant is temporarily unavailable. Please try again in a moment.");
-        }
-
-        reply = agentResult.Reply;
-        proposal = agentResult.Proposal;
-        toolCalls = agentResult.ToolCalls;
-
         // 6. Save assistant message and update conversation timestamp
         var assistantMessage = new AiConversationMessage
         {
@@ -1011,6 +1028,188 @@ RULES:
 
     private static string Truncate(string value, int max) =>
         value.Length <= max ? value : value[..max];
+
+    #endregion
+
+    #region Resilient Local Agent Engine
+
+    private async Task<AgentTurnResult> RunLocalAgentAsync(
+        Guid tenantId,
+        Guid userId,
+        string userRole,
+        Tenant tenant,
+        string currency,
+        string prompt,
+        AiUiContext? uiContext,
+        CancellationToken ct)
+    {
+        var lower = prompt.ToLowerInvariant();
+        var vietnamese = IsVietnamese(prompt);
+        string Money(decimal amount) => $"{amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)} {currency}";
+        var toolCalls = new List<AiAgentToolCallInfo>();
+
+        // 1. Check if user wants to record or execute an action
+        if (LooksLikeBusinessAction(lower))
+        {
+            var propResult = await _actionService.ProposeAsync(
+                tenantId, userId, new AiProposeActionRequest(prompt, uiContext), userRole, ct);
+
+            if (propResult.Success && propResult.Data != null)
+            {
+                var p = propResult.Data;
+                var isClarification = p.Status == AiActionStatuses.NeedsClarification || p.ActionId == null;
+                var isVi = IsVietnamese(prompt);
+
+                if (isClarification)
+                {
+                    toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Cần thêm thông tin: {p.Summary}" : $"Need info: {p.Summary}", p));
+                    var question = isVi
+                        ? $"{p.Summary}\n\nBạn vui lòng cho biết thêm thông tin (ví dụ: tên, giá bán, hoặc đơn vị tính) bằng cách nhập trực tiếp vào thẻ hoặc gửi tin nhắn để tôi chuẩn bị thao tác."
+                        : $"{p.Summary}\n\nPlease provide the missing details (e.g. name, price, or unit) in the card or chat so I can prepare the action for you.";
+
+                    return new AgentTurnResult(question, p, toolCalls);
+                }
+
+                toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Chuẩn bị: {p.Summary}" : $"Prepared: {p.Summary}", p));
+                var confirmMsg = isVi
+                    ? $"Tôi đã chuẩn bị thao tác: **{p.Summary}**.\n\nVui lòng kiểm tra chi tiết trên thẻ bên dưới rồi xác nhận để hoàn tất."
+                    : $"I've prepared this action: **{p.Summary}**.\n\nPlease review the details in the card below, then confirm to complete it.";
+
+                return new AgentTurnResult(confirmMsg, p, toolCalls);
+            }
+        }
+
+        // Read-only fallback responses preserve language, precision and query scope.
+        if (Regex.IsMatch(lower, @"(tồn kho|hết hàng|sắp hết|kho|sản phẩm|mặt hàng|stock|inventory|product)"))
+        {
+            var lowStock = Regex.IsMatch(lower, @"(sắp hết|hết hàng|thiếu|low|out of stock|cần nhập)");
+            var products = (await _businessService.GetProductsAsync(tenantId, "", true)).Data ?? new();
+            if (lowStock) products = products.Where(p => p.StockQuantity <= (p.MinStockLevel ?? 0)).ToList();
+            toolCalls.Add(new("query_inventory_and_products", vietnamese ? "Kiểm tra tồn kho" : "Checked inventory", products));
+            if (products.Count == 0)
+                return new(vietnamese
+                    ? (lowStock ? "Không có sản phẩm nào ở mức tồn kho thấp." : "Chưa có sản phẩm nào.")
+                    : (lowStock ? "No products are currently low in stock." : "No products have been recorded."), null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"{products.Count} sản phẩm{(lowStock ? " tồn kho thấp" : "")}, hiển thị tối đa 5:"
+                : $"{products.Count} {(lowStock ? "low-stock " : "")}products; showing up to 5:");
+            foreach (var product in products.Take(5))
+                text.AppendLine($"- **{product.Name}**: {product.StockQuantity:0.###} {product.Unit} — {Money(product.DefaultPrice)}");
+            return new(text.ToString(), null, toolCalls);
+        }
+
+        if (Regex.IsMatch(lower, @"(supplier|nhà cung cấp|phải trả)"))
+        {
+            var suppliers = ((await _businessService.GetSuppliersAsync(tenantId, "", null)).Data ?? new())
+                .Where(supplier => supplier.OutstandingBalance > 0).ToList();
+            toolCalls.Add(new("query_suppliers_and_payables", vietnamese ? "Kiểm tra công nợ nhà cung cấp" : "Checked supplier balances", suppliers));
+            if (suppliers.Count == 0)
+                return new(vietnamese ? "Không có công nợ nhà cung cấp." : "No suppliers have an outstanding balance.", null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"Tổng công nợ nhà cung cấp: **{Money(suppliers.Sum(supplier => supplier.OutstandingBalance))}**. Hiển thị tối đa 5:"
+                : $"Total owed to suppliers: **{Money(suppliers.Sum(supplier => supplier.OutstandingBalance))}**. Showing up to 5:");
+            foreach (var supplier in suppliers.Take(5)) text.AppendLine($"- **{supplier.Name}**: **{Money(supplier.OutstandingBalance)}**");
+            return new(text.ToString(), null, toolCalls);
+        }
+
+        if (Regex.IsMatch(lower, @"(nợ|ai nợ|công nợ|phải thu|debt|owe|customer.*debt|unpaid)"))
+        {
+            var customers = ((await _businessService.GetCustomersAsync(tenantId, "", null)).Data ?? new())
+                .Where(customer => customer.OutstandingBalance > 0).ToList();
+            toolCalls.Add(new("query_customers_and_debt", vietnamese ? "Kiểm tra công nợ khách hàng" : "Checked customer balances", customers));
+            if (customers.Count == 0)
+                return new(vietnamese ? "Không có khách hàng nào đang nợ tiền." : "No customers have an outstanding balance.", null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"Tổng công nợ khách hàng: **{Money(customers.Sum(customer => customer.OutstandingBalance))}** trên {customers.Count} khách hàng. Hiển thị tối đa 5:"
+                : $"Customers owe **{Money(customers.Sum(customer => customer.OutstandingBalance))}** across {customers.Count} customers. Showing up to 5:");
+            foreach (var customer in customers.Take(5)) text.AppendLine($"- **{customer.Name}**: **{Money(customer.OutstandingBalance)}**");
+            return new(text.ToString(), null, toolCalls);
+        }
+
+        var period = Regex.IsMatch(lower, @"(month|tháng)") ? "month" : Regex.IsMatch(lower, @"(week|tuần)") ? "week" : "today";
+        var label = vietnamese
+            ? (period == "month" ? "tháng này" : period == "week" ? "tuần này" : "hôm nay")
+            : (period == "month" ? "this month" : period == "week" ? "this week" : "today");
+        var dashboard = (await _businessService.GetDashboardAsync(tenantId, period)).Data;
+        toolCalls.Add(new("get_business_overview", vietnamese ? $"Tổng quan {label}" : $"Overview for {label}", dashboard));
+        var overview = vietnamese
+            ? $"Sổ sách {label} tại **{tenant.CompanyName}**:\n- Doanh thu: **{Money(dashboard?.PeriodSales ?? 0)}**\n- Thực thu: **{Money(dashboard?.PeriodPayments ?? 0)}**\n- Chi phí: **{Money(dashboard?.PeriodExpenses ?? 0)}**\n- Lợi nhuận ước tính: **{Money(dashboard?.PeriodNetProfit ?? 0)}**\n- Khách đang nợ: **{Money(dashboard?.OutstandingCustomers ?? 0)}**\n- Nợ nhà cung cấp: **{Money(dashboard?.OutstandingSuppliers ?? 0)}**"
+            : $"Records for {label} at **{tenant.CompanyName}**:\n- Sales: **{Money(dashboard?.PeriodSales ?? 0)}**\n- Payments received: **{Money(dashboard?.PeriodPayments ?? 0)}**\n- Expenses: **{Money(dashboard?.PeriodExpenses ?? 0)}**\n- Estimated profit: **{Money(dashboard?.PeriodNetProfit ?? 0)}**\n- Customer balances: **{Money(dashboard?.OutstandingCustomers ?? 0)}**\n- Supplier balances: **{Money(dashboard?.OutstandingSuppliers ?? 0)}**";
+        return new(overview, null, toolCalls);
+    }
+
+    private static bool LooksLikeBusinessAction(string lower)
+    {
+        // A summary of records is not a request to record a transaction. Likewise,
+        // "unpaid" must not match "paid" and "address" must not match "add".
+        if (Regex.IsMatch(lower.TrimStart(), @"^(show|list|summarize|explain|what|which|how|tóm tắt|liệt kê|cho xem)\b"))
+            return false;
+        if (Regex.IsMatch(lower, @"\b(do not|don't|never)\s+(change|record|create|add|update|edit|delete|void)\b"))
+            return false;
+        if (Regex.IsMatch(lower, @"\b(paid|repaid|record|sold|spent|purchase|create|add|update|edit|delete|void)\b|\b(vừa trả|trả nợ|thanh toán|ghi|bán cho|chi|mua từ|nhập hàng|tạo|thêm|sửa|xóa|hủy)\b"))
+            return true;
+
+        // Natural retail shorthand: "[customer] bought 1kg [product]". Requiring
+        // a quantity keeps ordinary questions such as "what did customers buy?"
+        // on the read-only chat path. "bougt" covers a common mobile typo.
+        return Regex.IsMatch(lower, @"\b(bought|bougt|purchased)\b.*\b\d+(?:[.,]\d+)?\s*(kg|kilograms?|g|grams?|bags?|packs?|boxes?|bottles?|pcs?|pieces?|items?|cái|món|bao|gói|hộp|chai)\b");
+    }
+
+    private static AgentTurnResult? TryRecoverMissingProductClarification(
+        List<AiConversationMessage> history,
+        string currentPrompt,
+        string currency)
+    {
+        if (LooksLikeBusinessAction(currentPrompt.ToLowerInvariant()) || history.Count < 3)
+            return null;
+
+        var previousAssistant = history.Take(history.Count - 1).LastOrDefault(message => message.Role == "assistant");
+        if (previousAssistant == null ||
+            !(previousAssistant.Content.Contains("couldn't match an active product", StringComparison.OrdinalIgnoreCase) ||
+              previousAssistant.Content.Contains("not in your product catalog", StringComparison.OrdinalIgnoreCase)))
+            return null;
+
+        var productName = Regex.Replace(currentPrompt.Trim(),
+            @"^\d+(?:[.,]\d+)?\s*(?:(?:kg|kilograms?|g|grams?|liters?|litres?|l)\s*)?(?:(?:bags?|packs?|boxes?|bottles?)\s+of\s+|of\s+)?",
+            "", RegexOptions.IgnoreCase).Trim(' ', ',', '.', ':', ';', '\'', '"');
+        if (string.IsNullOrWhiteSpace(productName) || !Regex.IsMatch(productName, @"[\p{L}]"))
+            return null;
+
+        var unitMatch = Regex.Match(currentPrompt,
+            @"\d+(?:[.,]\d+)?\s*(kg|kilograms?|g|grams?|liters?|litres?|l|bags?|packs?|boxes?|bottles?|pcs?|pieces?|items?)\b",
+            RegexOptions.IgnoreCase);
+        var unit = unitMatch.Success ? unitMatch.Groups[1].Value : "item";
+        var pendingSale = history.Take(history.Count - 1)
+            .LastOrDefault(message => message.Role == "user" &&
+                Regex.IsMatch(message.Content, @"\b(bought|bougt|purchased|sold|bán)\b", RegexOptions.IgnoreCase))?.Content;
+
+        var proposal = new AiActionProposalResponse(
+            null,
+            "create_product",
+            AiActionStatuses.NeedsClarification,
+            "Low",
+            false,
+            $"{productName} is not in your product catalog yet. Add its selling price first, then Tenvora can prepare the sale.",
+            new Dictionary<string, string?>
+            {
+                ["Product"] = productName,
+                ["Unit"] = unit,
+                ["Default price"] = $"0 {currency}",
+                ["Price required"] = "true",
+                ["Pending sale"] = pendingSale
+            });
+        var tools = new List<AiAgentToolCallInfo>
+        {
+            new("prepare_product", $"Prepare missing product: {productName}", proposal)
+        };
+        return new AgentTurnResult(
+            $"I kept the pending sale. **{productName}** is not a saved product yet, so complete the product card below with its selling price first.",
+            proposal,
+            tools);
+    }
 
     #endregion
 
