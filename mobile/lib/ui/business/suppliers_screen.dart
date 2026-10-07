@@ -37,12 +37,14 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(context).repository.suppliers(
-        search: _search.text,
-        page: _page,
-        status: _status == 'All' ? '' : _status,
-      );
+  void _load() {
+    _future = AppScope.of(context).repository.suppliers(
+      search: _search.text,
+      page: _page,
+      status: _status == 'All' ? '' : _status,
+    );
+  }
+
   void _reload() => setState(_load);
   Future<void> _edit([Supplier? s]) async {
     final name = TextEditingController(text: s?.name);

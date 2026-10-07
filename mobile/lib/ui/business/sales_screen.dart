@@ -51,10 +51,12 @@ class _SalesScreenState extends State<SalesScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.sales(search: _search.text, page: _page);
+  void _load() {
+    _future = AppScope.of(
+      context,
+    ).repository.sales(search: _search.text, page: _page);
+  }
+
   void _reload() => setState(_load);
   Future<void> _create() async {
     if (await Navigator.push<bool>(
@@ -649,9 +651,9 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> with ActionGuard {
     }
   }
 
-  void _reload() => setState(
-    () => _future = AppScope.of(context).repository.sale(widget.saleId),
-  );
+  void _reload() => setState(() {
+    _future = AppScope.of(context).repository.sale(widget.saleId);
+  });
   Future<void> _pay(Sale sale) => runAction(() => _payAction(sale));
 
   Future<void> _payAction(Sale sale) async {

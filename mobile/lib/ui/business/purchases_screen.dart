@@ -38,10 +38,12 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.purchases(search: _search.text, page: _page);
+  void _load() {
+    _future = AppScope.of(
+      context,
+    ).repository.purchases(search: _search.text, page: _page);
+  }
+
   void _reload() => setState(_load);
   Future<void> _create() async {
     if (await Navigator.push<bool>(
@@ -679,9 +681,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen>
     }
   }
 
-  void _reload() => setState(
-    () => _future = AppScope.of(context).repository.purchase(widget.purchaseId),
-  );
+  void _reload() => setState(() {
+    _future = AppScope.of(context).repository.purchase(widget.purchaseId);
+  });
   Future<void> _pay(Purchase purchase) => runAction(() => _payAction(purchase));
 
   Future<void> _payAction(Purchase purchase) async {

@@ -48,7 +48,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   bool _initialized = false;
-  void _load() => _future = AppScope.of(context).repository.dashboard(_period);
+  void _load() {
+    _future = AppScope.of(context).repository.dashboard(_period);
+  }
+
   Future<void> _refresh() async {
     setState(_load);
     await _future;

@@ -28,9 +28,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     _future = AppScope.of(context).repository.dashboard(_period);
   }
 
-  void _reload() => setState(
-    () => _future = AppScope.of(context).repository.dashboard(_period),
-  );
+  void _reload() => setState(() {
+    _future = AppScope.of(context).repository.dashboard(_period);
+  });
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(tr(context, 'Reports', 'Báo cáo'))),
@@ -651,8 +651,9 @@ class _TeamScreenState extends State<TeamScreen> with ActionGuard {
     _future = AppScope.of(context).repository.users();
   }
 
-  void _reload() =>
-      setState(() => _future = AppScope.of(context).repository.users());
+  void _reload() => setState(() {
+    _future = AppScope.of(context).repository.users();
+  });
   Future<void> _add() => runAction(_addAction);
 
   Future<void> _addAction() async {
@@ -869,9 +870,9 @@ class _AuditScreenState extends State<AuditScreen> {
             return ErrorState(
               error: snapshot.error!,
               onRetry:
-                  () => setState(
-                    () => _future = AppScope.of(context).repository.audit(),
-                  ),
+                  () => setState(() {
+                    _future = AppScope.of(context).repository.audit();
+                  }),
             );
           }
           final items = snapshot.data!;

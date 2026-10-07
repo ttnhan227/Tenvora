@@ -39,12 +39,14 @@ class _CustomersScreenState extends State<CustomersScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(context).repository.customers(
-        search: _search.text,
-        status: _status == 'All' ? '' : _status,
-        page: _page,
-      );
+  void _load() {
+    _future = AppScope.of(context).repository.customers(
+      search: _search.text,
+      status: _status == 'All' ? '' : _status,
+      page: _page,
+    );
+  }
+
   void _reload() => setState(_load);
 
   Future<void> _edit([Customer? customer]) async {
@@ -574,10 +576,12 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
     _load();
   }
 
-  void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.customerStatement(widget.customer.id, from: _from, to: _to);
+  void _load() {
+    _future = AppScope.of(
+      context,
+    ).repository.customerStatement(widget.customer.id, from: _from, to: _to);
+  }
+
   Future<void> _date(bool from) async {
     final value = await showDatePicker(
       context: context,

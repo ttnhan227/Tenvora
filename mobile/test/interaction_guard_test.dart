@@ -45,7 +45,14 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(
         tester
-            .widget<AbsorbPointer>(find.byType(AbsorbPointer).first)
+            .widget<AbsorbPointer>(
+              find
+                  .descendant(
+                    of: find.byType(GuardFixture),
+                    matching: find.byType(AbsorbPointer),
+                  )
+                  .first,
+            )
             .absorbing,
         isTrue,
       );

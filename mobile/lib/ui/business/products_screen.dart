@@ -40,12 +40,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(context).repository.products(
-        search: _search.text,
-        page: _page,
-        active: _status == 'All' ? null : _status == 'Active',
-      );
+  void _load() {
+    _future = AppScope.of(context).repository.products(
+      search: _search.text,
+      page: _page,
+      active: _status == 'All' ? null : _status == 'Active',
+    );
+  }
+
   void _reload() => setState(_load);
   Future<void> _edit([Product? value]) async {
     if (await showModalBottomSheet<bool>(
@@ -633,7 +635,11 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                       ),
                       validator:
                           (v) =>
-                              numberOf(v ?? '') <= 0
+                              (v?.trim().isEmpty ?? true) ||
+                                      !RegExp(
+                                        r'^[-+]?\d[\d.,\s]*$',
+                                      ).hasMatch(v!.trim()) ||
+                                      numberOf(v) < 0
                                   ? tr(context, 'Enter a price', 'Nhập giá')
                                   : null,
                     ),

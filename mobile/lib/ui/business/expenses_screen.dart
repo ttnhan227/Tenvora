@@ -38,10 +38,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
-  void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.expenses(search: _search.text, page: _page);
+  void _load() {
+    _future = AppScope.of(
+      context,
+    ).repository.expenses(search: _search.text, page: _page);
+  }
+
   void _reload() => setState(_load);
   Future<void> _edit([Expense? e]) async {
     if (await showModalBottomSheet<bool>(
