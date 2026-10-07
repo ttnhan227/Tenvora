@@ -19,6 +19,8 @@ class _AgentScreenState extends State<AgentScreen> {
   final List<AgentMessage> _messages = [];
   String? _conversationId;
   bool _busy = false;
+  final Set<String> _pending = {};
+  final Map<String, bool> _resolved = {};
   bool _consentDialogOpen = false;
   String? _consentedUserId;
 
@@ -122,16 +124,26 @@ class _AgentScreenState extends State<AgentScreen> {
   }
 
   Future<void> _confirm(AgentProposal proposal, bool confirmed) async {
-    if (proposal.actionId == null) return;
+    final id = proposal.actionId;
+    if (id == null || _pending.contains(id) || _resolved.containsKey(id)) {
+      return;
+    }
+    setState(() => _pending.add(id));
     try {
       final result = await AppScope.of(
         context,
-      ).repository.confirmAction(proposal.actionId!, confirmed);
+      ).repository.confirmAction(id, confirmed);
       if (mounted) {
-        setState(() => _messages.add(AgentMessage.fromJson(result)));
+        setState(() {
+          _resolved[id] = confirmed;
+          _messages.add(AgentMessage.fromJson(result));
+        });
+        _toBottom();
       }
     } catch (error) {
       if (mounted) showMessage(context, readableError(error), error: true);
+    } finally {
+      if (mounted) setState(() => _pending.remove(id));
     }
   }
 
@@ -368,17 +380,6 @@ class _AgentScreenState extends State<AgentScreen> {
                   ),
                 if (message.proposal != null)
                   _proposalCard(context, message.proposal!),
-                if (!isUser && message.isFallback) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    tr(
-                      context,
-                      'Using the built-in assistant. Some languages and requests have limited support.',
-                      'Đang dùng trợ lý tích hợp. Một số ngôn ngữ và yêu cầu được hỗ trợ hạn chế.',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
                 if (!isUser)
                   TextButton.icon(
                     onPressed: () => _report(message),
@@ -461,23 +462,46 @@ class _AgentScreenState extends State<AgentScreen> {
           ),
           if (proposal.requiresConfirmation) ...[
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _confirm(proposal, false),
-                    child: Text(tr(context, 'Reject', 'Từ chối')),
+            if (_resolved[proposal.actionId] != null)
+              Text(
+                _resolved[proposal.actionId]!
+                    ? tr(context, 'Confirmed', 'Đã xác nhận')
+                    : tr(context, 'Rejected', 'Đã từ chối'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed:
+                          _pending.contains(proposal.actionId)
+                              ? null
+                              : () => _confirm(proposal, false),
+                      child: Text(tr(context, 'Reject', 'Từ chối')),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => _confirm(proposal, true),
-                    child: Text(tr(context, 'Confirm', 'Xác nhận')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed:
+                          _pending.contains(proposal.actionId)
+                              ? null
+                              : () => _confirm(proposal, true),
+                      child:
+                          _pending.contains(proposal.actionId)
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Text(tr(context, 'Confirm', 'Xác nhận')),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ],
       ),

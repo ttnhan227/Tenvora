@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ export function AiQuickRecordBar({ onRecordSuccess }: AiQuickRecordBarProps) {
   const [text, setText] = useState("");
   const [proposal, setProposal] = useState<AiActionProposalResponse | null>(null);
   const [isWorking, setIsWorking] = useState(false);
+  const decisionInFlight = useRef(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,25 +41,30 @@ export function AiQuickRecordBar({ onRecordSuccess }: AiQuickRecordBarProps) {
   };
 
   const decide = async (confirmed: boolean) => {
-    if (!proposal?.actionId || isWorking) {
-      if (!confirmed) setProposal(null);
+    if (!proposal?.actionId || isWorking || decisionInFlight.current) {
+      if (!confirmed && !isWorking) setProposal(null);
       return;
     }
+    decisionInFlight.current = true;
     setIsWorking(true);
     setErrorMessage(null);
-    const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
-    if (response.success && response.data) {
-      if (confirmed) {
-        setSuccessMessage(response.data.message);
-        setText("");
-        await queryClient.invalidateQueries();
-        onRecordSuccess?.();
+    try {
+      const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed);
+      if (response.success && response.data) {
+        if (confirmed) {
+          setSuccessMessage(response.data.message);
+          setText("");
+          await queryClient.invalidateQueries();
+          onRecordSuccess?.();
+        }
+        setProposal(null);
+      } else {
+        setErrorMessage(response.message || (isVietnamese ? "Không thể hoàn tất thao tác." : "Could not complete the action."));
       }
-      setProposal(null);
-    } else {
-      setErrorMessage(response.message || (isVietnamese ? "Không thể hoàn tất thao tác." : "Could not complete the action."));
+    } finally {
+      decisionInFlight.current = false;
+      setIsWorking(false);
     }
-    setIsWorking(false);
   };
 
   const samples = isVietnamese

@@ -70,6 +70,7 @@ export function AiChatDrawer({
   const [showHistory, setShowHistory] = useState(false);
   const [input, setInput] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const decisionInFlight = useRef(false);
   const [currentToolSummary, setCurrentToolSummary] = useState<string | null>(null);
 
   const greeting: AiConversationMessage = {
@@ -269,10 +270,11 @@ export function AiChatDrawer({
     confirmed: boolean,
     input?: AiActionInputOverrides
   ): Promise<boolean> => {
-    if (!proposal.actionId || isBusy) return false;
+    if (!proposal.actionId || isBusy || decisionInFlight.current) return false;
     const pendingSale = confirmed && proposal.intent === "create_product"
       ? proposal.details["Pending sale"]
       : null;
+    decisionInFlight.current = true;
     setIsBusy(true);
 
     const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed, input);
@@ -317,6 +319,7 @@ export function AiChatDrawer({
       toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }
 
+    decisionInFlight.current = false;
     setIsBusy(false);
     if (response.success && response.data?.status === "Executed" && pendingSale) {
       await handleSend(pendingSale);

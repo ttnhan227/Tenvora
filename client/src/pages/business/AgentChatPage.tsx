@@ -54,6 +54,7 @@ export default function AgentChatPage() {
   const [messages, setMessages] = useState<AiConversationMessage[]>([]);
   const [input, setInput] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const decisionInFlight = useRef(false);
   const [currentTool, setCurrentTool] = useState<string | null>(null);
 
   const dashboardQuery = useQuery({
@@ -262,10 +263,11 @@ export default function AgentChatPage() {
     confirmed: boolean,
     input?: AiActionInputOverrides
   ): Promise<boolean> => {
-    if (!proposal.actionId || isBusy) return false;
+    if (!proposal.actionId || isBusy || decisionInFlight.current) return false;
     const pendingSale = confirmed && proposal.intent === "create_product"
       ? proposal.details["Pending sale"]
       : null;
+    decisionInFlight.current = true;
     setIsBusy(true);
 
     const response = await aiAssistantService.confirmAction(proposal.actionId, confirmed, input);
@@ -312,6 +314,7 @@ export default function AgentChatPage() {
       toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }
 
+    decisionInFlight.current = false;
     setIsBusy(false);
     if (response.success && response.data?.status === "Executed" && pendingSale) {
       await handleSend(pendingSale);

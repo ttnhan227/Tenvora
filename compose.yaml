@@ -30,6 +30,7 @@ services:
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-tenvora_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};SSL Mode=Disable;Trust Server Certificate=true"
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 bytes)}
       JwtSettings__Issuer: ${JwtSettings__Issuer:-Tenvora}
@@ -39,7 +40,9 @@ services:
       AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Google Gemini}
       AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
       AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/models}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-2.5-flash}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-3.5-flash-lite}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      MISTRAL_MODEL: ${MISTRAL_MODEL:-ministral-8b-latest}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Example Business}
       SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:?Set SEED_TENANT_API_KEY in .env}

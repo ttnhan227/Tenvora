@@ -82,6 +82,7 @@ client/.turbo/
 client/.next/
 client/.nuxt/
 client/.svelte-kit/
+*.tsbuildinfo
 
 # Package manager logs
 client/npm-debug.log*
