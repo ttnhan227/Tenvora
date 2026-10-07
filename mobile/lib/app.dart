@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'core/theme/tenvora_theme.dart';
 import 'state/app_controller.dart';
@@ -23,6 +24,11 @@ class TenvoraApp extends StatelessWidget {
             theme: tenvoraTheme(Brightness.light),
             darkTheme: tenvoraTheme(Brightness.dark),
             themeMode: controller.themeMode,
+            builder:
+                (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: tenvoraSystemUiStyle(Theme.of(context).brightness),
+                  child: child ?? const SizedBox.shrink(),
+                ),
             home:
                 controller.initializing
                     ? const _StartupScreen()

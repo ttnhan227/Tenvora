@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 abstract final class TenvoraColors {
   static const ink = Color(0xFF20352E);
@@ -12,6 +13,18 @@ abstract final class TenvoraColors {
   static const danger = Color(0xFFB8483D);
   static const night = Color(0xFF16201C);
   static const nightCard = Color(0xFF202C27);
+}
+
+SystemUiOverlayStyle tenvoraSystemUiStyle(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    statusBarBrightness: brightness,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness:
+        dark ? Brightness.light : Brightness.dark,
+  );
 }
 
 ThemeData tenvoraTheme(Brightness brightness) {
@@ -36,6 +49,7 @@ ThemeData tenvoraTheme(Brightness brightness) {
   return base.copyWith(
     scaffoldBackgroundColor: dark ? TenvoraColors.night : TenvoraColors.paper,
     appBarTheme: AppBarTheme(
+      systemOverlayStyle: tenvoraSystemUiStyle(brightness),
       backgroundColor: Colors.transparent,
       foregroundColor: dark ? Colors.white : TenvoraColors.ink,
       surfaceTintColor: Colors.transparent,

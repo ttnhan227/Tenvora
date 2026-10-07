@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../more/privacy_screen.dart';
 
 import '../../core/utils/formatters.dart';
@@ -80,24 +81,25 @@ class _AuthScreenState extends State<AuthScreen> {
                     children: [
                       const TenvoraMark(size: 48),
                       const SizedBox(width: 13),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tenvora',
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          Text(
-                            tr(
-                              context,
-                              'Business, clearly run.',
-                              'Vận hành kinh doanh rõ ràng.',
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tenvora',
+                              style: Theme.of(context).textTheme.headlineMedium,
                             ),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                            Text(
+                              tr(
+                                context,
+                                'Business, clearly run.',
+                                'Vận hành kinh doanh rõ ràng.',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
                       TextButton(
                         onPressed: app.toggleLanguage,
                         child: Text(app.isVietnamese ? 'EN' : 'VI'),

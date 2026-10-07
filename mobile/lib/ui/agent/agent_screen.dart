@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
@@ -351,13 +352,20 @@ class _AgentScreenState extends State<AgentScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  message.content,
-                  style: TextStyle(
-                    color:
-                        isUser ? Theme.of(context).colorScheme.onPrimary : null,
+                if (isUser)
+                  Text(
+                    message.content,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  )
+                else
+                  MarkdownBody(
+                    data: message.content,
+                    selectable: true,
+                    // Provider output must not trigger remote image requests.
+                    imageBuilder: (uri, title, alt) => Text(alt ?? ''),
                   ),
-                ),
                 if (message.proposal != null)
                   _proposalCard(context, message.proposal!),
                 if (!isUser)
