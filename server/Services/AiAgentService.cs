@@ -847,6 +847,8 @@ RULES:
         CancellationToken ct)
     {
         var lower = prompt.ToLowerInvariant();
+        var vietnamese = IsVietnamese(prompt);
+        string Money(decimal amount) => $"{amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)} {currency}";
         var toolCalls = new List<AiAgentToolCallInfo>();
 
         // 1. Check if user wants to record or execute an action
@@ -880,75 +882,66 @@ RULES:
             }
         }
 
-        // 2. Check for inventory / stock queries
+        // Read-only fallback responses preserve language, precision and query scope.
         if (Regex.IsMatch(lower, @"(tồn kho|hết hàng|sắp hết|kho|sản phẩm|mặt hàng|stock|inventory|product)"))
         {
-            var isLowStock = Regex.IsMatch(lower, @"(sắp hết|hết hàng|thiếu|low|out of stock|cần nhập)");
-            var prods = (await _businessService.GetProductsAsync(tenantId, "", true)).Data ?? new();
-            if (isLowStock) prods = prods.Where(p => p.StockQuantity <= (p.MinStockLevel ?? 0)).ToList();
-
-            toolCalls.Add(new AiAgentToolCallInfo("query_inventory_and_products", $"Kiểm tra tồn kho ({prods.Count} mặt hàng)", prods));
-
-            if (prods.Count == 0)
-            {
-                return new AgentTurnResult(
-                    isLowStock
-                        ? "Hiện tại tất cả mặt hàng đều đảm bảo mức tồn kho tối thiểu, không có sản phẩm nào sắp hết hàng."
-                        : "Chưa có sản phẩm nào trong sổ hàng hóa của bạn.",
-                    null, toolCalls);
-            }
-
-            var sb = new StringBuilder();
-            sb.AppendLine(isLowStock
-                ? $"Có **{prods.Count}** mặt hàng đang ở mức báo động hoặc hết hàng:"
-                : $"Tình hình hàng hoá hiện tại (hiển thị tối đa 5 mặt hàng):");
-
-            foreach (var p in prods.Take(5))
-            {
-                var status = p.StockQuantity <= 0 ? "⚠️ Hết hàng" : (p.MinStockLevel.HasValue && p.StockQuantity <= p.MinStockLevel ? "⚠️ Sắp hết" : "✅ Còn hàng");
-                sb.AppendLine($"- **{p.Name}**: {p.StockQuantity:N0} {p.Unit} (Tối thiểu: {p.MinStockLevel ?? 0:N0}) — Giá bán: {p.DefaultPrice:N0} {currency} ({status})");
-            }
-
-            return new AgentTurnResult(sb.ToString(), null, toolCalls);
+            var lowStock = Regex.IsMatch(lower, @"(sắp hết|hết hàng|thiếu|low|out of stock|cần nhập)");
+            var products = (await _businessService.GetProductsAsync(tenantId, "", true)).Data ?? new();
+            if (lowStock) products = products.Where(p => p.StockQuantity <= (p.MinStockLevel ?? 0)).ToList();
+            toolCalls.Add(new("query_inventory_and_products", vietnamese ? "Kiểm tra tồn kho" : "Checked inventory", products));
+            if (products.Count == 0)
+                return new(vietnamese
+                    ? (lowStock ? "Không có sản phẩm nào ở mức tồn kho thấp." : "Chưa có sản phẩm nào.")
+                    : (lowStock ? "No products are currently low in stock." : "No products have been recorded."), null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"{products.Count} sản phẩm{(lowStock ? " tồn kho thấp" : "")}, hiển thị tối đa 5:"
+                : $"{products.Count} {(lowStock ? "low-stock " : "")}products; showing up to 5:");
+            foreach (var product in products.Take(5))
+                text.AppendLine($"- **{product.Name}**: {product.StockQuantity:0.###} {product.Unit} — {Money(product.DefaultPrice)}");
+            return new(text.ToString(), null, toolCalls);
         }
 
-        // 3. Check for customer debt queries
+        if (Regex.IsMatch(lower, @"(supplier|nhà cung cấp|phải trả)"))
+        {
+            var suppliers = ((await _businessService.GetSuppliersAsync(tenantId, "", null)).Data ?? new())
+                .Where(supplier => supplier.OutstandingBalance > 0).ToList();
+            toolCalls.Add(new("query_suppliers_and_payables", vietnamese ? "Kiểm tra công nợ nhà cung cấp" : "Checked supplier balances", suppliers));
+            if (suppliers.Count == 0)
+                return new(vietnamese ? "Không có công nợ nhà cung cấp." : "No suppliers have an outstanding balance.", null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"Tổng công nợ nhà cung cấp: **{Money(suppliers.Sum(supplier => supplier.OutstandingBalance))}**. Hiển thị tối đa 5:"
+                : $"Total owed to suppliers: **{Money(suppliers.Sum(supplier => supplier.OutstandingBalance))}**. Showing up to 5:");
+            foreach (var supplier in suppliers.Take(5)) text.AppendLine($"- **{supplier.Name}**: **{Money(supplier.OutstandingBalance)}**");
+            return new(text.ToString(), null, toolCalls);
+        }
+
         if (Regex.IsMatch(lower, @"(nợ|ai nợ|công nợ|phải thu|debt|owe|customer.*debt|unpaid)"))
         {
-            var allCusts = (await _businessService.GetCustomersAsync(tenantId, "", null)).Data ?? new();
-            var custs = allCusts.Where(c => c.OutstandingBalance > 0).ToList();
-            toolCalls.Add(new AiAgentToolCallInfo("query_customers_and_debt", $"Kiểm tra công nợ khách hàng ({custs.Count} khách nợ)", custs));
-
-            if (custs.Count == 0)
-            {
-                return new AgentTurnResult("Tuyệt vời! Hiện tại không có khách hàng nào đang nợ tiền cửa hàng.", null, toolCalls);
-            }
-
-            var totalDebt = custs.Sum(c => c.OutstandingBalance);
-            var sb = new StringBuilder();
-            sb.AppendLine($"Tổng công nợ khách hàng hiện tại là **{totalDebt:N0} {currency}** trên **{custs.Count}** khách hàng:");
-            foreach (var c in custs.Take(5))
-            {
-                sb.AppendLine($"- **{c.Name}**: nợ **{c.OutstandingBalance:N0} {currency}** {(string.IsNullOrWhiteSpace(c.Phone) ? "" : $"(SĐT: {c.Phone})")}");
-            }
-            return new AgentTurnResult(sb.ToString(), null, toolCalls);
+            var customers = ((await _businessService.GetCustomersAsync(tenantId, "", null)).Data ?? new())
+                .Where(customer => customer.OutstandingBalance > 0).ToList();
+            toolCalls.Add(new("query_customers_and_debt", vietnamese ? "Kiểm tra công nợ khách hàng" : "Checked customer balances", customers));
+            if (customers.Count == 0)
+                return new(vietnamese ? "Không có khách hàng nào đang nợ tiền." : "No customers have an outstanding balance.", null, toolCalls);
+            var text = new StringBuilder();
+            text.AppendLine(vietnamese
+                ? $"Tổng công nợ khách hàng: **{Money(customers.Sum(customer => customer.OutstandingBalance))}** trên {customers.Count} khách hàng. Hiển thị tối đa 5:"
+                : $"Customers owe **{Money(customers.Sum(customer => customer.OutstandingBalance))}** across {customers.Count} customers. Showing up to 5:");
+            foreach (var customer in customers.Take(5)) text.AppendLine($"- **{customer.Name}**: **{Money(customer.OutstandingBalance)}**");
+            return new(text.ToString(), null, toolCalls);
         }
 
-        // 4. Default: Business Overview
-        var dash = (await _businessService.GetDashboardAsync(tenantId, "today")).Data;
-        toolCalls.Add(new AiAgentToolCallInfo("get_business_overview", "Lấy số liệu tổng quan kinh doanh hôm nay", dash));
-
-        var overviewText = $@"Tình hình kinh doanh hôm nay tại **{tenant.CompanyName ?? "Cửa hàng"}**:
-- Doanh thu bán hàng: **{(dash?.TodaySales ?? 0):N0} {currency}**
-- Tiền mặt thực thu: **{(dash?.TodayPayments ?? 0):N0} {currency}**
-- Tổng chi phí: **{(dash?.TodayExpenses ?? 0):N0} {currency}**
-- Lợi nhuận ước tính: **{(dash?.PeriodNetProfit ?? 0):N0} {currency}**
-- Khách đang nợ: **{(dash?.OutstandingCustomers ?? 0):N0} {currency}**
-- Nợ nhà cung cấp: **{(dash?.OutstandingSuppliers ?? 0):N0} {currency}**
-
-Bạn có thể yêu cầu tôi kiểm tra kho hàng, theo dõi công nợ, hoặc nhập đơn bán/khoản chi bằng cách nhắn trực tiếp!";
-
-        return new AgentTurnResult(overviewText, null, toolCalls);
+        var period = Regex.IsMatch(lower, @"(month|tháng)") ? "month" : Regex.IsMatch(lower, @"(week|tuần)") ? "week" : "today";
+        var label = vietnamese
+            ? (period == "month" ? "tháng này" : period == "week" ? "tuần này" : "hôm nay")
+            : (period == "month" ? "this month" : period == "week" ? "this week" : "today");
+        var dashboard = (await _businessService.GetDashboardAsync(tenantId, period)).Data;
+        toolCalls.Add(new("get_business_overview", vietnamese ? $"Tổng quan {label}" : $"Overview for {label}", dashboard));
+        var overview = vietnamese
+            ? $"Sổ sách {label} tại **{tenant.CompanyName}**:\n- Doanh thu: **{Money(dashboard?.PeriodSales ?? 0)}**\n- Thực thu: **{Money(dashboard?.PeriodPayments ?? 0)}**\n- Chi phí: **{Money(dashboard?.PeriodExpenses ?? 0)}**\n- Lợi nhuận ước tính: **{Money(dashboard?.PeriodNetProfit ?? 0)}**\n- Khách đang nợ: **{Money(dashboard?.OutstandingCustomers ?? 0)}**\n- Nợ nhà cung cấp: **{Money(dashboard?.OutstandingSuppliers ?? 0)}**"
+            : $"Records for {label} at **{tenant.CompanyName}**:\n- Sales: **{Money(dashboard?.PeriodSales ?? 0)}**\n- Payments received: **{Money(dashboard?.PeriodPayments ?? 0)}**\n- Expenses: **{Money(dashboard?.PeriodExpenses ?? 0)}**\n- Estimated profit: **{Money(dashboard?.PeriodNetProfit ?? 0)}**\n- Customer balances: **{Money(dashboard?.OutstandingCustomers ?? 0)}**\n- Supplier balances: **{Money(dashboard?.OutstandingSuppliers ?? 0)}**";
+        return new(overview, null, toolCalls);
     }
 
     private static bool LooksLikeBusinessAction(string lower)

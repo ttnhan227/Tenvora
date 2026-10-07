@@ -428,6 +428,50 @@ public sealed class AiAssistantWorkflowTests
     }
 
     [Fact]
+    public async Task AgentFallbackKeepsEnglishAndExactCustomerAndSupplierBalances()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        db.Tenants.Single().BaseCurrency = "USD";
+        var customer = (await business.CreateCustomerAsync(tenantId, new("Customer fixture", null, null, null, null))).Data!;
+        var product = (await business.CreateProductAsync(tenantId, new("Product fixture", null, "kg", 10.25m, null))).Data!;
+        await business.CreateSaleAsync(tenantId, "sale", new(customer.Id, [new(product.Id, 1, 10.25m)], 0m));
+        var supplier = (await business.CreateSupplierAsync(tenantId, new("Supplier fixture", null, null, null, null))).Data!;
+        await business.CreatePurchaseAsync(tenantId, "purchase", new(supplier.Id, [new("Stock fixture", "kg", 1, 4.75m, product.Id)], 0m));
+        await db.SaveChangesAsync();
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        var customers = await agent.AgentChatAsync(tenantId, userId, new("Which customers still owe me?"));
+        Assert.Contains("Customers owe", customers.Data!.Reply);
+        Assert.Contains("10.25 USD", customers.Data.Reply);
+        var suppliers = await agent.AgentChatAsync(tenantId, userId, new("How much do we owe suppliers?"));
+        Assert.Contains("owed to suppliers", suppliers.Data!.Reply);
+        Assert.Contains("4.75 USD", suppliers.Data.Reply);
+        Assert.DoesNotContain("Customer fixture", suppliers.Data.Reply);
+        Assert.Null(suppliers.Data.Proposal);
+    }
+
+    [Fact]
+    public async Task AgentFallbackUsesRequestedMonthAndFractionalInventory()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        db.Tenants.Single().BaseCurrency = "USD";
+        var customer = (await business.CreateCustomerAsync(tenantId, new("Fixture", null, null, null, null))).Data!;
+        var product = (await business.CreateProductAsync(tenantId, new("Rice fixture", null, "kg", 10.25m, null, StockQuantity: 1.5m, TrackInventory: true))).Data!;
+        await business.CreateSaleAsync(tenantId, "sale", new(customer.Id, [new(product.Id, .5m, 10.5m)], 0m));
+        db.Sales.Single().SoldAt = DateTime.UtcNow.Date.AddDays(1 - DateTime.UtcNow.Day);
+        await db.SaveChangesAsync();
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        var overview = await agent.AgentChatAsync(tenantId, userId, new("How is my business doing this month?"));
+        Assert.Contains("Records for this month", overview.Data!.Reply);
+        Assert.Contains("5.25 USD", overview.Data.Reply);
+        var stock = await agent.AgentChatAsync(tenantId, userId, new("Show inventory"));
+        Assert.Contains("1 kg", stock.Data!.Reply);
+        Assert.Contains("10.25 USD", stock.Data.Reply);
+        Assert.Null(stock.Data.Proposal);
+    }
+
+    [Fact]
     public async Task AgentChatCreatesConversationPersistsHistoryAndGeneratesProposals()
     {
         await using var db = Db();
