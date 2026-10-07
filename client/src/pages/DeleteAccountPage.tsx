@@ -6,6 +6,7 @@ import apiClient from "@/services/apiClient";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/BrandLogo";
+import { SUPPORT_EMAIL } from "@/lib/supportContact";
 
 export default function DeleteAccountPage() {
   const { user, logout } = useAuth();
@@ -14,7 +15,7 @@ export default function DeleteAccountPage() {
   const [busy, setBusy] = useState(false);
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState<string>();
-  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL as string | undefined;
+  const supportEmail = SUPPORT_EMAIL;
   const remove = async () => {
     if (!user || email.trim().toLowerCase() !== user.email.toLowerCase() || busy) return;
     setBusy(true); setError(undefined);

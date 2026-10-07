@@ -1,0 +1,39 @@
+# Google Play policy preflight — October 7, 2026
+
+Decision: the verified bundle can enter Play testing, but policy readiness is not fully cleared. This review does not publish the app or certify Google approval. No local mobile rebuild was performed.
+
+## Evidence checked
+
+- Signed retained 1.0.0 bundle: package `com.tenvora.app`, version code 1, target API 36, verified upload certificate, eight 64-bit native libraries checked for 16 KB alignment/packaging. Receipt: `mobile/build/play-release-ci/tenvora-1.0.0.verification.json`.
+- Prior product validation: 107 backend, 72 web and 24 mobile tests passed; one opt-in live AI test was skipped. Automated checks do not establish acceptance on a Play-installed physical device.
+- Privacy text exists in mobile and at `/privacy`; account deletion exists in Settings and at `/delete-account`. Both public web URLs returned HTTP 200 in this review; that response alone does not prove all browser interactions work.
+- The mobile assistant includes in-app reply reporting. Reports need developer review through the process in `GOOGLE_PLAY_HANDOFF.md`.
+- The merged bundle receipt lists camera, internet and secure-storage biometric permissions. It does not list broad photo-library, contacts, SMS, location or advertising-ID permissions. Camera access is optional and photo selection is user initiated.
+
+## Items to resolve before submission
+
+1. Public support contact resolved: the owner approved `ccleemon227@gmail.com`. The website now defaults to this address for privacy inquiries and account-deletion help, including when no build environment override is set. Use the same address in Play Console and monitor it. Verify the deployed pages after rollout.
+2. Review AI disclosure and consent in the normal assistant flow. Current mobile assistant sends relevant business data to Gemini without a dedicated disclosure/affirmative consent gate before the first request; the detailed explanation is in Privacy. Because financial/customer data is involved, add an explanation of the data sent and provider before transmission. Review provider data handling and retention as well. In-app reporting is present, but reporting alone does not prove restricted-content prevention.
+3. Remove or substantiate website claims: `₫24.8B+` commerce volume, `1,200+` active stores, `<30s` reconciliation, `99.98%` uptime and the matching 1,200-merchant call to action. No supporting evidence was located in the implementation. The APK size claim (~180 MB) also conflicts with the currently published ~54 MiB download. Do not reuse these claims in the Play listing.
+4. Prepare an email/password reviewer account containing synthetic data and access to the protected screens. Keep credentials out of Git. Supply English login/navigation instructions in App access. Do not make reviewers use your personal Google account or an expiring OTP.
+5. Complete Data safety against actual hosted processing: account/profile identifiers; customer/supplier information; sales, purchase, debt/payment and expense records; selected photos; AI prompts, context, responses and reports; operational logs. Do not declare that no data is collected, that all storage is local, or that Google sign-in/AI involves no third parties. Provider/service-provider sharing exceptions require checking actual processing arrangements.
+6. Resolve financial-feature/account-type eligibility before assuming a personal account is sufficient. Code implements shop recordkeeping, inventory, receivables/payables and business AI summaries; no money-transfer, banking, investment execution or loan origination integration was found in the reviewed paths. However, Google's definition includes money management and personalized advice. This review cannot certify a bookkeeping exception. Ask Play support to classify the actual functions; answer the Financial features declaration accurately. Changing the store category alone does not resolve eligibility.
+7. Register the Play app-signing certificate with Google OAuth for this package, then test Google sign-in using the Play-installed build. The upload certificate can differ from the Play signing certificate.
+8. Run Play pre-launch/device acceptance and provide accurate current-app screenshots, content rating, ads and target-audience declarations. Do not present illustrative website mockups as actual app screenshots.
+9. If the personal account was created after November 13, 2023, complete the required closed test with at least 12 continuously opted-in testers for 14 consecutive days and apply for production access. Identity verification alone does not grant that access. Check the Console for the account-specific requirement.
+
+## Draft question for Play support
+
+“Tenvora (com.tenvora.app) is a small-shop business recordkeeping app. Users manually record sales, purchases, operating expenses, inventory, customer receivables and supplier payables. It records payments but does not move money, connect bank accounts, originate/facilitate loans, offer trading or sell insurance. Its Gemini assistant summarizes shop records and proposes record changes for user confirmation. Can this app be published from a personal developer account, and which Financial features declaration choices apply to these recordkeeping and AI functions?”
+
+## Official references
+
+- Account types: https://support.google.com/googleplay/android-developer/answer/13634885
+- Financial services: https://support.google.com/googleplay/android-developer/answer/9876821
+- Financial declaration: https://support.google.com/googleplay/android-developer/answer/13849271
+- User data, privacy and consent: https://support.google.com/googleplay/android-developer/answer/10144311
+- Account deletion: https://support.google.com/googleplay/android-developer/answer/13327111
+- AI content: https://support.google.com/googleplay/android-developer/answer/13985936
+- Personal-account testing: https://support.google.com/googleplay/android-developer/answer/14151465
+
+See `GOOGLE_PLAY_HANDOFF.md` for signing, deletion behavior, report handling and operational limits. The owner performs Play Console creation and publication.

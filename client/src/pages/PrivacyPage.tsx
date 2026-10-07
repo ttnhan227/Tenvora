@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BrandLogo } from "@/components/BrandLogo";
+import { SUPPORT_EMAIL } from "@/lib/supportContact";
 
 export default function PrivacyPage() {
   const { isVietnamese } = useLanguage();
-  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL as string | undefined;
+  const supportEmail = SUPPORT_EMAIL;
   return <main className="mx-auto max-w-3xl space-y-6 px-5 py-10">
     <BrandLogo size="lg" />
     <h1 className="text-3xl font-bold">{isVietnamese ? "Quyền riêng tư Tenvora" : "Tenvora privacy policy"}</h1>

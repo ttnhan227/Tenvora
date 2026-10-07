@@ -11,7 +11,7 @@ Release configuration requires the public HTTPS API URL and Google server client
 ## Before uploading
 
 - Deploy the matching backend and website changes. Verify `/privacy` and `/delete-account` publicly, and test account deletion with a disposable account. The new bundle's deletion and AI-reporting endpoints require the updated backend.
-- Set `VITE_SUPPORT_EMAIL` to the owner's monitored public email before the website production build. Use the same contact in Play Console. The policy currently provides a public developer support link when no email is configured.
+- Public support and privacy contact: `ccleemon227@gmail.com`. Use the same contact in Play Console. The website defaults to this owner-approved address; `VITE_SUPPORT_EMAIL` can override it at build time.
 - In Play App Signing, register the **Play app-signing certificate** SHA-1/SHA-256 with the Android OAuth configuration for `com.tenvora.app`. It may differ from the upload certificate. Test Google sign-in on the version installed through Play testing.
 - Supply a review account with synthetic business data and instructions to reach protected functionality. Never provide personal or production customer data.
 - Complete the store description, icon, screenshots, content rating, target audience, app access, ads declaration and Data safety answers. Disclose account/profile and business data, selected photos and AI conversations, the Google/Gemini processing actually used, deletion behavior, and hosting providers. Check current Console prompts against the actual release; do not copy an assumed declaration.
