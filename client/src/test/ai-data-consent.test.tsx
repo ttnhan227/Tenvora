@@ -17,7 +17,7 @@ describe("AI data disclosure", () => {
     render(<AiDataConsent />);
     const request = aiAssistantService.agentChat({ message: "Check customer balances" });
     expect(await screen.findByRole("heading", { name: "Before using AI" })).toBeInTheDocument();
-    expect(screen.getByText(/Google Gemini to answer/)).toBeInTheDocument();
+    expect(screen.getByText(/Google Gemini.*Mistral AI.*to answer/)).toBeInTheDocument();
     expect(apiClient.post).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
     expect((await request).success).toBe(false);
