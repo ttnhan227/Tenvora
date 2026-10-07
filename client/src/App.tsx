@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, type ReactNode } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -35,11 +35,14 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 
+const isPublicPage = (pathname: string) => ["/", "/mobile", "/download", "/privacy", "/delete-account", "/login", "/register"].includes(pathname.replace(/\/$/, "") || "/");
+
 const currentLanguageIsVietnamese = () => {
+  if (isPublicPage(window.location.pathname)) return false;
   try {
-    return localStorage.getItem("tenvora_lang") !== "en";
+    return localStorage.getItem("tenvora_lang") === "vi";
   } catch {
-    return true;
+    return false;
   }
 };
 
@@ -80,10 +83,16 @@ const queryClient = new QueryClient({
   },
 });
 
+function RouteLanguageProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const publicPage = isPublicPage(pathname);
+  return <LanguageProvider fixedLanguage={publicPage ? "en" : undefined}>{children}</LanguageProvider>;
+}
+
 export default function App() {
-  return <QueryClientProvider client={queryClient}><AuthProvider><LanguageProvider><TooltipProvider>
+  return <QueryClientProvider client={queryClient}><AuthProvider><BrowserRouter><RouteLanguageProvider><TooltipProvider>
     <Toaster /><Sonner /><RequestActivityIndicator /><AiDataConsent />
-    <BrowserRouter><ErrorBoundary><Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-background p-8 text-sm font-bold text-muted-foreground"><span className="mr-3 h-3 w-3 animate-pulse rounded-full bg-primary" />Opening Tenvora…</div>}>
+    <ErrorBoundary><Suspense fallback={<div role="status" className="flex min-h-screen items-center justify-center bg-background p-8 text-sm font-bold text-muted-foreground"><span className="mr-3 h-3 w-3 animate-pulse rounded-full bg-primary" />Opening Tenvora…</div>}>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/mobile" element={<MobileLandingPage />} />
@@ -109,6 +118,6 @@ export default function App() {
         <Route path="/admin/users" element={<Navigate to="/team" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </Suspense></ErrorBoundary></BrowserRouter>
-  </TooltipProvider></LanguageProvider></AuthProvider></QueryClientProvider>;
+    </Suspense></ErrorBoundary>
+  </TooltipProvider></RouteLanguageProvider></BrowserRouter></AuthProvider></QueryClientProvider>;
 }

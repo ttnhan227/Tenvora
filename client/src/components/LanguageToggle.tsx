@@ -15,7 +15,9 @@ export function LanguageToggle({
   size = "sm",
   showLabel = true,
 }: LanguageToggleProps) {
-  const { language, setLanguage, isVietnamese } = useLanguage();
+  const { language, setLanguage, isVietnamese, canChangeLanguage } = useLanguage();
+
+  if (!canChangeLanguage) return null;
 
   const toggle = () => {
     setLanguage(isVietnamese ? "en" : "vi");

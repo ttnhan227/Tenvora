@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 export default function Navbar() {
   const auth = useOptionalAuth();
   const location = useLocation();
-  const { language, setLanguage, isVietnamese } = useLanguage();
+  const { language, setLanguage, isVietnamese, canChangeLanguage } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isHome = location.pathname === "/";
@@ -52,7 +52,7 @@ export default function Navbar() {
         {/* Right Action Buttons */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Language Switcher */}
-          <button
+          {canChangeLanguage && <button
             onClick={() => setLanguage(language === "vi" ? "en" : "vi")}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/80 bg-card/60 px-2.5 text-xs font-semibold text-foreground hover:bg-accent/60 transition-colors"
             title={isVietnamese ? "Chuyển sang Tiếng Anh (English)" : "Chuyển sang Tiếng Việt (Vietnamese)"}
@@ -60,7 +60,7 @@ export default function Navbar() {
           >
             <Globe className="h-3.5 w-3.5 text-primary" />
             <span className="font-bold">{isVietnamese ? "VI" : "EN"}</span>
-          </button>
+          </button>}
 
           <ThemeToggle />
 
@@ -117,7 +117,7 @@ export default function Navbar() {
             ))}
 
             {/* Mobile Drawer Language Row */}
-            <div className="flex items-center justify-between py-2 border-b border-border/40">
+            {canChangeLanguage && <div className="flex items-center justify-between py-2 border-b border-border/40">
               <span className="text-muted-foreground">{isVietnamese ? "Ngôn ngữ hiển thị" : "Display language"}</span>
               <button
                 onClick={() => setLanguage(language === "vi" ? "en" : "vi")}
@@ -126,7 +126,7 @@ export default function Navbar() {
                 <Globe className="h-3.5 w-3.5 text-primary" />
                 <span>{isVietnamese ? "Tiếng Việt (VI)" : "English (EN)"}</span>
               </button>
-            </div>
+            </div>}
 
             <div className="pt-2 flex flex-col gap-2">
               {!auth?.isAuthenticated && (

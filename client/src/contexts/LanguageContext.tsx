@@ -269,6 +269,7 @@ const enTranslations: Translations = {
 
 interface LanguageContextType {
   language: Language;
+  canChangeLanguage: boolean;
   setLanguage: (lang: Language) => void;
   isVietnamese: boolean;
   t: (key: string, fallback?: string) => string;
@@ -279,10 +280,11 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 interface LanguageProviderProps {
   children: React.ReactNode;
   defaultLanguage?: Language;
+  fixedLanguage?: Language;
 }
 
-export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, defaultLanguage }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
+export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, defaultLanguage, fixedLanguage }) => {
+  const [preferredLanguage, setLanguageState] = useState<Language>(() => {
     try {
       const saved = localStorage.getItem("tenvora_lang");
       if (saved === "vi" || saved === "en") return saved;
@@ -293,14 +295,17 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
     }
   });
 
-  const setLanguage = (lang: Language) => {
+  const language = fixedLanguage ?? preferredLanguage;
+
+  const setLanguage = useCallback((lang: Language) => {
+    if (fixedLanguage) return;
     setLanguageState(lang);
     try {
       localStorage.setItem("tenvora_lang", lang);
     } catch {
       // ignore
     }
-  };
+  }, [fixedLanguage]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -323,11 +328,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
   const value = useMemo(
     () => ({
       language,
+      canChangeLanguage: !fixedLanguage,
       setLanguage,
       isVietnamese,
       t,
     }),
-    [language, isVietnamese, t]
+    [language, isVietnamese, t, setLanguage, fixedLanguage]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
@@ -335,6 +341,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
 
 const defaultLanguageContext: LanguageContextType = {
   language: "en",
+  canChangeLanguage: true,
   setLanguage: () => {},
   isVietnamese: false,
   t: (key: string, fallback?: string) => enTranslations[key] ?? viTranslations[key] ?? fallback ?? key,
