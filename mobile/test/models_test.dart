@@ -1,7 +1,13 @@
+import 'package:tenvora_mobile/core/utils/formatters.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tenvora_mobile/domain/models.dart';
 
 void main() {
+  test('inventory display preserves fractional units', () {
+    expect(stockQuantity(1.25), '1.25');
+    expect(stockQuantity(0.001), '0.001');
+    expect(stockQuantity(22), '22');
+  });
   test('dashboard tolerates legacy today fields', () {
     final dashboard = Dashboard.fromJson({
       'currency': 'VND',

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/utils/formatters.dart';
@@ -23,9 +22,13 @@ class ReceiptPhoto extends StatefulWidget {
 
 class _ReceiptPhotoState extends State<ReceiptPhoto> {
   bool _picking = false;
+  String? _pickError;
   String label(String en, String vi) => widget.vietnamese ? vi : en;
   Future<void> _pick(ImageSource source) async {
-    setState(() => _picking = true);
+    setState(() {
+      _picking = true;
+      _pickError = null;
+    });
     try {
       final file =
           await (widget.pickImage?.call(source) ??
@@ -36,28 +39,21 @@ class _ReceiptPhotoState extends State<ReceiptPhoto> {
               ));
       if (file == null) return;
       final bytes = await file.readAsBytes();
-      final mime =
-          bytes.length >= 4 && bytes[0] == 137 && bytes[1] == 80
-              ? 'image/png'
-              : bytes.length >= 12 &&
-                  ascii.decode(bytes.sublist(0, 4), allowInvalid: true) ==
-                      'RIFF'
-              ? 'image/webp'
-              : 'image/jpeg';
-      if (mounted) {
-        widget.onChanged?.call('data:$mime;base64,${base64Encode(bytes)}');
-      }
+      if (mounted) widget.onChanged?.call(imageDataUrl(bytes));
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              label(
-                'Could not open photo. Please try again and allow camera or photo access.',
-                'Không mở được ảnh. Vui lòng thử lại và cho phép truy cập ảnh hoặc máy ảnh.',
-              ),
-            ),
-          ),
+        setState(
+          () =>
+              _pickError =
+                  source == ImageSource.camera
+                      ? label(
+                        'Could not open the camera. Check camera permission or choose a photo instead.',
+                        'Không mở được máy ảnh. Hãy kiểm tra quyền máy ảnh hoặc chọn ảnh có sẵn.',
+                      )
+                      : label(
+                        'Could not select a photo. Try again or take a photo instead.',
+                        'Không chọn được ảnh. Hãy thử lại hoặc chụp ảnh mới.',
+                      ),
         );
       }
     } finally {
@@ -136,6 +132,17 @@ class _ReceiptPhotoState extends State<ReceiptPhoto> {
               label: Text(label('Choose photo', 'Chọn ảnh')),
             ),
           ],
+        ),
+      if (_pickError != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              _pickError!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
         ),
       if (_picking) const LinearProgressIndicator(),
     ],

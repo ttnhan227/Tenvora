@@ -33,6 +33,51 @@ void main() {
       expect(changes, 0);
     },
   );
+  testWidgets(
+    'camera denial stays visible inside a sheet and preserves photo',
+    (tester) async {
+      var changes = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder:
+                  (context) => TextButton(
+                    onPressed:
+                        () => showModalBottomSheet<void>(
+                          context: context,
+                          builder:
+                              (_) => ReceiptPhoto(
+                                value: null,
+                                vietnamese: false,
+                                onChanged: (_) => changes++,
+                                pickImage: (source) async {
+                                  if (source == ImageSource.camera) {
+                                    throw Exception('denied');
+                                  }
+                                  return null;
+                                },
+                              ),
+                        ),
+                    child: const Text('Open sheet'),
+                  ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open sheet'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take photo'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Check camera permission'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(changes, 0);
+      await tester.tap(find.text('Choose photo'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Check camera permission'), findsNothing);
+      expect(changes, 0);
+    },
+  );
   testWidgets('saved photo can be opened and zoomed', (tester) async {
     const png =
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0ioAAAAASUVORK5CYII=';

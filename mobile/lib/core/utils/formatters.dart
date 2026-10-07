@@ -17,6 +17,8 @@ String money(num value, [String currency = 'VND']) {
   ).format(value);
 }
 
+String stockQuantity(num value) => NumberFormat('0.###').format(value);
+
 String shortDate(DateTime date) =>
     DateFormat('dd MMM yyyy').format(date.toLocal());
 String compactDate(DateTime date) =>
@@ -24,6 +26,17 @@ String compactDate(DateTime date) =>
 
 double numberOf(String value) =>
     double.tryParse(value.replaceAll(',', '')) ?? 0;
+
+String imageDataUrl(List<int> bytes) {
+  final mime =
+      bytes.length >= 4 && bytes[0] == 137 && bytes[1] == 80
+          ? 'image/png'
+          : bytes.length >= 12 &&
+              ascii.decode(bytes.sublist(0, 4), allowInvalid: true) == 'RIFF'
+          ? 'image/webp'
+          : 'image/jpeg';
+  return 'data:$mime;base64,${base64Encode(bytes)}';
+}
 
 Uint8List? dataUrlBytes(String? value) {
   if (value == null || !value.contains(',')) return null;

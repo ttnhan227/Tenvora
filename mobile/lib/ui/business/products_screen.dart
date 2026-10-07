@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -195,7 +193,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 ),
                                 if (p.trackInventory)
                                   Text(
-                                    '${p.stockQuantity.toStringAsFixed(p.stockQuantity % 1 == 0 ? 0 : 1)} ${p.unit}',
+                                    '${stockQuantity(p.stockQuantity)} ${p.unit}',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color:
@@ -251,18 +249,60 @@ class _ProductFormState extends State<_ProductForm> {
   bool _busy = false;
   String? _imageData;
   bool _removeImage = false;
+  bool _pickingImage = false;
+  String? _imageError;
   Future<void> _pickImage() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 78,
-      maxWidth: 1600,
-    );
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
+    if (_pickingImage || _busy) return;
     setState(() {
-      _imageData = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-      _removeImage = false;
+      _pickingImage = true;
+      _imageError = null;
     });
+    try {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 78,
+        maxWidth: 1600,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _imageData = imageDataUrl(bytes);
+        _removeImage = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () =>
+              _imageError = tr(
+                context,
+                'Could not select a photo. Please try again.',
+                'Không chọn được ảnh. Vui lòng thử lại.',
+              ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
+  }
+
+  Widget _photoPreview() {
+    final bytes = dataUrlBytes(_imageData ?? widget.product?.imageDataUrl);
+    Widget unavailable() => SizedBox(
+      height: 150,
+      child: Center(
+        child: Text(
+          tr(context, 'Photo unavailable', 'Không hiển thị được ảnh'),
+        ),
+      ),
+    );
+    if (bytes == null) return unavailable();
+    return Image.memory(
+      bytes,
+      height: 150,
+      fit: BoxFit.cover,
+      errorBuilder: (_, error, stack) => unavailable(),
+    );
   }
 
   Future<void> _save() async {
@@ -580,17 +620,13 @@ class _ProductFormState extends State<_ProductForm> {
                 !_removeImage)
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.memory(
-                  dataUrlBytes(_imageData ?? widget.product?.imageDataUrl)!,
-                  height: 150,
-                  fit: BoxFit.cover,
-                ),
+                child: _photoPreview(),
               ),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _pickImage,
+                    onPressed: _busy || _pickingImage ? null : _pickImage,
                     icon: const Icon(Icons.image_outlined),
                     label: Text(
                       (_imageData ?? widget.product?.imageDataUrl) == null ||
@@ -616,6 +652,12 @@ class _ProductFormState extends State<_ProductForm> {
                   ),
               ],
             ),
+            if (_imageError != null)
+              Text(
+                _imageError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (_pickingImage) const LinearProgressIndicator(),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _busy ? null : _save,
