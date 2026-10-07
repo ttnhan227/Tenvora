@@ -19,7 +19,7 @@ mixin ActionGuard<T extends StatefulWidget> on State<T> {
   Widget guardActions(Widget child) => Stack(
     children: [
       AbsorbPointer(absorbing: _actionRunning, child: child),
-      if (_actionRunning)
+      if (_actionRunning && (ModalRoute.of(context)?.isCurrent ?? true))
         const Positioned(
           top: 0,
           left: 0,
