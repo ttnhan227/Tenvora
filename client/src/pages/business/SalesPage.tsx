@@ -171,14 +171,16 @@ export default function SalesPage() {
     }
   }, [heldOrders]);
 
-  const { data: customers = [] } = useQuery({
+  const customersQuery = useQuery({
     queryKey: ["business-customers", "active"],
     queryFn: () => businessService.getCustomers(),
   });
-  const { data: products = [] } = useQuery({
+  const productsQuery = useQuery({
     queryKey: ["products", "active"],
     queryFn: () => businessService.getProducts("", true),
   });
+  const customers = customersQuery.data ?? [];
+  const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
   const { data: salesData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["sales-paged", search, page],
     queryFn: () => businessService.getSalesPaged(search, undefined, undefined, undefined, page, pageSize),
@@ -686,6 +688,9 @@ export default function SalesPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><span className="notebook-label w-fit">{isVietnamese ? "Phiếu bán hàng" : "Digital sales slip"}</span><DialogTitle className="mt-2">{isVietnamese ? "Đơn bán mới" : "New sale"}</DialogTitle><DialogDescription>{isVietnamese ? "Chọn người mua, hàng hoá, số tiền và tình trạng thanh toán." : "Just answer: who bought what, how much, and did they pay?"}</DialogDescription></DialogHeader>
+          {customersQuery.isError || productsQuery.isError ? (
+            <QueryErrorState error={customersQuery.error ?? productsQuery.error} retrying={customersQuery.isFetching || productsQuery.isFetching} onRetry={() => { void customersQuery.refetch(); void productsQuery.refetch(); }} />
+          ) : customersQuery.isPending || productsQuery.isPending ? <LoadingState /> : (
           <form onSubmit={submit} className="space-y-5">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -998,6 +1003,7 @@ export default function SalesPage() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
 

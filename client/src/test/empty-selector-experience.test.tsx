@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -21,8 +21,10 @@ vi.mock("@/services/businessService", async (importOriginal) => {
       getCustomers: vi.fn(),
       getProducts: vi.fn(),
       getSales: vi.fn(),
+      getSalesPaged: vi.fn(),
       getSuppliers: vi.fn(),
       getPurchases: vi.fn(),
+      getPurchasesPaged: vi.fn(),
     },
   };
 });
@@ -46,6 +48,9 @@ describe("empty transaction selectors", () => {
     vi.mocked(businessService.getSales).mockResolvedValue([]);
     vi.mocked(businessService.getSuppliers).mockResolvedValue([]);
     vi.mocked(businessService.getPurchases).mockResolvedValue([]);
+    const emptyPage = { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 };
+    vi.mocked(businessService.getSalesPaged).mockResolvedValue(emptyPage);
+    vi.mocked(businessService.getPurchasesPaged).mockResolvedValue(emptyPage);
   });
 
   it("shows customer and product setup actions instead of empty sale dropdowns", async () => {
@@ -79,4 +84,16 @@ describe("empty transaction selectors", () => {
     );
     expect(screen.queryByText("Choose a supplier")).not.toBeInTheDocument();
   });
+  it.each([
+    ["sale", () => <SalesPage />, "/sales?create=1", "getCustomers", "No customers available"],
+    ["purchase", () => <PurchasesPage />, "/purchases?create=1", "getSuppliers", "No suppliers available"],
+  ] as const)("recovers failed %s selectors before offering setup", async (_name, page, route, method, emptyText) => {
+    vi.mocked(businessService[method]).mockRejectedValueOnce(new Error("offline"));
+    renderPage(page(), route);
+    await screen.findByText("Could not load data");
+    expect(screen.queryByText(emptyText)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByText(emptyText);
+  });
+
 });

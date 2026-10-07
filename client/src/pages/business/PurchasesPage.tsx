@@ -380,6 +380,9 @@ export default function PurchasesPage() {
             <DialogTitle>{isVietnamese ? "Nhập hàng mới" : "New purchase"}</DialogTitle>
             <DialogDescription>{isVietnamese ? "Ghi mặt hàng đã mua, chi phí và số tiền thanh toán ngay." : "Record what was bought, its cost, and any payment made now."}</DialogDescription>
           </DialogHeader>
+          {suppliers.isError || products.isError ? (
+            <QueryErrorState error={suppliers.error ?? products.error} retrying={suppliers.isFetching || products.isFetching} onRetry={() => { void suppliers.refetch(); void products.refetch(); }} />
+          ) : suppliers.isPending || products.isPending ? <LoadingState /> : (
           <form
             className="space-y-5"
             onSubmit={(e: FormEvent) => {
@@ -565,6 +568,7 @@ export default function PurchasesPage() {
               </Button>
             </DialogFooter>
           </form>
+          )}
         </DialogContent>
       </Dialog>
       <Dialog open={!!paying} onOpenChange={(v) => !v && setPaying(null)}>

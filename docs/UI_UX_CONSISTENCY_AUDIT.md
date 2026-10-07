@@ -70,6 +70,10 @@ Consistency does not mean identical layouts or feature-for-feature parity.
   device become visible on a new load or refresh; this audit does not promise
   instant synchronization between already-open screens on different devices.
 
+## Transaction setup and recovery
+
+Both clients now distinguish failed customer/supplier/product loading from an empty catalog, offer retry, and provide shortcuts to create missing records. Native transaction forms reload selectors after returning from setup. Regression tests exercise failure, retry, navigation, and returning to the transaction.
+
 ## Validation and limits
 
 Regression tests exercise uncertainty/reload/account separation, overlapping
