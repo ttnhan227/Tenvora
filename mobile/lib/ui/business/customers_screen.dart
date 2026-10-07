@@ -4,6 +4,8 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/action_guard.dart';
+import '../widgets/search_controller.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key});
@@ -12,11 +14,21 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Customer>> _future;
   bool _ready = false;
   String _status = 'Active';
   int _page = 1;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -30,7 +42,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   void _load() =>
       _future = AppScope.of(context).repository.customers(
         search: _search.text,
-        status: _status,
+        status: _status == 'All' ? '' : _status,
         page: _page,
       );
   void _reload() => setState(_load);
@@ -42,7 +54,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       useSafeArea: true,
       builder: (_) => _CustomerForm(customer: customer),
     );
-    if (changed == true) _reload();
+    if (mounted && changed == true) _reload();
   }
 
   @override
@@ -62,10 +74,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
           TextField(
             controller: _search,
             textInputAction: TextInputAction.search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(context, 'Search customers', 'Tìm khách hàng'),
               prefixIcon: const Icon(Icons.search),
@@ -88,6 +97,10 @@ class _CustomersScreenState extends State<CustomersScreen> {
               ButtonSegment(
                 value: 'Archived',
                 label: Text(tr(context, 'Archived', 'Đã lưu trữ')),
+              ),
+              ButtonSegment(
+                value: 'All',
+                label: Text(tr(context, 'All', 'Tất cả')),
               ),
             ],
             selected: {_status},
@@ -112,6 +125,16 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.people_outline,
                     title: tr(
                       context,
@@ -235,7 +258,7 @@ class _CustomerForm extends StatefulWidget {
   State<_CustomerForm> createState() => _CustomerFormState();
 }
 
-class _CustomerFormState extends State<_CustomerForm> {
+class _CustomerFormState extends State<_CustomerForm> with ActionGuard {
   final _form = GlobalKey<FormState>();
   late final TextEditingController _name = TextEditingController(
     text: widget.customer?.name,
@@ -255,7 +278,19 @@ class _CustomerFormState extends State<_CustomerForm> {
   late String _status = widget.customer?.status ?? 'Active';
   bool _busy = false;
 
-  Future<void> _save() async {
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _email.dispose();
+    _address.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() => runAction(() => _saveAction());
+
+  Future<void> _saveAction() async {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
@@ -281,7 +316,9 @@ class _CustomerFormState extends State<_CustomerForm> {
     }
   }
 
-  Future<void> _remove() async {
+  Future<void> _remove() => runAction(() => _removeAction());
+
+  Future<void> _removeAction() async {
     if (!await confirm(
       context,
       title: tr(context, 'Remove customer?', 'Xóa khách hàng?'),
@@ -303,7 +340,9 @@ class _CustomerFormState extends State<_CustomerForm> {
     }
   }
 
-  Future<void> _payAccount() async {
+  Future<void> _payAccount() => runAction(() => _payAccountAction());
+
+  Future<void> _payAccountAction() async {
     final amount = TextEditingController(
       text: widget.customer!.outstandingBalance.toString(),
     );
@@ -374,141 +413,143 @@ class _CustomerFormState extends State<_CustomerForm> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      20,
-      16,
-      20,
-      MediaQuery.viewInsetsOf(context).bottom + 24,
-    ),
-    child: SingleChildScrollView(
-      child: Form(
-        key: _form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.customer == null
-                        ? tr(context, 'New customer', 'Khách hàng mới')
-                        : tr(context, 'Edit customer', 'Sửa khách hàng'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+  Widget build(BuildContext context) => guardActions(
+    Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.customer == null
+                          ? tr(context, 'New customer', 'Khách hàng mới')
+                          : tr(context, 'Edit customer', 'Sửa khách hàng'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Name', 'Tên'),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                validator:
+                    (v) =>
+                        (v?.trim().isEmpty ?? true)
+                            ? tr(context, 'Required', 'Bắt buộc')
+                            : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Phone', 'Số điện thoại'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Email', 'Email'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _address,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Address', 'Địa chỉ'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notes,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Notes', 'Ghi chú'),
+                ),
+              ),
+              if (widget.customer != null) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  decoration: InputDecoration(
+                    labelText: tr(context, 'Status', 'Trạng thái'),
+                  ),
+                  items:
+                      const ['Active', 'Archived']
+                          .map(
+                            (v) => DropdownMenuItem(
+                              value: v,
+                              child: Text(tr(context, v, v)),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (v) => _status = v!,
                 ),
               ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _name,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Name', 'Tên'),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(tr(context, 'Save customer', 'Lưu khách hàng')),
               ),
-              validator:
-                  (v) =>
-                      (v?.trim().isEmpty ?? true)
-                          ? tr(context, 'Required', 'Bắt buộc')
-                          : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Phone', 'Số điện thoại'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Email', 'Email'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _address,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Address', 'Địa chỉ'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _notes,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Notes', 'Ghi chú'),
-              ),
-            ),
-            if (widget.customer != null) ...[
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _status,
-                decoration: InputDecoration(
-                  labelText: tr(context, 'Status', 'Trạng thái'),
+              if (widget.customer != null)
+                OutlinedButton.icon(
+                  onPressed:
+                      _busy
+                          ? null
+                          : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => CustomerStatementScreen(
+                                    customer: widget.customer!,
+                                  ),
+                            ),
+                          ),
+                  icon: const Icon(Icons.description_outlined),
+                  label: Text(tr(context, 'View statement', 'Xem sao kê')),
                 ),
-                items:
-                    const ['Active', 'Archived']
-                        .map(
-                          (v) => DropdownMenuItem(
-                            value: v,
-                            child: Text(tr(context, v, v)),
-                          ),
-                        )
-                        .toList(),
-                onChanged: (v) => _status = v!,
-              ),
-            ],
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _busy ? null : _save,
-              child: Text(tr(context, 'Save customer', 'Lưu khách hàng')),
-            ),
-            if (widget.customer != null)
-              OutlinedButton.icon(
-                onPressed:
-                    _busy
-                        ? null
-                        : () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (_) => CustomerStatementScreen(
-                                  customer: widget.customer!,
-                                ),
-                          ),
-                        ),
-                icon: const Icon(Icons.description_outlined),
-                label: Text(tr(context, 'View statement', 'Xem sao kê')),
-              ),
-            if (widget.customer != null &&
-                widget.customer!.outstandingBalance > 0)
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _payAccount,
-                icon: const Icon(Icons.payments_outlined),
-                label: Text(
-                  tr(
-                    context,
-                    'Record account payment',
-                    'Ghi nhận thanh toán công nợ',
+              if (widget.customer != null &&
+                  widget.customer!.outstandingBalance > 0)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _payAccount,
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(
+                    tr(
+                      context,
+                      'Record account payment',
+                      'Ghi nhận thanh toán công nợ',
+                    ),
                   ),
                 ),
-              ),
-            if (widget.customer != null)
-              TextButton(
-                onPressed: _busy ? null : _remove,
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+              if (widget.customer != null)
+                TextButton(
+                  onPressed: _busy ? null : _remove,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  child: Text(tr(context, 'Remove customer', 'Xóa khách hàng')),
                 ),
-                child: Text(tr(context, 'Remove customer', 'Xóa khách hàng')),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     ),

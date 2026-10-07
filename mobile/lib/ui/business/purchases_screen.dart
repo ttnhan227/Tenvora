@@ -4,6 +4,8 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/action_guard.dart';
+import '../widgets/search_controller.dart';
 import '../widgets/receipt_photo.dart';
 
 class PurchasesScreen extends StatefulWidget {
@@ -13,10 +15,20 @@ class PurchasesScreen extends StatefulWidget {
 }
 
 class _PurchasesScreenState extends State<PurchasesScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Purchase>> _future;
   bool _ready = false;
   int _page = 1;
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -67,10 +79,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
         children: [
           TextField(
             controller: _search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(
                 context,
@@ -102,6 +111,16 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.local_shipping_outlined,
                     title: tr(
                       context,
@@ -221,7 +240,8 @@ class PurchaseFormScreen extends StatefulWidget {
   State<PurchaseFormScreen> createState() => _PurchaseFormScreenState();
 }
 
-class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
+class _PurchaseFormScreenState extends State<PurchaseFormScreen>
+    with ActionGuard {
   Supplier? _supplier;
   List<Supplier> _suppliers = [];
   List<Product> _products = [];
@@ -418,7 +438,9 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit() => runAction(_submitAction);
+
+  Future<void> _submitAction() async {
     if (_supplier == null || _lines.isEmpty) {
       showMessage(
         context,
@@ -461,174 +483,179 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(tr(context, 'New purchase', 'Phiếu nhập mới'))),
-    body:
-        _loading
-            ? const Center(child: CircularProgressIndicator())
-            : PagePadding(
-              child: ListView(
-                children: [
-                  DropdownButtonFormField<Supplier>(
-                    initialValue: _supplier,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Supplier', 'Nhà cung cấp'),
+  Widget build(BuildContext context) => guardActions(
+    Scaffold(
+      appBar: AppBar(
+        title: Text(tr(context, 'New purchase', 'Phiếu nhập mới')),
+      ),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : PagePadding(
+                child: ListView(
+                  children: [
+                    DropdownButtonFormField<Supplier>(
+                      initialValue: _supplier,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Supplier', 'Nhà cung cấp'),
+                      ),
+                      items:
+                          _suppliers
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text(s.name),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (v) => setState(() => _supplier = v),
                     ),
-                    items:
-                        _suppliers
-                            .map(
-                              (s) => DropdownMenuItem(
-                                value: s,
-                                child: Text(s.name),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (v) => setState(() => _supplier = v),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          tr(context, 'Items', 'Mặt hàng'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _add,
-                        icon: const Icon(Icons.add),
-                        label: Text(tr(context, 'Add', 'Thêm')),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ..._lines.asMap().entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: PaperCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    entry.value.description,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${entry.value.quantity} ${entry.value.unit} × ${money(entry.value.cost, AppScope.of(context).user!.preferredCurrency)}',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              money(
-                                entry.value.total,
-                                AppScope.of(context).user!.preferredCurrency,
-                              ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed:
-                                  () => setState(
-                                    () => _lines.removeAt(entry.key),
-                                  ),
-                              icon: const Icon(Icons.close),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  PaperCard(
-                    child: Row(
+                    const SizedBox(height: 18),
+                    Row(
                       children: [
-                        Text(
-                          tr(context, 'Total', 'Tổng cộng'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const Spacer(),
-                        Text(
-                          money(
-                            total,
-                            AppScope.of(context).user!.preferredCurrency,
+                        Expanded(
+                          child: Text(
+                            tr(context, 'Items', 'Mặt hàng'),
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _add,
+                          icon: const Icon(Icons.add),
+                          label: Text(tr(context, 'Add', 'Thêm')),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _payment,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: tr(
-                              context,
-                              'Paid now',
-                              'Thanh toán ngay',
+                    const SizedBox(height: 8),
+                    ..._lines.asMap().entries.map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: PaperCard(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      entry.value.description,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${entry.value.quantity} ${entry.value.unit} × ${money(entry.value.cost, AppScope.of(context).user!.preferredCurrency)}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                money(
+                                  entry.value.total,
+                                  AppScope.of(context).user!.preferredCurrency,
+                                ),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed:
+                                    () => setState(
+                                      () => _lines.removeAt(entry.key),
+                                    ),
+                                icon: const Icon(Icons.close),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    PaperCard(
+                      child: Row(
+                        children: [
+                          Text(
+                            tr(context, 'Total', 'Tổng cộng'),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const Spacer(),
+                          Text(
+                            money(
+                              total,
+                              AppScope.of(context).user!.preferredCurrency,
+                            ),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _payment,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: tr(
+                                context,
+                                'Paid now',
+                                'Thanh toán ngay',
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _method,
-                          decoration: InputDecoration(
-                            labelText: tr(context, 'Method', 'Phương thức'),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _method,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Method', 'Phương thức'),
+                            ),
+                            items:
+                                const ['Cash', 'Bank transfer', 'Card', 'Other']
+                                    .map(
+                                      (v) => DropdownMenuItem(
+                                        value: v,
+                                        child: Text(tr(context, v, v)),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (v) => _method = v!,
                           ),
-                          items:
-                              const ['Cash', 'Bank transfer', 'Card', 'Other']
-                                  .map(
-                                    (v) => DropdownMenuItem(
-                                      value: v,
-                                      child: Text(tr(context, v, v)),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (v) => _method = v!,
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _notes,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Notes', 'Ghi chú'),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _notes,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Notes', 'Ghi chú'),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ReceiptPhoto(
-                    value: _invoiceImage,
-                    languageCode: AppScope.of(context).languageCode,
-                    enabled: !_busy,
-                    onChanged: (value) => setState(() => _invoiceImage = value),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _submit,
-                    icon: const Icon(Icons.check),
-                    label: Text(
-                      tr(context, 'Post purchase', 'Ghi nhận nhập hàng'),
+                    const SizedBox(height: 12),
+                    ReceiptPhoto(
+                      value: _invoiceImage,
+                      languageCode: AppScope.of(context).languageCode,
+                      enabled: !_busy,
+                      onChanged:
+                          (value) => setState(() => _invoiceImage = value),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _submit,
+                      icon: const Icon(Icons.check),
+                      label: Text(
+                        tr(context, 'Post purchase', 'Ghi nhận nhập hàng'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+    ),
   );
 }
 
@@ -639,7 +666,8 @@ class PurchaseDetailScreen extends StatefulWidget {
   State<PurchaseDetailScreen> createState() => _PurchaseDetailScreenState();
 }
 
-class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
+class _PurchaseDetailScreenState extends State<PurchaseDetailScreen>
+    with ActionGuard {
   late Future<Purchase> _future;
   bool _ready = false;
   @override
@@ -654,7 +682,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   void _reload() => setState(
     () => _future = AppScope.of(context).repository.purchase(widget.purchaseId),
   );
-  Future<void> _pay(Purchase purchase) async {
+  Future<void> _pay(Purchase purchase) => runAction(() => _payAction(purchase));
+
+  Future<void> _payAction(Purchase purchase) async {
     final amount = TextEditingController(
       text: purchase.outstandingBalance.toString(),
     );
@@ -714,14 +744,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           purchase.id,
           {'amount': numberOf(amount.text), 'method': method},
         );
-        _reload();
+        if (mounted) _reload();
       } catch (e) {
         if (mounted) showMessage(context, readableError(e), error: true);
       }
     }
   }
 
-  Future<void> _reverse(Purchase purchase, Payment payment) async {
+  Future<void> _reverse(Purchase purchase, Payment payment) =>
+      runAction(() => _reverseAction(purchase, payment));
+
+  Future<void> _reverseAction(Purchase purchase, Payment payment) async {
     final reason = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -756,14 +789,16 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           payment.id,
           reason.text.trim(),
         );
-        _reload();
+        if (mounted) _reload();
       } catch (e) {
         if (mounted) showMessage(context, readableError(e), error: true);
       }
     }
   }
 
-  Future<void> _void() async {
+  Future<void> _void() => runAction(() => _voidAction());
+
+  Future<void> _voidAction() async {
     if (!await confirm(
       context,
       title: tr(context, 'Void purchase?', 'Hủy phiếu nhập?'),
@@ -790,138 +825,141 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(tr(context, 'Purchase detail', 'Chi tiết phiếu nhập')),
-    ),
-    body: PagePadding(
-      child: FutureBuilder<Purchase>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return ErrorState(error: snapshot.error!, onRetry: _reload);
-          }
-          final p = snapshot.data!;
-          return ListView(
-            children: [
-              PageIntro(
-                title: p.purchaseNumber,
-                subtitle: '${p.supplierName} · ${shortDate(p.purchasedAt)}',
-                action: StatusPill(p.status),
-              ),
-              const SizedBox(height: 14),
-              if (p.invoiceImageDataUrl != null)
-                ReceiptPhoto(
-                  value: p.invoiceImageDataUrl,
-                  languageCode: AppScope.of(context).languageCode,
+  Widget build(BuildContext context) => guardActions(
+    Scaffold(
+      appBar: AppBar(
+        title: Text(tr(context, 'Purchase detail', 'Chi tiết phiếu nhập')),
+      ),
+      body: PagePadding(
+        child: FutureBuilder<Purchase>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return ErrorState(error: snapshot.error!, onRetry: _reload);
+            }
+            final p = snapshot.data!;
+            return ListView(
+              children: [
+                PageIntro(
+                  title: p.purchaseNumber,
+                  subtitle: '${p.supplierName} · ${shortDate(p.purchasedAt)}',
+                  action: StatusPill(p.status),
                 ),
-              if (p.invoiceImageDataUrl != null) const SizedBox(height: 12),
-              PaperCard(
-                child: Column(
-                  children: [
-                    ...p.items.map(
-                      (line) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(line.description)),
-                            Text(
-                              '${line.quantity} × ${money(line.unitCost, p.currency)}',
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              money(line.lineTotal, p.currency),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Text(
-                          tr(context, 'Total', 'Tổng cộng'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const Spacer(),
-                        Text(
-                          money(p.totalAmount, p.currency),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...p.payments.map(
-                (payment) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PaperCard(
-                    child: Row(
-                      children: [
-                        Icon(
-                          payment.isReversed
-                              ? Icons.undo
-                              : Icons.payments_outlined,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 14),
+                if (p.invoiceImageDataUrl != null)
+                  ReceiptPhoto(
+                    value: p.invoiceImageDataUrl,
+                    languageCode: AppScope.of(context).languageCode,
+                  ),
+                if (p.invoiceImageDataUrl != null) const SizedBox(height: 12),
+                PaperCard(
+                  child: Column(
+                    children: [
+                      ...p.items.map(
+                        (line) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: Row(
                             children: [
+                              Expanded(child: Text(line.description)),
                               Text(
-                                money(payment.amount, payment.currency),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                '${line.quantity} × ${money(line.unitCost, p.currency)}',
                               ),
+                              const SizedBox(width: 8),
                               Text(
-                                '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
-                                style: Theme.of(context).textTheme.bodySmall,
+                                money(line.lineTotal, p.currency),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        if (!payment.isReversed &&
-                            p.status != 'Voided' &&
-                            AppScope.of(context).user!.canManage)
-                          IconButton(
-                            onPressed: () => _reverse(p, payment),
-                            icon: const Icon(Icons.undo),
+                      ),
+                      const Divider(),
+                      Row(
+                        children: [
+                          Text(
+                            tr(context, 'Total', 'Tổng cộng'),
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                      ],
+                          const Spacer(),
+                          Text(
+                            money(p.totalAmount, p.currency),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...p.payments.map(
+                  (payment) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PaperCard(
+                      child: Row(
+                        children: [
+                          Icon(
+                            payment.isReversed
+                                ? Icons.undo
+                                : Icons.payments_outlined,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  money(payment.amount, payment.currency),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!payment.isReversed &&
+                              p.status != 'Voided' &&
+                              AppScope.of(context).user!.canManage)
+                            IconButton(
+                              onPressed: () => _reverse(p, payment),
+                              icon: const Icon(Icons.undo),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (p.status != 'Voided' &&
-                  p.outstandingBalance > 0 &&
-                  AppScope.of(context).user!.canManage)
-                FilledButton.icon(
-                  onPressed: () => _pay(p),
-                  icon: const Icon(Icons.payments_outlined),
-                  label: Text(
-                    tr(context, 'Record payment', 'Ghi nhận thanh toán'),
+                if (p.status != 'Voided' &&
+                    p.outstandingBalance > 0 &&
+                    AppScope.of(context).user!.canManage)
+                  FilledButton.icon(
+                    onPressed: () => _pay(p),
+                    icon: const Icon(Icons.payments_outlined),
+                    label: Text(
+                      tr(context, 'Record payment', 'Ghi nhận thanh toán'),
+                    ),
                   ),
-                ),
-              if (p.status != 'Voided' && AppScope.of(context).user!.canManage)
-                TextButton(
-                  onPressed: _void,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
+                if (p.status != 'Voided' &&
+                    AppScope.of(context).user!.canManage)
+                  TextButton(
+                    onPressed: _void,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    child: Text(tr(context, 'Void purchase', 'Hủy phiếu nhập')),
                   ),
-                  child: Text(tr(context, 'Void purchase', 'Hủy phiếu nhập')),
-                ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     ),
   );

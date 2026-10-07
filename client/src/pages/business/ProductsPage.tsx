@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
@@ -57,7 +58,7 @@ export default function ProductsPage() {
 
   const activeParam = statusFilter === "all" ? undefined : statusFilter === "active";
 
-  const { data: pagedResult, isLoading } = useQuery({
+  const { data: pagedResult, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["products-paged", search, statusFilter, page],
     queryFn: () => businessService.getProductsPaged(search, activeParam, page, 20),
   });
@@ -249,6 +250,8 @@ export default function ProductsPage() {
 
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở danh sách hàng hoá…" : "Opening your product list…"} />
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => { void refetch(); }} retrying={isFetching} />
         ) : products.length === 0 ? (
           <EmptyState
             icon={Package}

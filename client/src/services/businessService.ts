@@ -1,3 +1,4 @@
+import { financialWrite } from "@/lib/financialWrite";
 import apiClient from "./apiClient";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 
@@ -237,7 +238,6 @@ export interface SaleInput {
   soldAt?: string;
 }
 
-const mutationHeaders = () => ({ "Idempotency-Key": crypto.randomUUID() });
 
 export const businessService = {
   async getCustomers(search = "", status = "Active"): Promise<BusinessCustomer[]> {
@@ -276,7 +276,7 @@ export const businessService = {
   },
 
   async recordCustomerAccountPayment(customerId: string, input: CustomerAccountPaymentInput): Promise<CustomerAccountPaymentResult> {
-    const response = await apiClient.post(`/customers/${customerId}/payments`, input, { headers: mutationHeaders() });
+    const response = await financialWrite(`/customers/${customerId}/payments`, input);
     return response.data.data;
   },
 
@@ -338,22 +338,22 @@ export const businessService = {
   },
 
   async createSale(input: SaleInput): Promise<Sale> {
-    const response = await apiClient.post("/sales", input, { headers: mutationHeaders() });
+    const response = await financialWrite("/sales", input);
     return response.data.data;
   },
 
   async recordPayment(saleId: string, input: { amount: number; method: string; reference?: string; notes?: string }): Promise<Sale> {
-    const response = await apiClient.post(`/sales/${saleId}/payments`, input, { headers: mutationHeaders() });
+    const response = await financialWrite(`/sales/${saleId}/payments`, input);
     return response.data.data;
   },
 
   async reverseSalePayment(saleId: string, paymentId: string, reason?: string): Promise<Sale> {
-    const response = await apiClient.post(`/sales/${saleId}/payments/${paymentId}/reverse`, { reason }, { headers: mutationHeaders() });
+    const response = await financialWrite(`/sales/${saleId}/payments/${paymentId}/reverse`, { reason });
     return response.data.data;
   },
 
   async voidSale(saleId: string, options?: { reversePayments?: boolean; reason?: string }): Promise<Sale> {
-    const response = await apiClient.post(`/sales/${saleId}/void`, options ?? {}, { headers: mutationHeaders() });
+    const response = await financialWrite(`/sales/${saleId}/void`, options ?? {});
     return response.data.data;
   },
 
@@ -398,22 +398,22 @@ export const businessService = {
   },
 
   async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string; invoiceImageDataUrl?: string }): Promise<Purchase> {
-    const response = await apiClient.post("/purchases", input, { headers: mutationHeaders() });
+    const response = await financialWrite("/purchases", input);
     return response.data.data;
   },
 
   async recordPurchasePayment(id: string, input: { amount: number; method: string; reference?: string; notes?: string }): Promise<Purchase> {
-    const response = await apiClient.post(`/purchases/${id}/payments`, input, { headers: mutationHeaders() });
+    const response = await financialWrite(`/purchases/${id}/payments`, input);
     return response.data.data;
   },
 
   async reversePurchasePayment(purchaseId: string, paymentId: string, reason?: string): Promise<Purchase> {
-    const response = await apiClient.post(`/purchases/${purchaseId}/payments/${paymentId}/reverse`, { reason }, { headers: mutationHeaders() });
+    const response = await financialWrite(`/purchases/${purchaseId}/payments/${paymentId}/reverse`, { reason });
     return response.data.data;
   },
 
   async voidPurchase(purchaseId: string, options?: { reversePayments?: boolean; reason?: string }): Promise<Purchase> {
-    const response = await apiClient.post(`/purchases/${purchaseId}/void`, options ?? {}, { headers: mutationHeaders() });
+    const response = await financialWrite(`/purchases/${purchaseId}/void`, options ?? {});
     return response.data.data;
   },
 
@@ -428,7 +428,7 @@ export const businessService = {
   },
 
   async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string; receiptImageDataUrl?: string }): Promise<BusinessExpense> {
-    const response = await apiClient.post("/business-expenses", input, { headers: mutationHeaders() });
+    const response = await financialWrite("/business-expenses", input);
     return response.data.data;
   },
 

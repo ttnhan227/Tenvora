@@ -4,6 +4,7 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/search_controller.dart';
 
 class SuppliersScreen extends StatefulWidget {
   const SuppliersScreen({super.key});
@@ -12,10 +13,21 @@ class SuppliersScreen extends StatefulWidget {
 }
 
 class _SuppliersScreenState extends State<SuppliersScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Supplier>> _future;
   bool _ready = false;
   int _page = 1;
+  String _status = 'Active';
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -26,131 +38,187 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.suppliers(search: _search.text, page: _page);
+      _future = AppScope.of(context).repository.suppliers(
+        search: _search.text,
+        page: _page,
+        status: _status == 'All' ? '' : _status,
+      );
   void _reload() => setState(_load);
   Future<void> _edit([Supplier? s]) async {
     final name = TextEditingController(text: s?.name);
     final phone = TextEditingController(text: s?.phone);
     final email = TextEditingController(text: s?.email);
     final form = GlobalKey<FormState>();
+    bool busy = false;
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder:
-          (c) => Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              16,
-              20,
-              MediaQuery.viewInsetsOf(c).bottom + 24,
-            ),
-            child: Form(
-              key: form,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    s == null
-                        ? tr(context, 'New supplier', 'Nhà cung cấp mới')
-                        : tr(context, 'Edit supplier', 'Sửa nhà cung cấp'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+          (c) => StatefulBuilder(
+            builder:
+                (c, setLocal) => Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    16,
+                    20,
+                    MediaQuery.viewInsetsOf(c).bottom + 24,
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: name,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Name', 'Tên'),
-                    ),
-                    validator:
-                        (v) =>
-                            (v?.trim().isEmpty ?? true)
-                                ? tr(context, 'Required', 'Bắt buộc')
-                                : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: phone,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Phone', 'Số điện thoại'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: email,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Email', 'Email'),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton(
-                    onPressed: () async {
-                      if (!(form.currentState?.validate() ?? false)) return;
-                      try {
-                        final input = {
-                          'name': name.text.trim(),
-                          'phone': phone.text.trim(),
-                          'email': email.text.trim(),
-                        };
-                        if (s == null) {
-                          await AppScope.of(
-                            context,
-                          ).repository.createSupplier(input);
-                        } else {
-                          await AppScope.of(
-                            context,
-                          ).repository.updateSupplier(s.id, input);
-                        }
-                        if (c.mounted) Navigator.pop(c, true);
-                      } catch (e) {
-                        if (c.mounted) {
-                          showMessage(c, readableError(e), error: true);
-                        }
-                      }
-                    },
-                    child: Text(
-                      tr(context, 'Save supplier', 'Lưu nhà cung cấp'),
-                    ),
-                  ),
-                  if (s != null)
-                    TextButton(
-                      onPressed: () async {
-                        if (!await confirm(
-                          c,
-                          title: tr(c, 'Remove supplier?', 'Xóa nhà cung cấp?'),
-                          message: tr(
-                            c,
-                            'Suppliers with purchases are archived.',
-                            'Nhà cung cấp có giao dịch sẽ được lưu trữ.',
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: form,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            s == null
+                                ? tr(
+                                  context,
+                                  'New supplier',
+                                  'Nhà cung cấp mới',
+                                )
+                                : tr(
+                                  context,
+                                  'Edit supplier',
+                                  'Sửa nhà cung cấp',
+                                ),
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
-                          destructive: true,
-                        )) {
-                          return;
-                        }
-                        if (!c.mounted) return;
-                        try {
-                          await AppScope.of(c).repository.deleteSupplier(s.id);
-                          if (c.mounted) Navigator.pop(c, true);
-                        } catch (e) {
-                          if (c.mounted) {
-                            showMessage(c, readableError(e), error: true);
-                          }
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Theme.of(c).colorScheme.error,
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: name,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Name', 'Tên'),
+                            ),
+                            validator:
+                                (v) =>
+                                    (v?.trim().isEmpty ?? true)
+                                        ? tr(context, 'Required', 'Bắt buộc')
+                                        : null,
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: phone,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Phone', 'Số điện thoại'),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: email,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Email', 'Email'),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          FilledButton(
+                            onPressed:
+                                busy
+                                    ? null
+                                    : () async {
+                                      if (busy ||
+                                          !(form.currentState?.validate() ??
+                                              false)) {
+                                        return;
+                                      }
+                                      setLocal(() => busy = true);
+                                      try {
+                                        final input = {
+                                          'name': name.text.trim(),
+                                          'phone': phone.text.trim(),
+                                          'email': email.text.trim(),
+                                        };
+                                        if (s == null) {
+                                          await AppScope.of(
+                                            context,
+                                          ).repository.createSupplier(input);
+                                        } else {
+                                          await AppScope.of(context).repository
+                                              .updateSupplier(s.id, input);
+                                        }
+                                        if (c.mounted) Navigator.pop(c, true);
+                                      } catch (e) {
+                                        if (c.mounted) {
+                                          showMessage(
+                                            c,
+                                            readableError(e),
+                                            error: true,
+                                          );
+                                          setLocal(() => busy = false);
+                                        }
+                                      }
+                                    },
+                            child: Text(
+                              busy
+                                  ? tr(context, 'Saving…', 'Đang lưu…')
+                                  : tr(
+                                    context,
+                                    'Save supplier',
+                                    'Lưu nhà cung cấp',
+                                  ),
+                            ),
+                          ),
+                          if (s != null)
+                            TextButton(
+                              onPressed:
+                                  busy
+                                      ? null
+                                      : () async {
+                                        if (busy) return;
+                                        setLocal(() => busy = true);
+                                        if (!await confirm(
+                                          c,
+                                          title: tr(
+                                            c,
+                                            'Remove supplier?',
+                                            'Xóa nhà cung cấp?',
+                                          ),
+                                          message: tr(
+                                            c,
+                                            'Suppliers with purchases are archived.',
+                                            'Nhà cung cấp có giao dịch sẽ được lưu trữ.',
+                                          ),
+                                          destructive: true,
+                                        )) {
+                                          if (c.mounted) {
+                                            setLocal(() => busy = false);
+                                          }
+                                          return;
+                                        }
+                                        if (!c.mounted) return;
+                                        try {
+                                          await AppScope.of(
+                                            c,
+                                          ).repository.deleteSupplier(s.id);
+                                          if (c.mounted) Navigator.pop(c, true);
+                                        } catch (e) {
+                                          if (c.mounted) {
+                                            showMessage(
+                                              c,
+                                              readableError(e),
+                                              error: true,
+                                            );
+                                            setLocal(() => busy = false);
+                                          }
+                                        }
+                                      },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Theme.of(c).colorScheme.error,
+                              ),
+                              child: Text(
+                                tr(c, 'Remove supplier', 'Xóa nhà cung cấp'),
+                              ),
+                            ),
+                          if (busy) const LinearProgressIndicator(),
+                        ],
                       ),
-                      child: Text(tr(c, 'Remove supplier', 'Xóa nhà cung cấp')),
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
           ),
     );
-    if (saved == true) _reload();
+    if (mounted && saved == true) _reload();
   }
 
   @override
@@ -169,14 +237,32 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         children: [
           TextField(
             controller: _search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(context, 'Search suppliers', 'Tìm nhà cung cấp'),
               prefixIcon: const Icon(Icons.search),
             ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _status,
+            decoration: InputDecoration(
+              labelText: tr(context, 'Status', 'Trạng thái'),
+            ),
+            items:
+                ['Active', 'Archived', 'All']
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(tr(context, value, value)),
+                      ),
+                    )
+                    .toList(),
+            onChanged: (value) {
+              _status = value!;
+              _page = 1;
+              _reload();
+            },
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -193,6 +279,16 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.local_shipping_outlined,
                     title: tr(context, 'No suppliers', 'Chưa có nhà cung cấp'),
                     message: tr(

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileUp, Pencil, Plus, Search, Trash2, Truck } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
@@ -55,12 +56,12 @@ export default function SuppliersPage() {
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
   const [form, setForm] = useState(empty);
 
-  const { data: pagedData, isLoading } = useQuery({
+  const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["suppliers-paged", search, statusFilter, page],
     queryFn: () =>
       businessService.getSuppliersPaged(
         search,
-        statusFilter === "all" ? undefined : statusFilter,
+        statusFilter === "all" ? "" : statusFilter,
         page,
         pageSize
       ),
@@ -220,6 +221,8 @@ export default function SuppliersPage() {
         </div>
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở danh sách nhà cung cấp…" : "Opening your supplier list…"} />
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => { void refetch(); }} retrying={isFetching} />
         ) : suppliers.length === 0 ? (
           <EmptyState icon={Truck} title={search ? (isVietnamese ? "Không tìm thấy nhà cung cấp phù hợp" : "No suppliers match that search") : (isVietnamese ? "Chưa có nhà cung cấp" : "No suppliers yet")} description={search ? (isVietnamese ? "Hãy thử tên, số điện thoại hoặc email khác." : "Try a name, phone number, or email address.") : (isVietnamese ? "Thêm người hoặc doanh nghiệp bạn nhập hàng. Số dư sẽ tự cập nhật theo các lần nhập hàng và thanh toán." : "Add the people and businesses you buy from. Their balance will update automatically when you record purchases and payments.")} action={!search && canManageRecords && <Button onClick={create}>{isVietnamese ? "Thêm nhà cung cấp đầu tiên" : "Add first supplier"}</Button>} />
         ) : (

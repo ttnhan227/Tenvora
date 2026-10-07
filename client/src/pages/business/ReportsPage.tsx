@@ -7,6 +7,7 @@ import {
   FileText,
   Printer,
 } from "lucide-react";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState } from "@/components/business/BusinessUI";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,11 @@ export default function ReportsPage() {
     expensesQuery.isLoading ||
     purchasesQuery.isLoading;
 
+  const failedQuery = [dashboardQuery, salesQuery, expensesQuery, purchasesQuery].find(query => query.isError);
+  const retryReports = () => {
+    for (const query of [dashboardQuery, salesQuery, expensesQuery, purchasesQuery]) void query.refetch();
+  };
+
   const dash = dashboardQuery.data;
   const currency = dash?.currency ?? user?.preferredCurrency ?? "USD";
   const money = (val: number) => businessMoney(val, currency);
@@ -206,7 +212,7 @@ export default function ReportsPage() {
               <Button
                 variant="outline"
                 onClick={handleExportCsv}
-                disabled={isLoading}
+                disabled={isLoading || !!failedQuery}
                 className="gap-1.5"
               >
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
@@ -215,7 +221,7 @@ export default function ReportsPage() {
               <Button
                 variant="outline"
                 onClick={handleDownloadHtml}
-                disabled={isLoading}
+                disabled={isLoading || !!failedQuery}
                 className="gap-1.5"
               >
                 <Download className="h-4 w-4 text-primary" />
@@ -223,7 +229,7 @@ export default function ReportsPage() {
               </Button>
               <Button
                 onClick={handlePrint}
-                disabled={isLoading}
+                disabled={isLoading || !!failedQuery}
                 className="gap-1.5 font-bold"
               >
                 <Printer className="h-4 w-4" />
@@ -266,6 +272,8 @@ export default function ReportsPage() {
 
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang chuẩn bị báo cáo..." : "Compiling financial statements..."} />
+        ) : failedQuery ? (
+          <QueryErrorState error={failedQuery.error} onRetry={retryReports} retrying={[dashboardQuery, salesQuery, expensesQuery, purchasesQuery].some(query => query.isFetching)} />
         ) : (
           <div className="space-y-6">
             <section aria-label="Executive Totals" className="grid overflow-hidden rounded-2xl border bg-card sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">

@@ -26,6 +26,7 @@ import {
   Ban,
 } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
@@ -178,7 +179,7 @@ export default function SalesPage() {
     queryKey: ["products", "active"],
     queryFn: () => businessService.getProducts("", true),
   });
-  const { data: salesData, isLoading } = useQuery({
+  const { data: salesData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["sales-paged", search, page],
     queryFn: () => businessService.getSalesPaged(search, undefined, undefined, undefined, page, pageSize),
   });
@@ -516,6 +517,8 @@ export default function SalesPage() {
         </div>
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ bán hàng…" : "Opening your sales book…"} />
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => { void refetch(); }} retrying={isFetching} />
         ) : sales.length === 0 ? (
           <EmptyState icon={ReceiptText} title={search ? (isVietnamese ? "Không tìm thấy đơn bán phù hợp" : "No sales match that search") : (isVietnamese ? "Chưa có đơn bán" : "No sales yet")} description={search ? (isVietnamese ? "Hãy thử tên khách hàng, hàng hoá hoặc mã đơn khác." : "Try a customer name, product, or sale number.") : (isVietnamese ? "Đơn bán sẽ xuất hiện tại đây sau khi bạn ghi đơn đầu tiên. Hãy thêm khách hàng và hàng hoá trước nếu cần." : "Your sales will appear here after you record the first one. Add a customer and product first if you haven't already.")} action={!search && canManageRecords ? <Button onClick={() => setCreateOpen(true)}>{isVietnamese ? "Ghi đơn bán đầu tiên" : "Record first sale"}</Button> : undefined} />
         ) : (

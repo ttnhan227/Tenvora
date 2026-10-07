@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Trash2, Users, WalletCards } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
@@ -63,25 +64,22 @@ export default function CustomersPage() {
   const [deletingCustomer, setDeletingCustomer] = useState<BusinessCustomer | null>(null);
   const [form, setForm] = useState<CustomerInput>(emptyCustomer);
 
-  const { data: pagedData, isLoading } = useQuery({
-    queryKey: ["business-customers-paged", search, statusFilter, page],
-    queryFn: () =>
-      businessService.getCustomersPaged(
-        search,
-        statusFilter === "all" ? undefined : statusFilter,
-        page,
-        pageSize
-      ),
+  const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["business-customers-paged", search, statusFilter, debtFilter, page],
+    queryFn: async () => {
+      const status = statusFilter === "all" ? "" : statusFilter;
+      if (debtFilter === "all") return businessService.getCustomersPaged(search, status, page, pageSize);
+      // Filter before pagination so a match beyond the first page remains discoverable.
+      const customers = await businessService.getCustomers(search, status);
+      const matches = customers.filter(customer => debtFilter === "has_debt" ? customer.outstandingBalance > 0 : customer.outstandingBalance <= 0);
+      return { items: matches.slice((page - 1) * pageSize, page * pageSize), totalCount: matches.length, page, pageSize, totalPages: Math.ceil(matches.length / pageSize) };
+    },
   });
 
   const rawCustomers = pagedData?.items ?? [];
   const totalCount = pagedData?.totalCount ?? 0;
 
-  const filteredCustomers = rawCustomers.filter((c) => {
-    if (debtFilter === "has_debt") return c.outstandingBalance > 0;
-    if (debtFilter === "zero_balance") return c.outstandingBalance <= 0;
-    return true;
-  });
+  const filteredCustomers = rawCustomers;
 
   const totalOutstanding = rawCustomers.reduce((acc, curr) => acc + curr.outstandingBalance, 0);
   const currency = rawCustomers[0]?.currency ?? "USD";
@@ -255,7 +253,7 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <Select value={debtFilter} onValueChange={(val: any) => setDebtFilter(val)}>
+            <Select value={debtFilter} onValueChange={(val: "all" | "has_debt" | "zero_balance") => { setDebtFilter(val); setPage(1); }}>
               <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
@@ -273,7 +271,7 @@ export default function CustomersPage() {
 
           {totalOutstanding > 0 && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>{isVietnamese ? "Tổng công nợ phải thu:" : "Total Receivables:"}</span>
+              <span>{isVietnamese ? "Công nợ trên trang này:" : "Receivables on this page:"}</span>
               <span className="font-bold text-amber-600 dark:text-amber-400">
                 {businessMoney(totalOutstanding, currency)}
               </span>
@@ -283,6 +281,8 @@ export default function CustomersPage() {
 
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở danh sách khách hàng…" : "Opening your customer list…"} />
+        ) : isError ? (
+          <QueryErrorState error={error} onRetry={() => { void refetch(); }} retrying={isFetching} />
         ) : filteredCustomers.length === 0 ? (
           <EmptyState
             icon={Users}

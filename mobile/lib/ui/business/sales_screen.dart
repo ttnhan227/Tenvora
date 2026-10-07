@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
+import '../../data/tenvora_repository.dart';
 import '../widgets/common.dart';
+import '../widgets/action_guard.dart';
+import '../widgets/search_controller.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key, this.embedded = false});
@@ -13,13 +16,35 @@ class SalesScreen extends StatefulWidget {
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Sale>> _future;
   bool _ready = false;
   int _page = 1;
   @override
+  void dispose() {
+    _observedRepository?.changes.removeListener(_recordsChanged);
+    _search.dispose();
+    super.dispose();
+  }
+
+  TenvoraRepository? _observedRepository;
+  void _recordsChanged() {
+    if (mounted) setState(_load);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final repository = AppScope.of(context).repository;
+    if (!identical(repository, _observedRepository)) {
+      _observedRepository?.changes.removeListener(_recordsChanged);
+      _observedRepository = repository;
+      repository.changes.addListener(_recordsChanged);
+    }
     if (!_ready) {
       _ready = true;
       _load();
@@ -66,10 +91,7 @@ class _SalesScreenState extends State<SalesScreen> {
           if (widget.embedded) const SizedBox(height: 14),
           TextField(
             controller: _search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(
                 context,
@@ -101,6 +123,16 @@ class _SalesScreenState extends State<SalesScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.receipt_long_outlined,
                     title: tr(context, 'No sales yet', 'Chưa có giao dịch'),
                     message: tr(
@@ -244,7 +276,7 @@ class SaleFormScreen extends StatefulWidget {
   State<SaleFormScreen> createState() => _SaleFormScreenState();
 }
 
-class _SaleFormScreenState extends State<SaleFormScreen> {
+class _SaleFormScreenState extends State<SaleFormScreen> with ActionGuard {
   Customer? _customer;
   List<Customer> _customers = [];
   List<Product> _products = [];
@@ -259,6 +291,13 @@ class _SaleFormScreenState extends State<SaleFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_loading) _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _payment.dispose();
+    _notes.dispose();
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -355,7 +394,9 @@ class _SaleFormScreenState extends State<SaleFormScreen> {
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit() => runAction(_submitAction);
+
+  Future<void> _submitAction() async {
     if (_customer == null || _lines.isEmpty) {
       showMessage(
         context,
@@ -395,189 +436,196 @@ class _SaleFormScreenState extends State<SaleFormScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(tr(context, 'New sale', 'Tạo đơn bán'))),
-    body:
-        _loading
-            ? const Center(child: CircularProgressIndicator())
-            : PagePadding(
-              child: ListView(
-                children: [
-                  PageIntro(
-                    title: tr(context, 'Build the sale', 'Tạo đơn hàng'),
-                    subtitle: tr(
-                      context,
-                      'Select a customer, products and payment.',
-                      'Chọn khách, sản phẩm và thanh toán.',
+  Widget build(BuildContext context) => guardActions(
+    Scaffold(
+      appBar: AppBar(title: Text(tr(context, 'New sale', 'Tạo đơn bán'))),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : PagePadding(
+                child: ListView(
+                  children: [
+                    PageIntro(
+                      title: tr(context, 'Build the sale', 'Tạo đơn hàng'),
+                      subtitle: tr(
+                        context,
+                        'Select a customer, products and payment.',
+                        'Chọn khách, sản phẩm và thanh toán.',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  DropdownButtonFormField<Customer>(
-                    initialValue: _customer,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Customer', 'Khách hàng'),
-                      prefixIcon: const Icon(Icons.person_outline),
+                    const SizedBox(height: 18),
+                    DropdownButtonFormField<Customer>(
+                      initialValue: _customer,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Customer', 'Khách hàng'),
+                        prefixIcon: const Icon(Icons.person_outline),
+                      ),
+                      items:
+                          _customers
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c.name),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (v) => setState(() => _customer = v),
                     ),
-                    items:
-                        _customers
-                            .map(
-                              (c) => DropdownMenuItem(
-                                value: c,
-                                child: Text(c.name),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (v) => setState(() => _customer = v),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          tr(context, 'Line items', 'Sản phẩm'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _products.isEmpty ? null : _addLine,
-                        icon: const Icon(Icons.add),
-                        label: Text(tr(context, 'Add', 'Thêm')),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (_lines.isEmpty)
-                    PaperCard(
-                      child: Text(
-                        tr(
-                          context,
-                          'No products added.',
-                          'Chưa thêm sản phẩm.',
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    ..._lines.asMap().entries.map((entry) {
-                      final l = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: PaperCard(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      l.product.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${l.quantity} × ${money(l.product.defaultPrice, l.product.currency)}',
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                money(l.total, l.product.currency),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed:
-                                    () => setState(
-                                      () => _lines.removeAt(entry.key),
-                                    ),
-                                icon: const Icon(Icons.close),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  const SizedBox(height: 10),
-                  PaperCard(
-                    child: Row(
+                    const SizedBox(height: 18),
+                    Row(
                       children: [
-                        Text(
-                          tr(context, 'Total', 'Tổng cộng'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const Spacer(),
-                        Text(
-                          money(
-                            total,
-                            AppScope.of(context).user!.preferredCurrency,
+                        Expanded(
+                          child: Text(
+                            tr(context, 'Line items', 'Sản phẩm'),
+                            style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _products.isEmpty ? null : _addLine,
+                          icon: const Icon(Icons.add),
+                          label: Text(tr(context, 'Add', 'Thêm')),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _payment,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: tr(
-                              context,
-                              'Paid now',
-                              'Thanh toán ngay',
+                    const SizedBox(height: 8),
+                    if (_lines.isEmpty)
+                      PaperCard(
+                        child: Text(
+                          tr(
+                            context,
+                            'No products added.',
+                            'Chưa thêm sản phẩm.',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      ..._lines.asMap().entries.map((entry) {
+                        final l = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: PaperCard(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        l.product.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${l.quantity} × ${money(l.product.defaultPrice, l.product.currency)}',
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  money(l.total, l.product.currency),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed:
+                                      () => setState(
+                                        () => _lines.removeAt(entry.key),
+                                      ),
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    const SizedBox(height: 10),
+                    PaperCard(
+                      child: Row(
+                        children: [
+                          Text(
+                            tr(context, 'Total', 'Tổng cộng'),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const Spacer(),
+                          Text(
+                            money(
+                              total,
+                              AppScope.of(context).user!.preferredCurrency,
+                            ),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _payment,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: tr(
+                                context,
+                                'Paid now',
+                                'Thanh toán ngay',
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _method,
-                          decoration: InputDecoration(
-                            labelText: tr(context, 'Method', 'Phương thức'),
-                          ),
-                          items:
-                              const ['Cash', 'Bank transfer', 'Card', 'Other']
-                                  .map(
-                                    (v) => DropdownMenuItem(
-                                      value: v,
-                                      child: Text(
-                                        v,
-                                        overflow: TextOverflow.ellipsis,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _method,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Method', 'Phương thức'),
+                            ),
+                            items:
+                                const ['Cash', 'Bank transfer', 'Card', 'Other']
+                                    .map(
+                                      (v) => DropdownMenuItem(
+                                        value: v,
+                                        child: Text(
+                                          v,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged: (v) => _method = v!,
+                                    )
+                                    .toList(),
+                            onChanged: (v) => _method = v!,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _notes,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Notes', 'Ghi chú'),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _submit,
-                    icon: const Icon(Icons.check),
-                    label: Text(tr(context, 'Post sale', 'Ghi nhận bán hàng')),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _notes,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Notes', 'Ghi chú'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _submit,
+                      icon: const Icon(Icons.check),
+                      label: Text(
+                        tr(context, 'Post sale', 'Ghi nhận bán hàng'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+    ),
   );
 }
 
@@ -588,18 +636,24 @@ class SaleDetailScreen extends StatefulWidget {
   State<SaleDetailScreen> createState() => _SaleDetailScreenState();
 }
 
-class _SaleDetailScreenState extends State<SaleDetailScreen> {
+class _SaleDetailScreenState extends State<SaleDetailScreen> with ActionGuard {
   late Future<Sale> _future;
+  bool _ready = false;
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _future = AppScope.of(context).repository.sale(widget.saleId);
+    if (!_ready) {
+      _ready = true;
+      _future = AppScope.of(context).repository.sale(widget.saleId);
+    }
   }
 
   void _reload() => setState(
     () => _future = AppScope.of(context).repository.sale(widget.saleId),
   );
-  Future<void> _pay(Sale sale) async {
+  Future<void> _pay(Sale sale) => runAction(() => _payAction(sale));
+
+  Future<void> _payAction(Sale sale) async {
     final amount = TextEditingController(
       text: sale.outstandingBalance.toString(),
     );
@@ -662,14 +716,16 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
           'amount': numberOf(amount.text),
           'method': method,
         });
-        _reload();
+        if (mounted) _reload();
       } catch (e) {
         if (mounted) showMessage(context, readableError(e), error: true);
       }
     }
   }
 
-  Future<void> _void() async {
+  Future<void> _void() => runAction(() => _voidAction());
+
+  Future<void> _voidAction() async {
     if (!await confirm(
       context,
       title: tr(context, 'Void this sale?', 'Hủy giao dịch?'),
@@ -695,7 +751,10 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
     }
   }
 
-  Future<void> _reverse(Sale sale, Payment payment) async {
+  Future<void> _reverse(Sale sale, Payment payment) =>
+      runAction(() => _reverseAction(sale, payment));
+
+  Future<void> _reverseAction(Sale sale, Payment payment) async {
     final reason = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -730,7 +789,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
           payment.id,
           reason.text.trim(),
         );
-        _reload();
+        if (mounted) _reload();
       } catch (e) {
         if (mounted) showMessage(context, readableError(e), error: true);
       }
@@ -738,170 +797,176 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(tr(context, 'Sale detail', 'Chi tiết giao dịch')),
-    ),
-    body: PagePadding(
-      child: FutureBuilder<Sale>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return ErrorState(error: snapshot.error!, onRetry: _reload);
-          }
-          final s = snapshot.data!;
-          return ListView(
-            children: [
-              PageIntro(
-                title: s.saleNumber,
-                subtitle: '${s.customerName} · ${shortDate(s.soldAt)}',
-                action: StatusPill(s.status),
-              ),
-              const SizedBox(height: 16),
-              PaperCard(
-                child: Column(
-                  children: [
-                    for (final line in s.items)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 7),
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(line.productName)),
-                            Text(
-                              '${line.quantity} × ${money(line.unitPrice, s.currency)}',
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              money(line.lineTotal, s.currency),
+  Widget build(BuildContext context) => guardActions(
+    Scaffold(
+      appBar: AppBar(
+        title: Text(tr(context, 'Sale detail', 'Chi tiết giao dịch')),
+      ),
+      body: PagePadding(
+        child: FutureBuilder<Sale>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return ErrorState(error: snapshot.error!, onRetry: _reload);
+            }
+            final s = snapshot.data!;
+            return ListView(
+              children: [
+                PageIntro(
+                  title: s.saleNumber,
+                  subtitle: '${s.customerName} · ${shortDate(s.soldAt)}',
+                  action: StatusPill(s.status),
+                ),
+                const SizedBox(height: 16),
+                PaperCard(
+                  child: Column(
+                    children: [
+                      for (final line in s.items)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(line.productName)),
+                              Text(
+                                '${line.quantity} × ${money(line.unitPrice, s.currency)}',
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                money(line.lineTotal, s.currency),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const Divider(),
+                      Row(
+                        children: [
+                          Text(
+                            tr(context, 'Total', 'Tổng cộng'),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const Spacer(),
+                          Text(
+                            money(s.totalAmount, s.currency),
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                PaperCard(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(tr(context, 'Paid', 'Đã thanh toán')),
+                          ),
+                          Text(money(s.paidAmount, s.currency)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              tr(context, 'Outstanding', 'Còn nợ'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                          ),
+                          Text(
+                            money(s.outstandingBalance, s.currency),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (s.payments.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    tr(context, 'Payment history', 'Lịch sử thanh toán'),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  ...s.payments.map(
+                    (payment) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: PaperCard(
+                        child: Row(
+                          children: [
+                            Icon(
+                              payment.isReversed
+                                  ? Icons.undo
+                                  : Icons.payments_outlined,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    money(payment.amount, payment.currency),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (!payment.isReversed &&
+                                s.status != 'Voided' &&
+                                AppScope.of(context).user!.canManage)
+                              IconButton(
+                                onPressed: () => _reverse(s, payment),
+                                icon: const Icon(Icons.undo),
+                              ),
                           ],
                         ),
                       ),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Text(
-                          tr(context, 'Total', 'Tổng cộng'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const Spacer(),
-                        Text(
-                          money(s.totalAmount, s.currency),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              PaperCard(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(tr(context, 'Paid', 'Đã thanh toán')),
-                        ),
-                        Text(money(s.paidAmount, s.currency)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            tr(context, 'Outstanding', 'Còn nợ'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        Text(
-                          money(s.outstandingBalance, s.currency),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (s.payments.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  tr(context, 'Payment history', 'Lịch sử thanh toán'),
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                ...s.payments.map(
-                  (payment) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: PaperCard(
-                      child: Row(
-                        children: [
-                          Icon(
-                            payment.isReversed
-                                ? Icons.undo
-                                : Icons.payments_outlined,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  money(payment.amount, payment.currency),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                Text(
-                                  '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (!payment.isReversed &&
-                              s.status != 'Voided' &&
-                              AppScope.of(context).user!.canManage)
-                            IconButton(
-                              onPressed: () => _reverse(s, payment),
-                              icon: const Icon(Icons.undo),
-                            ),
-                        ],
-                      ),
                     ),
                   ),
-                ),
+                ],
+                if (s.status != 'Voided' &&
+                    s.outstandingBalance > 0 &&
+                    AppScope.of(context).user!.canManage) ...[
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => _pay(s),
+                    icon: const Icon(Icons.payments_outlined),
+                    label: Text(
+                      tr(context, 'Record payment', 'Ghi nhận thanh toán'),
+                    ),
+                  ),
+                ],
+                if (s.status != 'Voided' &&
+                    AppScope.of(context).user!.canManage)
+                  TextButton(
+                    onPressed: _void,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    child: Text(tr(context, 'Void sale', 'Hủy giao dịch')),
+                  ),
               ],
-              if (s.status != 'Voided' &&
-                  s.outstandingBalance > 0 &&
-                  AppScope.of(context).user!.canManage) ...[
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => _pay(s),
-                  icon: const Icon(Icons.payments_outlined),
-                  label: Text(
-                    tr(context, 'Record payment', 'Ghi nhận thanh toán'),
-                  ),
-                ),
-              ],
-              if (s.status != 'Voided' && AppScope.of(context).user!.canManage)
-                TextButton(
-                  onPressed: _void,
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: Text(tr(context, 'Void sale', 'Hủy giao dịch')),
-                ),
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     ),
   );

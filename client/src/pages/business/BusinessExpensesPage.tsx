@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileUp, Pencil, Plus, Receipt, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
@@ -240,6 +241,8 @@ export default function BusinessExpensesPage() {
 
         {query.isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ chi tiêu…" : "Opening your expense records…"} />
+        ) : query.isError ? (
+          <QueryErrorState error={query.error} onRetry={() => { void query.refetch(); }} retrying={query.isFetching} />
         ) : (query.data ?? []).length === 0 ? (
           <EmptyState
             icon={Receipt}

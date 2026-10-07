@@ -4,6 +4,8 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/action_guard.dart';
+import '../widgets/search_controller.dart';
 import '../widgets/receipt_photo.dart';
 
 class ExpensesScreen extends StatefulWidget {
@@ -13,10 +15,20 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Expense>> _future;
   bool _ready = false;
   int _page = 1;
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -59,10 +71,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         children: [
           TextField(
             controller: _search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(context, 'Search expenses', 'Tìm chi phí'),
               prefixIcon: const Icon(Icons.search),
@@ -83,6 +92,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.payments_outlined,
                     title: tr(context, 'No expenses found', 'Chưa có chi phí'),
                     message: tr(
@@ -194,7 +213,7 @@ class _ExpenseForm extends StatefulWidget {
   State<_ExpenseForm> createState() => _ExpenseFormState();
 }
 
-class _ExpenseFormState extends State<_ExpenseForm> {
+class _ExpenseFormState extends State<_ExpenseForm> with ActionGuard {
   final _form = GlobalKey<FormState>();
   late String _category = widget.expense?.category ?? 'Utilities';
   late final _amount = TextEditingController(
@@ -213,7 +232,9 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save() => runAction(() => _saveAction());
+
+  Future<void> _saveAction() async {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
@@ -238,7 +259,9 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     }
   }
 
-  Future<void> _remove() async {
+  Future<void> _remove() => runAction(() => _removeAction());
+
+  Future<void> _removeAction() async {
     if (!await confirm(
       context,
       title: tr(context, 'Delete expense?', 'Xóa chi phí?'),
@@ -261,118 +284,120 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      20,
-      16,
-      20,
-      MediaQuery.viewInsetsOf(context).bottom + 24,
-    ),
-    child: SingleChildScrollView(
-      child: Form(
-        key: _form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.expense == null
-                        ? tr(context, 'New expense', 'Chi phí mới')
-                        : tr(context, 'Edit expense', 'Sửa chi phí'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+  Widget build(BuildContext context) => guardActions(
+    Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.expense == null
+                          ? tr(context, 'New expense', 'Chi phí mới')
+                          : tr(context, 'Edit expense', 'Sửa chi phí'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _category,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Category', 'Danh mục'),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                items:
+                    const [
+                          'Utilities',
+                          'Rent',
+                          'Transport',
+                          'Marketing',
+                          'Payroll',
+                          'Supplies',
+                          'Other',
+                        ]
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (v) => _category = v!,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _amount,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Amount', 'Số tiền'),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _category,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Category', 'Danh mục'),
+                validator:
+                    (v) =>
+                        numberOf(v ?? '') <= 0
+                            ? tr(context, 'Enter an amount', 'Nhập số tiền')
+                            : null,
               ),
-              items:
-                  const [
-                        'Utilities',
-                        'Rent',
-                        'Transport',
-                        'Marketing',
-                        'Payroll',
-                        'Supplies',
-                        'Other',
-                      ]
-                      .map(
-                        (v) => DropdownMenuItem(
-                          value: v,
-                          child: Text(tr(context, v, v)),
-                        ),
-                      )
-                      .toList(),
-              onChanged: (v) => _category = v!,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _amount,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Amount', 'Số tiền'),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                title: Text(tr(context, 'Expense date', 'Ngày chi')),
+                subtitle: Text(shortDate(_date)),
+                trailing: const Icon(Icons.calendar_month_outlined),
+                onTap: () async {
+                  final value = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (value != null) setState(() => _date = value);
+                },
               ),
-              validator:
-                  (v) =>
-                      numberOf(v ?? '') <= 0
-                          ? tr(context, 'Enter an amount', 'Nhập số tiền')
-                          : null,
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              title: Text(tr(context, 'Expense date', 'Ngày chi')),
-              subtitle: Text(shortDate(_date)),
-              trailing: const Icon(Icons.calendar_month_outlined),
-              onTap: () async {
-                final value = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (value != null) setState(() => _date = value);
-              },
-            ),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _description,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Description', 'Mô tả'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ReceiptPhoto(
-              value: _receipt,
-              languageCode: AppScope.of(context).languageCode,
-              enabled: !_busy,
-              onChanged: (value) => setState(() => _receipt = value),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _busy ? null : _save,
-              child: Text(tr(context, 'Save expense', 'Lưu chi phí')),
-            ),
-            if (widget.expense != null)
-              TextButton(
-                onPressed: _busy ? null : _remove,
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+              const SizedBox(height: 4),
+              TextField(
+                controller: _description,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Description', 'Mô tả'),
                 ),
-                child: Text(tr(context, 'Delete expense', 'Xóa chi phí')),
               ),
-          ],
+              const SizedBox(height: 12),
+              ReceiptPhoto(
+                value: _receipt,
+                languageCode: AppScope.of(context).languageCode,
+                enabled: !_busy,
+                onChanged: (value) => setState(() => _receipt = value),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(tr(context, 'Save expense', 'Lưu chi phí')),
+              ),
+              if (widget.expense != null)
+                TextButton(
+                  onPressed: _busy ? null : _remove,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  child: Text(tr(context, 'Delete expense', 'Xóa chi phí')),
+                ),
+            ],
+          ),
         ),
       ),
     ),

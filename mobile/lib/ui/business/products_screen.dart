@@ -6,6 +6,8 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/action_guard.dart';
+import '../widgets/search_controller.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -14,10 +16,21 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  final _search = TextEditingController();
+  late final _search = SearchController(() {
+    if (!mounted) return;
+    _page = 1;
+    _reload();
+  });
   late Future<PagedResult<Product>> _future;
   bool _ready = false;
   int _page = 1;
+  String _status = 'Active';
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -28,9 +41,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   void _load() =>
-      _future = AppScope.of(
-        context,
-      ).repository.products(search: _search.text, page: _page);
+      _future = AppScope.of(context).repository.products(
+        search: _search.text,
+        page: _page,
+        active: _status == 'All' ? null : _status == 'Active',
+      );
   void _reload() => setState(_load);
   Future<void> _edit([Product? value]) async {
     if (await showModalBottomSheet<bool>(
@@ -40,7 +55,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           builder: (_) => _ProductForm(product: value),
         ) ==
         true) {
-      _reload();
+      if (mounted) _reload();
     }
   }
 
@@ -62,10 +77,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         children: [
           TextField(
             controller: _search,
-            onSubmitted: (_) {
-              _page = 1;
-              _reload();
-            },
+            onSubmitted: (_) => _search.searchNow(),
             decoration: InputDecoration(
               hintText: tr(context, 'Search name or SKU', 'Tìm tên hoặc SKU'),
               prefixIcon: const Icon(Icons.search),
@@ -77,6 +89,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 icon: const Icon(Icons.arrow_forward),
               ),
             ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _status,
+            decoration: InputDecoration(
+              labelText: tr(context, 'Status', 'Trạng thái'),
+            ),
+            items:
+                ['Active', 'Archived', 'All']
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(tr(context, value, value)),
+                      ),
+                    )
+                    .toList(),
+            onChanged: (value) {
+              _status = value!;
+              _page = 1;
+              _reload();
+            },
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -93,6 +126,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    action:
+                        _page > 1
+                            ? TextButton(
+                              onPressed: () {
+                                _page = 1;
+                                _reload();
+                              },
+                              child: Text(tr(context, 'Try again', 'Thử lại')),
+                            )
+                            : null,
                     icon: Icons.inventory_2_outlined,
                     title: tr(
                       context,
@@ -226,7 +269,7 @@ class _ProductForm extends StatefulWidget {
   State<_ProductForm> createState() => _ProductFormState();
 }
 
-class _ProductFormState extends State<_ProductForm> {
+class _ProductFormState extends State<_ProductForm> with ActionGuard {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.product?.name);
   late final _sku = TextEditingController(text: widget.product?.sku);
@@ -251,6 +294,18 @@ class _ProductFormState extends State<_ProductForm> {
   bool _removeImage = false;
   bool _pickingImage = false;
   String? _imageError;
+  @override
+  void dispose() {
+    _name.dispose();
+    _sku.dispose();
+    _unit.dispose();
+    _price.dispose();
+    _cost.dispose();
+    _stock.dispose();
+    _minimum.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickImage() async {
     if (_pickingImage || _busy) return;
     setState(() {
@@ -305,7 +360,9 @@ class _ProductFormState extends State<_ProductForm> {
     );
   }
 
-  Future<void> _save() async {
+  Future<void> _save() => runAction(() => _saveAction());
+
+  Future<void> _saveAction() async {
     if (!(_form.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
@@ -336,7 +393,9 @@ class _ProductFormState extends State<_ProductForm> {
     }
   }
 
-  Future<void> _adjust() async {
+  Future<void> _adjust() => runAction(() => _adjustAction());
+
+  Future<void> _adjustAction() async {
     final amount = TextEditingController();
     final reason = TextEditingController();
     final ok = await showDialog<bool>(
@@ -466,7 +525,9 @@ class _ProductFormState extends State<_ProductForm> {
     }
   }
 
-  Future<void> _remove() async {
+  Future<void> _remove() => runAction(() => _removeAction());
+
+  Future<void> _removeAction() async {
     if (!await confirm(
       context,
       title: tr(context, 'Remove product?', 'Xóa sản phẩm?'),
@@ -489,208 +550,214 @@ class _ProductFormState extends State<_ProductForm> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(
-      20,
-      16,
-      20,
-      MediaQuery.viewInsetsOf(context).bottom + 24,
-    ),
-    child: SingleChildScrollView(
-      child: Form(
-        key: _form,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.product == null
-                        ? tr(context, 'New product', 'Sản phẩm mới')
-                        : tr(context, 'Edit product', 'Sửa sản phẩm'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+  Widget build(BuildContext context) => guardActions(
+    Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _form,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.product == null
+                          ? tr(context, 'New product', 'Sản phẩm mới')
+                          : tr(context, 'Edit product', 'Sửa sản phẩm'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _name,
-              decoration: InputDecoration(
-                labelText: tr(context, 'Product name', 'Tên sản phẩm'),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ),
-              validator:
-                  (v) =>
-                      (v?.trim().isEmpty ?? true)
-                          ? tr(context, 'Required', 'Bắt buộc')
-                          : null,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _sku,
-                    decoration: const InputDecoration(labelText: 'SKU'),
-                  ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Product name', 'Tên sản phẩm'),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: _unit,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Unit', 'Đơn vị'),
-                    ),
-                    validator:
-                        (v) =>
-                            (v?.trim().isEmpty ?? true)
-                                ? tr(context, 'Required', 'Bắt buộc')
-                                : null,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _price,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Sale price', 'Giá bán'),
-                    ),
-                    validator:
-                        (v) =>
-                            numberOf(v ?? '') <= 0
-                                ? tr(context, 'Enter a price', 'Nhập giá')
-                                : null,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: _cost,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: tr(context, 'Cost', 'Giá vốn'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr(context, 'Track inventory', 'Theo dõi tồn kho')),
-              value: _track,
-              onChanged: (v) => setState(() => _track = v),
-            ),
-            if (_track)
+                validator:
+                    (v) =>
+                        (v?.trim().isEmpty ?? true)
+                            ? tr(context, 'Required', 'Bắt buộc')
+                            : null,
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _stock,
-                      enabled: widget.product == null,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: tr(context, 'Opening stock', 'Tồn đầu'),
-                      ),
+                      controller: _sku,
+                      decoration: const InputDecoration(labelText: 'SKU'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextFormField(
-                      controller: _minimum,
+                      controller: _unit,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Unit', 'Đơn vị'),
+                      ),
+                      validator:
+                          (v) =>
+                              (v?.trim().isEmpty ?? true)
+                                  ? tr(context, 'Required', 'Bắt buộc')
+                                  : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _price,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: tr(context, 'Low stock at', 'Cảnh báo khi'),
+                        labelText: tr(context, 'Sale price', 'Giá bán'),
+                      ),
+                      validator:
+                          (v) =>
+                              numberOf(v ?? '') <= 0
+                                  ? tr(context, 'Enter a price', 'Nhập giá')
+                                  : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cost,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: tr(context, 'Cost', 'Giá vốn'),
                       ),
                     ),
                   ),
                 ],
               ),
-            const SizedBox(height: 12),
-            if ((_imageData ?? widget.product?.imageDataUrl) != null &&
-                !_removeImage)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: _photoPreview(),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(tr(context, 'Track inventory', 'Theo dõi tồn kho')),
+                value: _track,
+                onChanged: (v) => setState(() => _track = v),
               ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy || _pickingImage ? null : _pickImage,
-                    icon: const Icon(Icons.image_outlined),
-                    label: Text(
-                      (_imageData ?? widget.product?.imageDataUrl) == null ||
-                              _removeImage
-                          ? tr(
-                            context,
-                            'Add product photo',
-                            'Thêm ảnh sản phẩm',
-                          )
-                          : tr(context, 'Replace photo', 'Thay ảnh'),
+              if (_track)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _stock,
+                        enabled: widget.product == null,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: tr(context, 'Opening stock', 'Tồn đầu'),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minimum,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: tr(
+                            context,
+                            'Low stock at',
+                            'Cảnh báo khi',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                if ((_imageData ?? widget.product?.imageDataUrl) != null &&
-                    !_removeImage)
-                  IconButton(
-                    onPressed:
-                        () => setState(() {
-                          _imageData = null;
-                          _removeImage = true;
-                        }),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-              ],
-            ),
-            if (_imageError != null)
-              Text(
-                _imageError!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            if (_pickingImage) const LinearProgressIndicator(),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _busy ? null : _save,
-              child: Text(tr(context, 'Save product', 'Lưu sản phẩm')),
-            ),
-            if (widget.product != null && _track)
+              const SizedBox(height: 12),
+              if ((_imageData ?? widget.product?.imageDataUrl) != null &&
+                  !_removeImage)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: _photoPreview(),
+                ),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: _busy ? null : _adjust,
-                      icon: const Icon(Icons.tune),
+                      onPressed: _busy || _pickingImage ? null : _pickImage,
+                      icon: const Icon(Icons.image_outlined),
                       label: Text(
-                        tr(context, 'Adjust stock', 'Điều chỉnh kho'),
+                        (_imageData ?? widget.product?.imageDataUrl) == null ||
+                                _removeImage
+                            ? tr(
+                              context,
+                              'Add product photo',
+                              'Thêm ảnh sản phẩm',
+                            )
+                            : tr(context, 'Replace photo', 'Thay ảnh'),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.outlined(
-                    onPressed: _history,
-                    icon: const Icon(Icons.history),
-                  ),
+                  if ((_imageData ?? widget.product?.imageDataUrl) != null &&
+                      !_removeImage)
+                    IconButton(
+                      onPressed:
+                          () => setState(() {
+                            _imageData = null;
+                            _removeImage = true;
+                          }),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
                 ],
               ),
-            if (widget.product != null)
-              TextButton(
-                onPressed: _remove,
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+              if (_imageError != null)
+                Text(
+                  _imageError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-                child: Text(tr(context, 'Remove product', 'Xóa sản phẩm')),
+              if (_pickingImage) const LinearProgressIndicator(),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _busy ? null : _save,
+                child: Text(tr(context, 'Save product', 'Lưu sản phẩm')),
               ),
-          ],
+              if (widget.product != null && _track)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _adjust,
+                        icon: const Icon(Icons.tune),
+                        label: Text(
+                          tr(context, 'Adjust stock', 'Điều chỉnh kho'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.outlined(
+                      onPressed: _history,
+                      icon: const Icon(Icons.history),
+                    ),
+                  ],
+                ),
+              if (widget.product != null)
+                TextButton(
+                  onPressed: _remove,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  child: Text(tr(context, 'Remove product', 'Xóa sản phẩm')),
+                ),
+            ],
+          ),
         ),
       ),
     ),

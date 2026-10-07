@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, FileText, Mail, MapPin, MessageCircle, Phone, Plus, Printer, ReceiptText, Undo2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, MoneyCard, StatusPill } from "@/components/business/BusinessUI";
 import { ReceiptModal } from "@/components/business/ReceiptModal";
@@ -117,7 +118,9 @@ export default function CustomerDetailPage() {
   };
 
   const openAccountPayment = () => {
-    if (!query.data) return;
+    if (query.isError) return <DashboardLayout><QueryErrorState error={query.error} onRetry={() => { void query.refetch(); }} retrying={query.isFetching} /></DashboardLayout>;
+
+  if (!query.data) return;
     setAccountAmount(query.data.customer.outstandingBalance);
     setAccountMethod("Cash");
     setAccountRef("");

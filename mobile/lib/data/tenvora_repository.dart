@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -10,6 +11,8 @@ class TenvoraRepository {
   TenvoraRepository(this._api);
 
   final ApiClient _api;
+  final ValueNotifier<int> changes = ValueNotifier(0);
+  void _changed() => changes.value++;
   static const _uuid = Uuid();
 
   final Map<String, String> _pendingWrites = {};
@@ -59,6 +62,7 @@ class TenvoraRepository {
         data: data,
         headers: {'Idempotency-Key': key},
       );
+      _changed();
       _pendingWrites.remove(fingerprint);
       try {
         await prefs.setString(
@@ -89,6 +93,12 @@ class TenvoraRepository {
         statusCode: status,
       );
     }
+  }
+
+  Future<dynamic> _write(Future<dynamic> Function() request) async {
+    final result = await request();
+    _changed();
+    return result;
   }
 
   List<Json> _items(Json body, [String key = 'value']) {
@@ -194,12 +204,19 @@ class TenvoraRepository {
   Future<Json> customerDetail(String id) async =>
       await _api.get('/customers/$id/history');
 
-  Future<Customer> createCustomer(Json input) async =>
-      Customer.fromJson(await _api.post('/customers', data: input));
+  Future<Customer> createCustomer(Json input) async {
+    final result = Customer.fromJson(
+      await _write(() => _api.post('/customers', data: input)),
+    );
+    return result;
+  }
+
   Future<Customer> updateCustomer(String id, Json input) async =>
-      Customer.fromJson(await _api.put('/customers/$id', data: input));
+      Customer.fromJson(
+        await _write(() => _api.put('/customers/$id', data: input)),
+      );
   Future<void> deleteCustomer(String id) async {
-    await _api.delete('/customers/$id');
+    await _write(() => _api.delete('/customers/$id'));
   }
 
   Future<Json> customerStatement(
@@ -241,15 +258,17 @@ class TenvoraRepository {
         await _api.get('/products', query: {'active': true}),
       ).map(Product.fromJson).toList();
   Future<Product> createProduct(Json input) async =>
-      Product.fromJson(await _api.post('/products', data: input));
+      Product.fromJson(await _write(() => _api.post('/products', data: input)));
   Future<Product> updateProduct(String id, Json input) async =>
-      Product.fromJson(await _api.put('/products/$id', data: input));
+      Product.fromJson(
+        await _write(() => _api.put('/products/$id', data: input)),
+      );
   Future<void> deleteProduct(String id) async {
-    await _api.delete('/products/$id');
+    await _write(() => _api.delete('/products/$id'));
   }
 
   Future<Json> adjustStock(Json input) async =>
-      await _api.post('/products/adjustments', data: input);
+      await _write(() => _api.post('/products/adjustments', data: input));
   Future<List<Json>> stockAdjustments([String? productId]) async => _items(
     await _api.get('/products/adjustments', query: {'productId': productId}),
   );
@@ -330,12 +349,15 @@ class TenvoraRepository {
       ).map(Supplier.fromJson).toList();
   Future<Json> supplierDetail(String id) async =>
       await _api.get('/suppliers/$id/history');
-  Future<Supplier> createSupplier(Json input) async =>
-      Supplier.fromJson(await _api.post('/suppliers', data: input));
+  Future<Supplier> createSupplier(Json input) async => Supplier.fromJson(
+    await _write(() => _api.post('/suppliers', data: input)),
+  );
   Future<Supplier> updateSupplier(String id, Json input) async =>
-      Supplier.fromJson(await _api.put('/suppliers/$id', data: input));
+      Supplier.fromJson(
+        await _write(() => _api.put('/suppliers/$id', data: input)),
+      );
   Future<void> deleteSupplier(String id) async {
-    await _api.delete('/suppliers/$id');
+    await _write(() => _api.delete('/suppliers/$id'));
   }
 
   Future<PagedResult<Purchase>> purchases({
@@ -418,9 +440,11 @@ class TenvoraRepository {
   Future<Expense> createExpense(Json input) async =>
       Expense.fromJson(await _financialPost('/business-expenses', data: input));
   Future<Expense> updateExpense(String id, Json input) async =>
-      Expense.fromJson(await _api.put('/business-expenses/$id', data: input));
+      Expense.fromJson(
+        await _write(() => _api.put('/business-expenses/$id', data: input)),
+      );
   Future<void> deleteExpense(String id) async {
-    await _api.delete('/business-expenses/$id');
+    await _write(() => _api.delete('/business-expenses/$id'));
   }
 
   Future<Json> agentChat(String message, {String? conversationId}) async =>
@@ -439,11 +463,15 @@ class TenvoraRepository {
       _items(await _api.get('/ai/assistant/conversations'));
   Future<Json> conversation(String id) async =>
       await _api.get('/ai/assistant/conversations/$id');
-  Future<Json> confirmAction(String id, bool confirmed) async =>
-      await _api.post(
-        '/ai/assistant/actions/$id/confirm',
-        data: {'confirmed': confirmed},
-      );
+  Future<Json> confirmAction(String id, bool confirmed) async {
+    final result = await _api.post(
+      '/ai/assistant/actions/$id/confirm',
+      data: {'confirmed': confirmed},
+    );
+    if (result['status'] == 'Executed') _changed();
+    return result;
+  }
+
   Future<void> deleteConversation(String id) async {
     await _api.delete('/ai/assistant/conversations/$id');
   }

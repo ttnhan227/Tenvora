@@ -62,13 +62,13 @@ function statusMessage(status: number | undefined, isVietnamese: boolean, fallba
     case 503:
     case 504:
       return isVietnamese
-        ? "Dịch vụ đang tạm thời không khả dụng. Dữ liệu của bạn chưa bị thay đổi; hãy thử lại sau."
-        : "The service is temporarily unavailable. Your data was not changed; try again shortly.";
+        ? "Dịch vụ đang tạm thời không khả dụng. Hãy kiểm tra bản ghi trước khi thử lại."
+        : "The service is temporarily unavailable. Check your records before retrying.";
     default:
       if (status && status >= 500) {
         return isVietnamese
-          ? "Máy chủ không thể hoàn tất thao tác. Dữ liệu của bạn chưa bị thay đổi; hãy thử lại."
-          : "The server could not complete the operation. Your data was not changed; try again.";
+          ? "Máy chủ không thể hoàn tất thao tác. Hãy kiểm tra bản ghi trước khi thử lại."
+          : "The server could not complete the operation. Check your records before retrying.";
       }
       return fallback;
   }
@@ -113,7 +113,11 @@ export function getApiErrorInfo(error: unknown, fallback = "The operation could 
     ? body.title.trim()
     : undefined;
   const networkFailure = !status && Boolean(candidate.message);
-  const message = serverMessage
+  const message = candidate.code === "write_uncertain"
+    ? (languageIsVietnamese
+      ? "Chưa thể xác nhận bản ghi đã được lưu. Kiểm tra bản ghi; thử lại cùng thông tin sẽ dùng mã yêu cầu ban đầu."
+      : "Could not confirm whether this was saved. Check your records; retrying the same details uses the original request ID.")
+    : serverMessage
     || validationTitle
     || (networkFailure
       ? (languageIsVietnamese

@@ -15,6 +15,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
+import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader, PrerequisiteNotice, StatusPill } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
@@ -229,6 +230,8 @@ export default function PurchasesPage() {
         </div>
         {purchases.isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở sổ nhập hàng…" : "Opening your purchase records…"} />
+        ) : purchases.isError ? (
+          <QueryErrorState error={purchases.error} onRetry={() => { void purchases.refetch(); }} retrying={purchases.isFetching} />
         ) : purchaseItems.length === 0 ? (
           <EmptyState icon={PackageOpen} title={search ? (isVietnamese ? "Không tìm thấy lần nhập phù hợp" : "No purchases match that search") : (isVietnamese ? "Chưa có lần nhập hàng" : "No purchases yet")} description={search ? (isVietnamese ? "Hãy thử nhà cung cấp, mặt hàng hoặc mã nhập khác." : "Try a supplier, item, or purchase number.") : (isVietnamese ? "Thêm nhà cung cấp, sau đó ghi hàng đã mua và tình trạng thanh toán." : "Add a supplier first, then record what the business bought and whether it was paid.")} action={!search && canManageRecords ? <Button onClick={() => setOpen(true)}>{isVietnamese ? "Ghi lần nhập đầu tiên" : "Record first purchase"}</Button> : undefined} />
         ) : (

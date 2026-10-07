@@ -4,6 +4,7 @@ import '../../core/theme/tenvora_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
+import '../../data/tenvora_repository.dart';
 import '../business/customers_screen.dart';
 import '../business/expenses_screen.dart';
 import '../business/products_screen.dart';
@@ -20,9 +21,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _period = 'today';
   late Future<Dashboard> _future;
 
+  TenvoraRepository? _observedRepository;
+  void _recordsChanged() {
+    if (mounted) setState(_load);
+  }
+
+  @override
+  void dispose() {
+    _observedRepository?.changes.removeListener(_recordsChanged);
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final repository = AppScope.of(context).repository;
+    if (!identical(repository, _observedRepository)) {
+      _observedRepository?.changes.removeListener(_recordsChanged);
+      _observedRepository = repository;
+      repository.changes.addListener(_recordsChanged);
+    }
     if (!(_initialized)) {
       _initialized = true;
       _load();
@@ -39,7 +57,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _open(Widget page) => Navigator.push(
     context,
     MaterialPageRoute(builder: (_) => page),
-  ).then((_) => setState(_load));
+  ).then((_) {
+    if (mounted) setState(_load);
+  });
 
   @override
   Widget build(BuildContext context) => PagePadding(
