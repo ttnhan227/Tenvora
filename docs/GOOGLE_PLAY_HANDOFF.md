@@ -42,3 +42,7 @@ Resolve the message ID against the matching tenant's `AiConversationMessages` us
 Production backup/restore scheduling and alerts were explicitly deferred by the owner; prior isolated restore verification does not establish an active production recovery service. No fresh physical-device or Play-installed acceptance test is implied by automated tests. No Google Play upload or publication is performed by the readiness work.
 
 Official references: [app bundles](https://support.google.com/googleplay/android-developer/answer/9859152), [account deletion](https://support.google.com/googleplay/android-developer/answer/13327111), [production access testing](https://support.google.com/googleplay/android-developer/answer/14151465), [target API](https://developer.android.com/google/play/requirements/target-sdk), [16 KB page sizes](https://developer.android.com/guide/practices/page-sizes).
+
+## Current GCP replacement
+
+The retained AAB and public APK include the confirmation fix and GCP API URL. See ANDROID_RELEASE_ACCEPTANCE.md for current hashes/workflow evidence and GCP_DEPLOYMENT.md for automated backend deployment. Google Gemini and Mistral fallback processing must both be disclosed in Play declarations.
