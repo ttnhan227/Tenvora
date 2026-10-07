@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tenvora_mobile/core/localization/languages.dart';
 import 'package:tenvora_mobile/core/network/api_client.dart';
 import 'package:tenvora_mobile/core/storage/session_store.dart';
 import 'package:tenvora_mobile/data/tenvora_repository.dart';
@@ -28,11 +30,14 @@ void main() {
   Future<(AppController, Repository)> mount(
     WidgetTester tester, {
     String role = 'TenantAdmin',
+    String language = 'en',
   }) async {
     final store = Store();
     final repository = Repository(store);
     final app = AppController(repository: repository, sessionStore: store)
       ..initializing = false;
+    SharedPreferences.setMockInitialValues({});
+    await app.setLanguage(language);
     app.user = UserProfile.fromJson({
       'id': 'u',
       'email': 'owner@test.invalid',
@@ -55,30 +60,33 @@ void main() {
     return (app, repository);
   }
 
-  testWidgets('small screen and large text tolerate saved custom settings', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final (app, _) = await mount(tester);
-    expect(tester.takeException(), null);
-    await tester.scrollUntilVisible(
-      find.text('Delete account'),
-      200,
-      scrollable:
-          find
-              .descendant(
-                of: find.byType(ListView),
-                matching: find.byType(Scrollable),
-              )
-              .first,
+  for (final language in appLanguages) {
+    testWidgets(
+      '${language.code}: small screen and large text tolerate saved custom settings',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final (app, _) = await mount(tester, language: language.code);
+        expect(tester.takeException(), null);
+        await tester.scrollUntilVisible(
+          find.text(translate(language.code, 'Delete account')),
+          200,
+          scrollable:
+              find
+                  .descendant(
+                    of: find.byType(ListView),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+        );
+        expect(tester.takeException(), null);
+        await tester.pumpWidget(const SizedBox());
+        app.dispose();
+      },
     );
-    expect(tester.takeException(), null);
-    await tester.pumpWidget(const SizedBox());
-    app.dispose();
-  });
+  }
   testWidgets(
     'read-only member has account controls without workspace edit actions',
     (tester) async {

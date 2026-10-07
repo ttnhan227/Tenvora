@@ -450,6 +450,22 @@ public sealed class AiAssistantWorkflowTests
         Assert.Null(suppliers.Data.Proposal);
     }
 
+    [Theory]
+    [InlineData("Summarize the demo shop sales and customer balances. Do not change any records.")]
+    [InlineData("List unpaid customers")]
+    [InlineData("Show customer addresses")]
+    [InlineData("Show purchase history")]
+    public async Task ReadOnlyQuestionsDoNotCreateFallbackActions(string question)
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = Setup(db);
+        var agent = new AiAgentService(db, business, actions, new ConfigurationBuilder().Build(), new DummyHttpClientFactory(), NullLogger<AiAgentService>.Instance);
+        var result = await agent.AgentChatAsync(tenantId, userId, new(question));
+        Assert.True(result.Success);
+        Assert.Null(result.Data!.Proposal);
+        Assert.Empty(db.AiActions);
+    }
+
     [Fact]
     public async Task AgentFallbackUsesRequestedMonthAndFractionalInventory()
     {

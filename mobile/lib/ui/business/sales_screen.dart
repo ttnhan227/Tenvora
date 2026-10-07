@@ -634,7 +634,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                 .map(
                                   (v) => DropdownMenuItem(
                                     value: v,
-                                    child: Text(v),
+                                    child: Text(tr(context, v, v)),
                                   ),
                                 )
                                 .toList(),
@@ -860,7 +860,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '${payment.method} · ${compactDate(payment.paidAt)}',
+                                  '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],

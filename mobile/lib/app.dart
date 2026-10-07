@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'core/localization/languages.dart';
+import 'core/utils/formatters.dart';
 
 import 'core/theme/tenvora_theme.dart';
 import 'state/app_controller.dart';
@@ -8,9 +12,32 @@ import 'ui/auth/onboarding_screen.dart';
 import 'ui/shell/app_shell.dart';
 import 'ui/widgets/common.dart';
 
-class TenvoraApp extends StatelessWidget {
+class TenvoraApp extends StatefulWidget {
   const TenvoraApp({super.key, required this.controller});
   final AppController controller;
+
+  @override
+  State<TenvoraApp> createState() => _TenvoraAppState();
+}
+
+class _TenvoraAppState extends State<TenvoraApp> with WidgetsBindingObserver {
+  AppController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeLocales(List<Locale>? locales) =>
+      controller.refreshDeviceLanguage();
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => AppScope(
@@ -21,6 +48,9 @@ class TenvoraApp extends StatelessWidget {
           (context, _) => MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Tenvora',
+            locale: languageFor(controller.languageCode).locale,
+            supportedLocales: appLanguages.map((language) => language.locale),
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
             theme: tenvoraTheme(Brightness.light),
             darkTheme: tenvoraTheme(Brightness.dark),
             themeMode: controller.themeMode,
@@ -60,22 +90,26 @@ class _RecoveryScreen extends StatelessWidget {
               const TenvoraMark(size: 58),
               const SizedBox(height: 24),
               Text(
-                controller.isVietnamese
-                    ? 'Không thể kết nối Tenvora. Thử lại khi có mạng.'
-                    : 'Could not open Tenvora. Check your connection and try again.',
+                tr(
+                  context,
+                  'Could not open Tenvora. Check your connection and try again.',
+                  'Không thể kết nối Tenvora. Thử lại khi có mạng.',
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: controller.initialize,
-                child: Text(controller.isVietnamese ? 'Thử lại' : 'Try again'),
+                child: Text(tr(context, 'Try again', 'Thử lại')),
               ),
               TextButton(
                 onPressed: controller.logout,
                 child: Text(
-                  controller.isVietnamese
-                      ? 'Đăng nhập tài khoản khác'
-                      : 'Sign in with another account',
+                  tr(
+                    context,
+                    'Sign in with another account',
+                    'Đăng nhập tài khoản khác',
+                  ),
                 ),
               ),
             ],

@@ -73,8 +73,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Text(
                           tr(
                             context,
-                            'Good day, ${AppScope.of(context).user!.displayName}',
-                            'Chào ${AppScope.of(context).user!.displayName}',
+                            'Good day, {name}',
+                            'Chào, {name}',
+                          ).replaceAll(
+                            '{name}',
+                            AppScope.of(context).user!.displayName,
                           ),
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),

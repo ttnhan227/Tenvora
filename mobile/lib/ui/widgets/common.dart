@@ -151,7 +151,7 @@ class StatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        label,
+        tr(context, label, label),
         style: TextStyle(
           color: color,
           fontSize: 11,
@@ -244,7 +244,7 @@ class ErrorState extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                readableError(error),
+                tr(context, readableError(error), readableError(error)),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colors.onErrorContainer,
                   fontWeight: FontWeight.w600,
@@ -374,7 +374,7 @@ void showMessage(BuildContext context, String message, {bool error = false}) {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              message,
+              tr(context, message, message),
               style: TextStyle(
                 color: foreground,
                 fontSize: 14.5,

@@ -121,8 +121,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                       padding: const EdgeInsets.all(20),
                                       child: ReceiptPhoto(
                                         value: e.receiptImageDataUrl,
-                                        vietnamese:
-                                            AppScope.of(context).isVietnamese,
+                                        languageCode:
+                                            AppScope.of(context).languageCode,
                                       ),
                                     ),
                               ),
@@ -306,7 +306,12 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                         'Supplies',
                         'Other',
                       ]
-                      .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v,
+                          child: Text(tr(context, v, v)),
+                        ),
+                      )
                       .toList(),
               onChanged: (v) => _category = v!,
             ),
@@ -350,7 +355,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             const SizedBox(height: 12),
             ReceiptPhoto(
               value: _receipt,
-              vietnamese: AppScope.of(context).isVietnamese,
+              languageCode: AppScope.of(context).languageCode,
               enabled: !_busy,
               onChanged: (value) => setState(() => _receipt = value),
             ),

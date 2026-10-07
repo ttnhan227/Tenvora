@@ -81,7 +81,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: email,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'Email', 'Email'),
+                    ),
                   ),
                   const SizedBox(height: 18),
                   FilledButton(

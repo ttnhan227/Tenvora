@@ -567,9 +567,11 @@ class AgentMessage {
     required this.content,
     required this.createdAt,
     this.proposal,
+    this.isFallback = false,
   });
 
   factory AgentMessage.fromJson(Json json) => AgentMessage(
+    isFallback: jsonBool(json['isFallback']),
     id: '${json['id'] ?? json['messageId'] ?? json['actionId'] ?? ''}',
     role: '${json['role'] ?? 'assistant'}',
     content: '${json['content'] ?? json['reply'] ?? json['message'] ?? ''}',
@@ -586,6 +588,7 @@ class AgentMessage {
   final String content;
   final DateTime createdAt;
   final AgentProposal? proposal;
+  final bool isFallback;
 }
 
 class AgentProposal {

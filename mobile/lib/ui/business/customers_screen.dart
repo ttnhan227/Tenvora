@@ -338,7 +338,7 @@ class _CustomerFormState extends State<_CustomerForm> {
                                 .map(
                                   (v) => DropdownMenuItem(
                                     value: v,
-                                    child: Text(v),
+                                    child: Text(tr(context, v, v)),
                                   ),
                                 )
                                 .toList(),
@@ -427,7 +427,9 @@ class _CustomerFormState extends State<_CustomerForm> {
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(
+                labelText: tr(context, 'Email', 'Email'),
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -453,7 +455,12 @@ class _CustomerFormState extends State<_CustomerForm> {
                 ),
                 items:
                     const ['Active', 'Archived']
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
                         .toList(),
                 onChanged: (v) => _status = v!,
               ),

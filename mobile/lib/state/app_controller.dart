@@ -1,6 +1,11 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+
+import '../core/localization/languages.dart';
 
 import '../core/storage/session_store.dart';
 import '../core/network/api_client.dart';
@@ -17,7 +22,9 @@ class AppController extends ChangeNotifier {
   bool initializing = true;
   bool startupFailed = false;
   bool busy = false;
-  bool isVietnamese = false;
+  String languageCode = 'en';
+  String languagePreference = 'system';
+
   ThemeMode themeMode = ThemeMode.system;
   String? lastError;
   bool _googleInitialized = false;
@@ -31,7 +38,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      isVietnamese = prefs.getString('tenvora_lang') == 'vi';
+      _applyLanguage(prefs.getString('tenvora_lang') ?? 'system');
       themeMode = switch (prefs.getString('tenvora_theme')) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
@@ -186,10 +193,32 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleLanguage() async {
-    isVietnamese = !isVietnamese;
+  void refreshDeviceLanguage() {
+    if (languagePreference != 'system') return;
+    _applyLanguage('system');
+    notifyListeners();
+  }
+
+  void _applyLanguage(String preference) {
+    languagePreference =
+        appLanguages.any((language) => language.code == preference)
+            ? preference
+            : 'system';
+    languageCode = resolveLanguage(
+      languagePreference,
+      PlatformDispatcher.instance.locales,
+    );
+    Intl.defaultLocale = languageFor(languageCode).locale.toString();
+  }
+
+  Future<void> setLanguage(String code) async {
+    if (code != 'system' &&
+        !appLanguages.any((language) => language.code == code)) {
+      throw ArgumentError.value(code, 'code', 'Unsupported language');
+    }
+    _applyLanguage(code);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('tenvora_lang', isVietnamese ? 'vi' : 'en');
+    await prefs.setString('tenvora_lang', languagePreference);
     notifyListeners();
   }
 

@@ -27,7 +27,9 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final app = controller()..isVietnamese = vietnamese;
+      SharedPreferences.setMockInitialValues({});
+      final app = controller();
+      await app.setLanguage(vietnamese ? 'vi' : 'en');
       await tester.pumpWidget(
         AppScope(
           controller: app,

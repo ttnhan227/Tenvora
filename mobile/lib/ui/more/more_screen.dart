@@ -126,7 +126,7 @@ class MoreScreen extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       Text(
-                        user.role,
+                        tr(context, user.role, user.role),
                         style: TextStyle(
                           fontSize: 11,
                           color: Theme.of(context).colorScheme.primary,

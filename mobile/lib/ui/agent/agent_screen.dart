@@ -368,6 +368,17 @@ class _AgentScreenState extends State<AgentScreen> {
                   ),
                 if (message.proposal != null)
                   _proposalCard(context, message.proposal!),
+                if (!isUser && message.isFallback) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    tr(
+                      context,
+                      'Using the built-in assistant. Some languages and requests have limited support.',
+                      'Đang dùng trợ lý tích hợp. Một số ngôn ngữ và yêu cầu được hỗ trợ hạn chế.',
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 if (!isUser)
                   TextButton.icon(
                     onPressed: () => _report(message),

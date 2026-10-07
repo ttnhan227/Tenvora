@@ -594,7 +594,7 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
                                   .map(
                                     (v) => DropdownMenuItem(
                                       value: v,
-                                      child: Text(v),
+                                      child: Text(tr(context, v, v)),
                                     ),
                                   )
                                   .toList(),
@@ -614,7 +614,7 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen> {
                   const SizedBox(height: 12),
                   ReceiptPhoto(
                     value: _invoiceImage,
-                    vietnamese: AppScope.of(context).isVietnamese,
+                    languageCode: AppScope.of(context).languageCode,
                     enabled: !_busy,
                     onChanged: (value) => setState(() => _invoiceImage = value),
                   ),
@@ -686,7 +686,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                                 .map(
                                   (v) => DropdownMenuItem(
                                     value: v,
-                                    child: Text(v),
+                                    child: Text(tr(context, v, v)),
                                   ),
                                 )
                                 .toList(),
@@ -816,7 +816,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               if (p.invoiceImageDataUrl != null)
                 ReceiptPhoto(
                   value: p.invoiceImageDataUrl,
-                  vietnamese: AppScope.of(context).isVietnamese,
+                  languageCode: AppScope.of(context).languageCode,
                 ),
               if (p.invoiceImageDataUrl != null) const SizedBox(height: 12),
               PaperCard(
@@ -883,7 +883,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                                 ),
                               ),
                               Text(
-                                '${payment.method} · ${compactDate(payment.paidAt)}',
+                                '${tr(context, payment.method, payment.method)} · ${compactDate(payment.paidAt)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],

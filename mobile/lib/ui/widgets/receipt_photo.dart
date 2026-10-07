@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/localization/languages.dart';
 
 class ReceiptPhoto extends StatefulWidget {
   const ReceiptPhoto({
     super.key,
     required this.value,
-    required this.vietnamese,
+    this.languageCode = 'en',
     this.onChanged,
     this.enabled = true,
     this.pickImage,
   });
   final String? value;
-  final bool vietnamese;
+  final String languageCode;
   final ValueChanged<String>? onChanged;
   final bool enabled;
   final Future<XFile?> Function(ImageSource)? pickImage;
@@ -23,7 +24,7 @@ class ReceiptPhoto extends StatefulWidget {
 class _ReceiptPhotoState extends State<ReceiptPhoto> {
   bool _picking = false;
   String? _pickError;
-  String label(String en, String vi) => widget.vietnamese ? vi : en;
+  String label(String en, String vi) => translate(widget.languageCode, en, vi);
   Future<void> _pick(ImageSource source) async {
     setState(() {
       _picking = true;

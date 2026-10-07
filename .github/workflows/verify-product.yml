@@ -23,6 +23,8 @@ jobs:
       TENVORA_TEST_DATABASE_URL: Host=localhost;Port=5432;Database=tenvora_readiness;Username=postgres;Password=readiness-local-only
     steps:
       - uses: actions/checkout@v4
+      - name: Check bundled language catalogs
+        run: python3 mobile/tool/generate_language_catalog.py --check
       - name: Check high severity vulnerabilities and leaked credentials
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

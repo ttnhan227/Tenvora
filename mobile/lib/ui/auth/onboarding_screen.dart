@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/utils/formatters.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/language_picker.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -60,14 +61,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      actions: [
-        TextButton(
-          onPressed: AppScope.of(context).toggleLanguage,
-          child: Text(AppScope.of(context).isVietnamese ? 'EN' : 'VI'),
-        ),
-      ],
-    ),
+    appBar: AppBar(actions: [const LanguageButton()]),
     body: SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -150,7 +144,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           'Food & Beverage',
                           'Other',
                         ]
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
                         .toList(),
                 onChanged: (v) => setState(() => _type = v!),
               ),
@@ -161,8 +160,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   labelText: tr(context, 'Base currency', 'Tiền tệ cơ sở'),
                 ),
                 items:
-                    const ['VND', 'USD', 'EUR', 'GBP', 'SGD']
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                    supportedCurrencies
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
                         .toList(),
                 onChanged: (v) => setState(() => _currency = v!),
               ),

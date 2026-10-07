@@ -94,7 +94,7 @@ Strictly ground your facts in the real store data below:
 {(contextualCustomer == null ? "" : $"- Current customer: {contextualCustomer.Customer.Name}\n- Current customer balance: {contextualCustomer.Customer.OutstandingBalance:N0} {currency}")}
 {(contextualSupplier == null ? "" : $"- Current supplier: {contextualSupplier.Supplier.Name}\n- Current supplier payable: {contextualSupplier.Supplier.OutstandingBalance:N0} {currency}")}
 
-If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the user writes in English, answer in polite, clear English.";
+Answer politely and clearly in the language of the user's question, including English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Keep user-entered business names unchanged.";
 
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(10);
@@ -175,7 +175,7 @@ If the user writes in Vietnamese, answer in polite, natural Vietnamese. If the u
             try
             {
                 var prompt = $@"You are a smart business transaction extractor for a small store notebook.
-The user is typing a transaction note in natural language (Vietnamese or English).
+The user is typing a transaction note in natural language. Support English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian while keeping business names and identifiers unchanged.
 Currency: {currency}.
 
 Extract into a JSON object with this exact schema:

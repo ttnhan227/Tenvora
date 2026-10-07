@@ -15,7 +15,7 @@ void main() {
           home: Scaffold(
             body: ReceiptPhoto(
               value: null,
-              vietnamese: false,
+              languageCode: 'en',
               onChanged: (_) => changes++,
               pickImage: (source) async {
                 sources.add(source);
@@ -49,7 +49,7 @@ void main() {
                           builder:
                               (_) => ReceiptPhoto(
                                 value: null,
-                                vietnamese: false,
+                                languageCode: 'en',
                                 onChanged: (_) => changes++,
                                 pickImage: (source) async {
                                   if (source == ImageSource.camera) {
@@ -86,7 +86,7 @@ void main() {
         home: Scaffold(
           body: ReceiptPhoto(
             value: 'data:image/png;base64,$png',
-            vietnamese: false,
+            languageCode: 'en',
           ),
         ),
       ),
@@ -108,7 +108,7 @@ void main() {
         home: Scaffold(
           body: ReceiptPhoto(
             value: null,
-            vietnamese: false,
+            languageCode: 'en',
             onChanged: (value) => result = value,
             pickImage: (_) async => XFile.fromData(bytes, name: 'receipt.png'),
           ),
@@ -127,7 +127,7 @@ void main() {
         home: Scaffold(
           body: ReceiptPhoto(
             value: 'data:image/jpeg;base64,invalid!',
-            vietnamese: false,
+            languageCode: 'en',
           ),
         ),
       ),

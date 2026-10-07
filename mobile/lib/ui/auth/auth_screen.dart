@@ -5,6 +5,7 @@ import '../more/privacy_screen.dart';
 import '../../core/utils/formatters.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/language_picker.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -19,7 +20,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _company = TextEditingController();
   bool _register = false;
   bool _obscure = true;
-  String _currency = 'VND';
+  String _currency = 'USD';
 
   @override
   void dispose() {
@@ -100,10 +101,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ],
                         ),
                       ),
-                      TextButton(
-                        onPressed: app.toggleLanguage,
-                        child: Text(app.isVietnamese ? 'EN' : 'VI'),
-                      ),
+                      const LanguageButton(),
                     ],
                   ),
                   const SizedBox(height: 48),
@@ -168,8 +166,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           autocorrect: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
+                          decoration: InputDecoration(
+                            labelText: tr(context, 'Email', 'Email'),
                             prefixIcon: Icon(Icons.mail_outline),
                           ),
                           validator:
@@ -238,11 +236,11 @@ class _AuthScreenState extends State<AuthScreen> {
                               prefixIcon: const Icon(Icons.currency_exchange),
                             ),
                             items:
-                                const ['VND', 'USD', 'EUR', 'GBP', 'SGD']
+                                supportedCurrencies
                                     .map(
                                       (v) => DropdownMenuItem(
                                         value: v,
-                                        child: Text(v),
+                                        child: Text(tr(context, v, v)),
                                       ),
                                     )
                                     .toList(),

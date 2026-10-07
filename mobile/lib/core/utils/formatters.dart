@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../state/app_controller.dart';
+import '../localization/languages.dart';
 
 String tr(BuildContext context, String en, String vi) =>
-    AppScope.of(context).isVietnamese ? vi : en;
+    translate(AppScope.of(context).languageCode, en, vi);
 
 String money(num value, [String currency = 'VND']) {
-  final digits = currency == 'VND' ? 0 : 2;
   return NumberFormat.currency(
+    name: currency,
     symbol: currency == 'VND' ? '₫' : '$currency ',
-    decimalDigits: digits,
   ).format(value);
 }
 
@@ -24,8 +24,42 @@ String shortDate(DateTime date) =>
 String compactDate(DateTime date) =>
     DateFormat('dd/MM/yy').format(date.toLocal());
 
-double numberOf(String value) =>
-    double.tryParse(value.replaceAll(',', '')) ?? 0;
+double numberOf(String value, {String? locale}) {
+  var normalized = value.replaceAll(RegExp(r'[\s\u00a0\u202f]'), '');
+  final decimal = NumberFormat.decimalPattern(locale).symbols.DECIMAL_SEP;
+  if (normalized.contains(',') && normalized.contains('.')) {
+    if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+      normalized = normalized.replaceAll('.', '').replaceAll(',', '.');
+    } else {
+      normalized = normalized.replaceAll(',', '');
+    }
+  } else if (normalized.contains(',')) {
+    normalized = normalized.replaceAll(',', decimal == ',' ? '.' : '');
+  }
+  final parsed = double.tryParse(normalized);
+  return parsed != null && parsed.isFinite ? parsed : 0;
+}
+
+const supportedCurrencies = [
+  'USD',
+  'EUR',
+  'GBP',
+  'VND',
+  'BRL',
+  'IDR',
+  'MXN',
+  'CAD',
+  'AUD',
+  'CHF',
+  'JPY',
+  'INR',
+  'SGD',
+  'HKD',
+  'KRW',
+  'CNY',
+  'THB',
+  'AED',
+];
 
 String imageDataUrl(List<int> bytes) {
   final mime =

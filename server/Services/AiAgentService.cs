@@ -387,7 +387,7 @@ RULES:
 1. Always use available tools when the user asks about facts, balances, inventory, or financial summaries. Do NOT guess numbers.
 2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm.
 3. Be concise (2-4 sentences or clear bullet points), polite, professional, and friendly.
-4. Support Vietnamese naturally if the user asks in Vietnamese. Support English if the user asks in English.
+4. Answer naturally in the language of the user's question, including English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Do not translate record identifiers or user-entered business names.
 5. Format monetary amounts with comma separators and currency (e.g. 150,000 {currency}).
 6. Stay within shop recordkeeping and factual business summaries. Do not provide personalized investment, lending, insurance, tax or legal advice. Explain that such requests require a qualified professional.
 7. Do not generate hateful, sexually exploitative, violent, fraudulent or otherwise harmful content. Refuse requests for those purposes and redirect to legitimate business recordkeeping.";
@@ -946,7 +946,13 @@ RULES:
 
     private static bool LooksLikeBusinessAction(string lower)
     {
-        if (Regex.IsMatch(lower, @"(vừa trả|trả nợ|thanh toán|paid|repaid|ghi|record|bán cho|sold|chi\s|spent|mua từ|nhập hàng|purchase|tạo|create|thêm|add|sửa|update|edit|xóa|delete|hủy|void)"))
+        // A summary of records is not a request to record a transaction. Likewise,
+        // "unpaid" must not match "paid" and "address" must not match "add".
+        if (Regex.IsMatch(lower.TrimStart(), @"^(show|list|summarize|explain|what|which|how|tóm tắt|liệt kê|cho xem)\b"))
+            return false;
+        if (Regex.IsMatch(lower, @"\b(do not|don't|never)\s+(change|record|create|add|update|edit|delete|void)\b"))
+            return false;
+        if (Regex.IsMatch(lower, @"\b(paid|repaid|record|sold|spent|purchase|create|add|update|edit|delete|void)\b|\b(vừa trả|trả nợ|thanh toán|ghi|bán cho|chi|mua từ|nhập hàng|tạo|thêm|sửa|xóa|hủy)\b"))
             return true;
 
         // Natural retail shorthand: "[customer] bought 1kg [product]". Requiring

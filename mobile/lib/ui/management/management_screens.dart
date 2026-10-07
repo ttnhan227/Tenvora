@@ -9,6 +9,7 @@ import '../../core/utils/formatters.dart';
 import '../../domain/models.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
+import '../widgets/language_picker.dart';
 import '../more/privacy_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -443,7 +444,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ].contains(_type))
                             _type,
                         ]
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
                         .toList(),
                 onChanged: (v) => _type = v!,
               ),
@@ -455,8 +461,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   labelText: tr(context, 'Base currency', 'Tiền tệ cơ sở'),
                 ),
                 items:
-                    {'VND', 'USD', 'EUR', 'GBP', 'SGD', _currency}
-                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                    {...supportedCurrencies, _currency}
+                        .map(
+                          (v) => DropdownMenuItem(
+                            value: v,
+                            child: Text(tr(context, v, v)),
+                          ),
+                        )
                         .toList(),
                 onChanged: (v) => _currency = v!,
               ),
@@ -467,6 +478,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 22),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.language),
+              title: Text(tr(context, 'Language', 'Ngôn ngữ')),
+              subtitle: Text(app.languageCode),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLanguagePicker(context),
+            ),
             Text(
               tr(context, 'Appearance', 'Giao diện'),
               style: Theme.of(context).textTheme.titleLarge,
@@ -630,7 +649,9 @@ class _TeamScreenState extends State<TeamScreen> {
                       TextField(
                         controller: email,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email'),
+                        decoration: InputDecoration(
+                          labelText: tr(context, 'Email', 'Email'),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
@@ -660,7 +681,7 @@ class _TeamScreenState extends State<TeamScreen> {
                                 .map(
                                   (v) => DropdownMenuItem(
                                     value: v,
-                                    child: Text(v),
+                                    child: Text(tr(context, v, v)),
                                   ),
                                 )
                                 .toList(),
@@ -754,7 +775,7 @@ class _TeamScreenState extends State<TeamScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            u.role,
+                            tr(context, u.role, u.role),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -973,13 +994,16 @@ class _ImportScreenState extends State<ImportScreen> {
             'name': cell(first, 'name'),
             'sku': cell(first, 'sku'),
             'unit': cell(first, 'unit').isEmpty ? 'item' : cell(first, 'unit'),
-            'defaultPrice': numberOf(cell(first, 'defaultprice')),
-            'costPrice': numberOf(cell(first, 'costprice')),
-            'stockQuantity': numberOf(cell(first, 'stockquantity')),
+            'defaultPrice': numberOf(cell(first, 'defaultprice'), locale: 'en'),
+            'costPrice': numberOf(cell(first, 'costprice'), locale: 'en'),
+            'stockQuantity': numberOf(
+              cell(first, 'stockquantity'),
+              locale: 'en',
+            ),
             'minStockLevel':
                 cell(first, 'minstocklevel').isEmpty
                     ? null
-                    : numberOf(cell(first, 'minstocklevel')),
+                    : numberOf(cell(first, 'minstocklevel'), locale: 'en'),
             'trackInventory': true,
           });
         } else if (_kind == 'Expenses') {
@@ -988,7 +1012,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 cell(first, 'category').isEmpty
                     ? 'Other'
                     : cell(first, 'category'),
-            'amount': numberOf(cell(first, 'amount')),
+            'amount': numberOf(cell(first, 'amount'), locale: 'en'),
             'expenseDate':
                 DateTime.tryParse(cell(first, 'date'))?.toIso8601String(),
             'description': cell(first, 'description'),
@@ -1024,17 +1048,17 @@ class _ImportScreenState extends State<ImportScreen> {
             final p = found.first;
             lines.add({
               'productId': p.id,
-              'quantity': numberOf(cell(row, 'quantity')),
+              'quantity': numberOf(cell(row, 'quantity'), locale: 'en'),
               'unitPrice':
                   cell(row, 'unitprice').isEmpty
                       ? p.defaultPrice
-                      : numberOf(cell(row, 'unitprice')),
+                      : numberOf(cell(row, 'unitprice'), locale: 'en'),
             });
           }
           await repo.createSale({
             'customerId': matches.first.id,
             'items': lines,
-            'paymentAmount': numberOf(cell(first, 'paidamount')),
+            'paymentAmount': numberOf(cell(first, 'paidamount'), locale: 'en'),
             'paymentMethod':
                 cell(first, 'paymentmethod').isEmpty
                     ? 'Other'
@@ -1078,14 +1102,14 @@ class _ImportScreenState extends State<ImportScreen> {
                   cell(row, 'unit').isEmpty
                       ? (p?.unit ?? 'item')
                       : cell(row, 'unit'),
-              'quantity': numberOf(cell(row, 'quantity')),
-              'unitCost': numberOf(cell(row, 'unitcost')),
+              'quantity': numberOf(cell(row, 'quantity'), locale: 'en'),
+              'unitCost': numberOf(cell(row, 'unitcost'), locale: 'en'),
             });
           }
           await repo.createPurchase({
             'supplierId': matches.first.id,
             'items': lines,
-            'paymentAmount': numberOf(cell(first, 'paidamount')),
+            'paymentAmount': numberOf(cell(first, 'paidamount'), locale: 'en'),
             'paymentMethod':
                 cell(first, 'paymentmethod').isEmpty
                     ? 'Other'
