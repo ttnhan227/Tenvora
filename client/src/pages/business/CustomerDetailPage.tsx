@@ -71,6 +71,7 @@ export default function CustomerDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setSale(null);
       toast.success(isVietnamese ? "Đã ghi khoản thanh toán" : "Payment recorded", {
@@ -101,6 +102,7 @@ export default function CustomerDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setAccountPaymentOpen(false);
       toast.success(isVietnamese ? "Đã phân bổ thanh toán công nợ" : "Account payment allocated", {
@@ -133,8 +135,9 @@ export default function CustomerDetailPage() {
     await businessService.reverseSalePayment(reversingPayment.saleId, reversingPayment.paymentId, reason);
     queryClient.invalidateQueries({ queryKey: ["business-customer", id] });
     queryClient.invalidateQueries({ queryKey: ["business-customers"] });
-      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
     queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
     queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
   };
 

@@ -51,6 +51,7 @@ export function StockAdjustmentModal({
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["stock-adjustments"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       toast.success(

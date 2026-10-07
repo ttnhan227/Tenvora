@@ -38,6 +38,13 @@ describe("Tenvora 2.0 business API contracts", () => {
     expect(result.deletedPermanently).toBe(true);
   });
 
+  it("records stock adjustments with a safe retry ID", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { id: "adjustment" } } });
+    const request = { productId: "product", adjustmentQuantity: -3, reason: "damaged" };
+    await businessService.createStockAdjustment(request);
+    expect(apiClient.post).toHaveBeenCalledWith("/products/adjustments", request, { headers: { "Idempotency-Key": expect.any(String) } });
+  });
+
   it("uses consistent safe-delete endpoints for customers and suppliers", async () => {
     vi.mocked(apiClient.delete).mockResolvedValue({ data: { data: { deletedPermanently: false, archived: true } } });
 

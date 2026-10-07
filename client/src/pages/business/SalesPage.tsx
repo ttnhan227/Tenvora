@@ -204,8 +204,11 @@ export default function SalesPage() {
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setCreateOpen(false);
       resetForm();
@@ -229,7 +232,9 @@ export default function SalesPage() {
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setPayingSale(null);
       playCashierSound("success");
@@ -244,8 +249,11 @@ export default function SalesPage() {
     await businessService.reverseSalePayment(reversingPayment.saleId, reversingPayment.paymentId, reason);
     queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
     queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
     queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
     queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["products-paged"] });
     queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
   };
 
@@ -254,8 +262,11 @@ export default function SalesPage() {
     await businessService.voidSale(voidingSale.id, options);
     queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
     queryClient.invalidateQueries({ queryKey: ["sales"] });
+    queryClient.invalidateQueries({ queryKey: ["sales-paged"] });
     queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+    queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
     queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["products-paged"] });
     queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
   };
 
@@ -285,7 +296,7 @@ export default function SalesPage() {
           name: walkInName,
           notes: isVietnamese ? "Khách mua lẻ vãng lai" : "Default walk-in guest",
         });
-        await queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+        await queryClient.invalidateQueries({ queryKey: ["business-customers"] }); queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
         setCustomerId(created.id);
         toast.success(isVietnamese ? "Đã tạo và chọn Khách lẻ" : "Created & selected Walk-in Guest");
       } catch {

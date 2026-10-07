@@ -120,7 +120,9 @@ export default function PurchasesPage() {
       qc.invalidateQueries({ queryKey: ["purchases-paged"] }),
       qc.invalidateQueries({ queryKey: ["purchases"] }),
       qc.invalidateQueries({ queryKey: ["suppliers"] }),
+      qc.invalidateQueries({ queryKey: ["suppliers-paged"] }),
       qc.invalidateQueries({ queryKey: ["products"] }),
+      qc.invalidateQueries({ queryKey: ["products-paged"] }),
       qc.invalidateQueries({ queryKey: ["business-dashboard"] }),
     ]);
   const create = useMutation({

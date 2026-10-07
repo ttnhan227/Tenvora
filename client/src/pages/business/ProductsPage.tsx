@@ -73,6 +73,7 @@ export default function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       setDialogOpen(false);
       toast.success(
         editing
@@ -96,6 +97,7 @@ export default function ProductsPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       setDeletingProduct(null);
       toast.success(
         result.deletedPermanently

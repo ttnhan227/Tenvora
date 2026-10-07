@@ -73,6 +73,32 @@ public sealed class PostgresWorkflowTests
     }
 
     [PostgresFact]
+    public async Task ConcurrentStockAdjustmentRetriesChangeInventoryOnlyOnce()
+    {
+        await using var database = new Database();
+        await database.Initialize();
+        var (tenant, _, _) = await Seed(database);
+        Guid productId;
+        await using (var db = database.Open())
+        {
+            productId = (await new BusinessService(db).CreateProductAsync(tenant,
+                new("Retry adjustment", null, "pcs", 10m, null, StockQuantity: 10m, TrackInventory: true))).Data!.Id;
+        }
+        async Task Apply()
+        {
+            await using var db = database.Open();
+            var result = await new BusinessService(db).CreateStockAdjustmentAsync(tenant, null,
+                new(productId, -3m, "damaged", "fixture"), "concurrent-stock-retry");
+            Assert.True(result.Success, result.Message);
+        }
+        await Task.WhenAll(Apply(), Apply());
+        await using var verify = database.Open();
+        var service = new BusinessService(verify);
+        Assert.Equal(7m, (await service.GetProductAsync(tenant, productId)).Data!.StockQuantity);
+        Assert.Single((await service.GetStockAdjustmentsAsync(tenant, productId)).Data!);
+    }
+
+    [PostgresFact]
     public async Task ConcurrentPaymentsCannotOverpayAndRetransmissionIsIdempotent()
     {
         await using var database = new Database();
