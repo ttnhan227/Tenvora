@@ -33,6 +33,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+      actions: read
 
     steps:
       - name: Checkout Code
