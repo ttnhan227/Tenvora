@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using Tenvora.Api.Common;
 using Tenvora.Api.Domain.Entities;
 using Tenvora.Api.Dtos;
@@ -8,8 +10,10 @@ namespace Tenvora.Api.Services;
 public sealed partial class BusinessService
 {
     public async Task<ApiResult<StockAdjustmentDto>> CreateStockAdjustmentAsync(
-        Guid tenantId, Guid? userId, CreateStockAdjustmentRequest request)
+        Guid tenantId, Guid? userId, CreateStockAdjustmentRequest request, string? idempotencyKey = null)
     {
+        if (idempotencyKey != null && ValidateKey(idempotencyKey) is { } keyError)
+            return ApiResult<StockAdjustmentDto>.Fail(keyError);
         if (Scale(request.AdjustmentQuantity) > 4)
             return ApiResult<StockAdjustmentDto>.Fail("Adjustment quantity may have at most four decimal places.");
         if (request.AdjustmentQuantity == 0)
@@ -20,6 +24,22 @@ public sealed partial class BusinessService
             return ApiResult<StockAdjustmentDto>.Fail("Adjustment reason is required.");
 
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+        // A tenant-scoped deterministic record ID makes retries safe without
+        // changing the schema or the IDs of existing adjustment history.
+        var adjustmentId = idempotencyKey == null ? Guid.NewGuid()
+            : new Guid(SHA256.HashData(Encoding.UTF8.GetBytes($"stock-adjustment:{tenantId:N}:{idempotencyKey}"))[..16]);
+        var existing = await db.StockAdjustments.AsNoTracking().Include(a => a.Product)
+            .FirstOrDefaultAsync(a => a.TenantId == tenantId && a.Id == adjustmentId);
+        if (existing != null)
+        {
+            if (existing.ProductId != request.ProductId || existing.AdjustmentQuantity != request.AdjustmentQuantity
+                || existing.Reason != reason || existing.Notes != Clean(request.Notes))
+                return ApiResult<StockAdjustmentDto>.Fail("This idempotency key was already used for a different stock adjustment.");
+            return ApiResult<StockAdjustmentDto>.Ok(new(existing.Id, existing.ProductId,
+                existing.Product?.Name ?? "Product", existing.Product?.Unit ?? "item", existing.QuantityBefore,
+                existing.AdjustmentQuantity, existing.QuantityAfter, existing.Reason, existing.Notes,
+                existing.UserId, existing.AdjustedAt, existing.CreatedAt));
+        }
         var product = await db.Products.FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == request.ProductId);
         if (product == null) return ApiResult<StockAdjustmentDto>.Fail("Product not found.");
 
@@ -33,7 +53,7 @@ public sealed partial class BusinessService
 
         var adjustment = new StockAdjustment
         {
-            Id = Guid.NewGuid(),
+            Id = adjustmentId,
             TenantId = tenantId,
             ProductId = product.Id,
             UserId = userId,

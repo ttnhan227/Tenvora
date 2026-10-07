@@ -387,6 +387,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Marketing",
     "Payroll": "Lohnkosten",
     "Supplies": "Betriebsmittel",
+    "All": "Alle",
+    "Saving…": "Wird gespeichert…",
   },
   "en": {
     "Before using AI": "Before using AI",
@@ -769,6 +771,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Marketing",
     "Payroll": "Payroll",
     "Supplies": "Supplies",
+    "All": "All",
+    "Saving…": "Saving…",
   },
   "es": {
     "Before using AI": "Antes de usar la IA",
@@ -1153,6 +1157,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Marketing",
     "Payroll": "Nómina",
     "Supplies": "Suministros",
+    "All": "Todos",
+    "Saving…": "Guardando…",
   },
   "fr": {
     "Before using AI": "Avant d’utiliser l’IA",
@@ -1541,6 +1547,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Marketing",
     "Payroll": "Salaires",
     "Supplies": "Fournitures",
+    "All": "Tous",
+    "Saving…": "Enregistrement…",
   },
   "id": {
     "Before using AI": "Sebelum menggunakan AI",
@@ -1924,6 +1932,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Pemasaran",
     "Payroll": "Penggajian",
     "Supplies": "Perlengkapan",
+    "All": "Semua",
+    "Saving…": "Menyimpan…",
   },
   "pt-BR": {
     "Before using AI": "Antes de usar a IA",
@@ -2308,6 +2318,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Marketing",
     "Payroll": "Folha de pagamento",
     "Supplies": "Suprimentos",
+    "All": "Todos",
+    "Saving…": "Salvando…",
   },
   "vi": {
     "Before using AI": "Trước khi dùng AI",
@@ -2688,5 +2700,7 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Marketing": "Tiếp thị",
     "Payroll": "Tiền lương",
     "Supplies": "Vật tư",
+    "All": "Tất cả",
+    "Saving…": "Đang lưu…",
   },
 };

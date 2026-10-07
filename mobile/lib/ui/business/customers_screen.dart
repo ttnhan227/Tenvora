@@ -14,7 +14,7 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();

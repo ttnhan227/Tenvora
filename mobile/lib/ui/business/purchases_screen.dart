@@ -15,7 +15,7 @@ class PurchasesScreen extends StatefulWidget {
 }
 
 class _PurchasesScreenState extends State<PurchasesScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();

@@ -69,6 +69,7 @@ export default function CustomerDetailPage() {
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["business-customer", id] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setSale(null);
@@ -98,6 +99,7 @@ export default function CustomerDetailPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["business-customer", id] });
       queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
       setAccountPaymentOpen(false);
@@ -118,9 +120,7 @@ export default function CustomerDetailPage() {
   };
 
   const openAccountPayment = () => {
-    if (query.isError) return <DashboardLayout><QueryErrorState error={query.error} onRetry={() => { void query.refetch(); }} retrying={query.isFetching} /></DashboardLayout>;
-
-  if (!query.data) return;
+    if (!query.data) return;
     setAccountAmount(query.data.customer.outstandingBalance);
     setAccountMethod("Cash");
     setAccountRef("");
@@ -133,6 +133,7 @@ export default function CustomerDetailPage() {
     await businessService.reverseSalePayment(reversingPayment.saleId, reversingPayment.paymentId, reason);
     queryClient.invalidateQueries({ queryKey: ["business-customer", id] });
     queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
     queryClient.invalidateQueries({ queryKey: ["sales"] });
     queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
   };
@@ -143,6 +144,8 @@ export default function CustomerDetailPage() {
         <LoadingState label={isVietnamese ? "Đang mở sổ khách hàng…" : "Opening this customer's record…"} />
       </DashboardLayout>
     );
+
+  if (query.isError) return <DashboardLayout><QueryErrorState error={query.error} onRetry={() => { void query.refetch(); }} retrying={query.isFetching} /></DashboardLayout>;
 
   if (!query.data)
     return (

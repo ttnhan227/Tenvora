@@ -16,7 +16,7 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();
@@ -289,6 +289,8 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
     text: widget.product?.minStockLevel?.toString() ?? '',
   );
   late bool _track = widget.product?.trackInventory ?? true;
+  late final _notes = TextEditingController(text: widget.product?.notes);
+  late bool _active = widget.product?.isActive ?? true;
   bool _busy = false;
   String? _imageData;
   bool _removeImage = false;
@@ -303,6 +305,7 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
     _cost.dispose();
     _stock.dispose();
     _minimum.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -375,7 +378,8 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
         'stockQuantity': numberOf(_stock.text),
         'minStockLevel': _minimum.text.isEmpty ? null : numberOf(_minimum.text),
         'trackInventory': _track,
-        'isActive': widget.product?.isActive ?? true,
+        'isActive': _active,
+        'notes': _notes.text.trim(),
         if (_imageData != null) 'imageDataUrl': _imageData,
         if (_removeImage) 'removeImage': true,
       };
@@ -724,6 +728,20 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               if (_pickingImage) const LinearProgressIndicator(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _notes,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: tr(context, 'Notes', 'Ghi chú'),
+                ),
+              ),
+              if (widget.product != null)
+                SwitchListTile(
+                  title: Text(tr(context, 'Active', 'Đang hoạt động')),
+                  value: _active,
+                  onChanged: (value) => setState(() => _active = value),
+                ),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: _busy ? null : _save,

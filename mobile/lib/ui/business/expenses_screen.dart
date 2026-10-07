@@ -15,7 +15,7 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();

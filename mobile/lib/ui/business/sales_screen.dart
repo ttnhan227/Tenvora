@@ -16,7 +16,7 @@ class SalesScreen extends StatefulWidget {
 }
 
 class _SalesScreenState extends State<SalesScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();
@@ -123,6 +123,13 @@ class _SalesScreenState extends State<SalesScreen> {
                 final items = result.items;
                 if (items.isEmpty) {
                   return EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: tr(context, 'No sales yet', 'Chưa có giao dịch'),
+                    message: tr(
+                      context,
+                      'Create a sale to start your ledger.',
+                      'Tạo giao dịch để bắt đầu sổ bán hàng.',
+                    ),
                     action:
                         _page > 1
                             ? TextButton(
@@ -132,19 +139,13 @@ class _SalesScreenState extends State<SalesScreen> {
                               },
                               child: Text(tr(context, 'Try again', 'Thử lại')),
                             )
+                            : AppScope.of(context).user!.canManage
+                            ? FilledButton.icon(
+                              onPressed: _create,
+                              icon: const Icon(Icons.add),
+                              label: Text(tr(context, 'New sale', 'Tạo đơn')),
+                            )
                             : null,
-                    icon: Icons.receipt_long_outlined,
-                    title: tr(context, 'No sales yet', 'Chưa có giao dịch'),
-                    message: tr(
-                      context,
-                      'Create a sale to start your ledger.',
-                      'Tạo giao dịch để bắt đầu sổ bán hàng.',
-                    ),
-                    action: FilledButton.icon(
-                      onPressed: _create,
-                      icon: const Icon(Icons.add),
-                      label: Text(tr(context, 'New sale', 'Tạo đơn')),
-                    ),
                   );
                 }
                 return RefreshIndicator(

@@ -41,9 +41,9 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
         (await service.GetStockAdjustmentsAsync(User.GetTenantId(), productId)).ToActionResult();
 
     [HttpPost("adjustments"), Authorize(Roles = "TenantAdmin,OperationsManager")]
-    public async Task<IActionResult> CreateAdjustment(CreateStockAdjustmentRequest request)
+    public async Task<IActionResult> CreateAdjustment(CreateStockAdjustmentRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
     {
         var userId = User.GetUserId();
-        return (await service.CreateStockAdjustmentAsync(User.GetTenantId(), userId == Guid.Empty ? null : userId, request)).ToActionResult();
+        return (await service.CreateStockAdjustmentAsync(User.GetTenantId(), userId == Guid.Empty ? null : userId, request, idempotencyKey)).ToActionResult();
     }
 }

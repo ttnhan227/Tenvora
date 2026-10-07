@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-class SearchController extends TextEditingController {
-  SearchController(this.onSearch) {
+class DebouncedSearchController extends TextEditingController {
+  DebouncedSearchController(this.onSearch) {
     addListener(_changed);
   }
   final VoidCallback onSearch;

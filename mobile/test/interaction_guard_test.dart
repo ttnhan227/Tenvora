@@ -63,7 +63,7 @@ void main() {
     'search debounces typing, submits immediately, and cancels on disposal',
     (tester) async {
       var calls = 0;
-      final search = SearchController(() => calls++);
+      final search = DebouncedSearchController(() => calls++);
       search.text = 'a';
       await tester.pump(const Duration(milliseconds: 200));
       search.text = 'ab';

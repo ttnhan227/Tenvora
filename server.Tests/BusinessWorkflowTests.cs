@@ -571,6 +571,27 @@ public sealed class BusinessWorkflowTests
     }
 
     [Fact]
+    public async Task StockAdjustmentRetryDoesNotApplyQuantityTwiceOrAcceptChangedDetails()
+    {
+        await using var db = Db();
+        var (service, tenantId) = await Setup(db);
+        var product = (await service.CreateProductAsync(tenantId,
+            new("Retry stock", null, "pcs", 10m, null, StockQuantity: 10m, TrackInventory: true))).Data!;
+        var request = new CreateStockAdjustmentRequest(product.Id, -3m, "damaged", "fixture");
+        var first = await service.CreateStockAdjustmentAsync(tenantId, null, request, "same-request");
+        var repeated = await new BusinessService(db).CreateStockAdjustmentAsync(tenantId, null, request, "same-request");
+        Assert.True(first.Success);
+        Assert.True(repeated.Success);
+        Assert.Equal(first.Data!.Id, repeated.Data!.Id);
+        Assert.Equal(7m, (await service.GetProductAsync(tenantId, product.Id)).Data!.StockQuantity);
+        Assert.Single((await service.GetStockAdjustmentsAsync(tenantId, product.Id)).Data!);
+        var changed = await service.CreateStockAdjustmentAsync(tenantId, null,
+            new(product.Id, -2m, "damaged", "fixture"), "same-request");
+        Assert.False(changed.Success);
+        Assert.Contains("different stock adjustment", changed.Message);
+    }
+
+    [Fact]
     public async Task StockAdjustmentLifecycleAndNegativeStockPreventionWork()
     {
         await using var db = Db();

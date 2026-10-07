@@ -13,7 +13,7 @@ class SuppliersScreen extends StatefulWidget {
 }
 
 class _SuppliersScreenState extends State<SuppliersScreen> {
-  late final _search = SearchController(() {
+  late final _search = DebouncedSearchController(() {
     if (!mounted) return;
     _page = 1;
     _reload();
@@ -48,6 +48,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     final name = TextEditingController(text: s?.name);
     final phone = TextEditingController(text: s?.phone);
     final email = TextEditingController(text: s?.email);
+    final address = TextEditingController(text: s?.address);
+    final notes = TextEditingController(text: s?.notes);
+    String status = s?.status ?? 'Active';
     final form = GlobalKey<FormState>();
     bool busy = false;
     final saved = await showModalBottomSheet<bool>(
@@ -111,6 +114,34 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                               labelText: tr(context, 'Email', 'Email'),
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: address,
+                            decoration: InputDecoration(
+                              labelText: tr(c, 'Address', 'Địa chỉ'),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: notes,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              labelText: tr(c, 'Notes', 'Ghi chú'),
+                            ),
+                          ),
+                          if (s != null)
+                            SwitchListTile(
+                              title: Text(tr(c, 'Active', 'Đang hoạt động')),
+                              value: status == 'Active',
+                              onChanged:
+                                  busy
+                                      ? null
+                                      : (value) => setLocal(
+                                        () =>
+                                            status =
+                                                value ? 'Active' : 'Archived',
+                                      ),
+                            ),
                           const SizedBox(height: 18),
                           FilledButton(
                             onPressed:
@@ -128,6 +159,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                           'name': name.text.trim(),
                                           'phone': phone.text.trim(),
                                           'email': email.text.trim(),
+                                          'address': address.text.trim(),
+                                          'notes': notes.text.trim(),
+                                          'status': status,
                                         };
                                         if (s == null) {
                                           await AppScope.of(

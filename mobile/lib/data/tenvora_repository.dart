@@ -268,7 +268,7 @@ class TenvoraRepository {
   }
 
   Future<Json> adjustStock(Json input) async =>
-      await _write(() => _api.post('/products/adjustments', data: input));
+      await _financialPost('/products/adjustments', data: input);
   Future<List<Json>> stockAdjustments([String? productId]) async => _items(
     await _api.get('/products/adjustments', query: {'productId': productId}),
   );

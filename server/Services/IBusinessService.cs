@@ -20,7 +20,7 @@ public interface IBusinessService
     Task<ApiResult<ProductDto>> UpdateProductAsync(Guid tenantId, Guid productId, UpdateProductRequest request);
     Task<ApiResult<RecordDeletionResultDto>> DeleteProductAsync(Guid tenantId, Guid productId);
 
-    Task<ApiResult<StockAdjustmentDto>> CreateStockAdjustmentAsync(Guid tenantId, Guid? userId, CreateStockAdjustmentRequest request);
+    Task<ApiResult<StockAdjustmentDto>> CreateStockAdjustmentAsync(Guid tenantId, Guid? userId, CreateStockAdjustmentRequest request, string? idempotencyKey = null);
     Task<ApiResult<List<StockAdjustmentDto>>> GetStockAdjustmentsAsync(Guid tenantId, Guid? productId);
 
     Task<ApiResult<List<SaleSummaryDto>>> GetSalesAsync(Guid tenantId, string? search, Guid? customerId, DateTime? from, DateTime? to);

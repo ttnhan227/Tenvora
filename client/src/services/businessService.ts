@@ -318,7 +318,7 @@ export const businessService = {
   },
 
   async createStockAdjustment(input: CreateStockAdjustmentInput): Promise<StockAdjustment> {
-    const response = await apiClient.post("/products/adjustments", input);
+    const response = await financialWrite("/products/adjustments", input);
     return response.data.data;
   },
 
