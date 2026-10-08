@@ -27,6 +27,18 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 
 ---
 
+## Inside the app
+
+Tenvora keeps sales, customer balances, inventory, expenses, and reports in one workspace. The Android app uses the same business data, so a counter sale or camera receipt is available on the web without copying it manually.
+
+| Business overview | AI assistant |
+| :---: | :---: |
+| ![Tenvora Android business overview](release/google-play/screenshots/en-US/01-overview.png) | ![Tenvora Android AI assistant](release/google-play/screenshots/en-US/06-assistant.png) |
+
+The screenshots show the current English Android application with demonstration business data.
+
+---
+
 ## ✨ Key Features
 
 * **📊 Practical Financial Dashboard:** Real-time visibility into today's sales, cash collections, categorized operating expenses, and net profit.

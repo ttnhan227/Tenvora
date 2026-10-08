@@ -204,6 +204,36 @@ export default function MobileLandingPage() {
           </div>
         </section>
 
+        <section className="border-t bg-card/30 py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="micro-label text-primary">{isVietnamese ? "Giao diện thực tế" : "See the real app"}</p>
+              <h2 className="display-type mt-2 text-3xl font-bold sm:text-4xl">
+                {isVietnamese ? "Sổ sách rõ ràng, trợ lý sẵn sàng khi cần." : "Clear records, with an assistant when you need it."}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {isVietnamese
+                  ? "Theo dõi hoạt động kinh doanh và hỏi về số liệu của bạn ngay trong ứng dụng."
+                  : "Follow your business activity and ask about your records directly in the app."}
+              </p>
+            </div>
+            <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:gap-8">
+              <figure className="overflow-hidden rounded-3xl border bg-background p-2 shadow-lg">
+                <img src="/screenshots/overview.png" alt="Tenvora Android business overview" className="w-full rounded-2xl" loading="lazy" />
+                <figcaption className="px-2 pb-2 pt-3 text-center text-xs font-semibold text-muted-foreground">
+                  {isVietnamese ? "Tổng quan kinh doanh" : "Business overview"}
+                </figcaption>
+              </figure>
+              <figure className="overflow-hidden rounded-3xl border bg-background p-2 shadow-lg">
+                <img src="/screenshots/assistant.png" alt="Tenvora Android AI assistant" className="w-full rounded-2xl" loading="lazy" />
+                <figcaption className="px-2 pb-2 pt-3 text-center text-xs font-semibold text-muted-foreground">
+                  {isVietnamese ? "Trợ lý kinh doanh" : "Business assistant"}
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
+
         {/* Step-by-Step Installation Guide */}
         <section className="border-t bg-card/30 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
