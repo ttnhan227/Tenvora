@@ -687,6 +687,12 @@ RULES:
 
             case "propose_transaction":
             {
+                if (userRole is not ("TenantAdmin" or "OperationsManager"))
+                {
+                    return (new { success = false, message = "Permission denied. Only workspace administrators and operations managers can propose business transactions." },
+                            "Không có quyền đề xuất giao dịch",
+                            null);
+                }
                 var instruction = args.TryGetProperty("instruction", out var inst) ? inst.GetString() ?? "" : "";
                 var propResult = await _actionService.ProposeAsync(
                     tenantId, userId, new AiProposeActionRequest(instruction, uiContext), userRole, ct);

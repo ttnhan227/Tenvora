@@ -525,6 +525,7 @@ export default function ProductsPage() {
                   <Input
                     id="product-stock"
                     type="number"
+                    min="0"
                     step="any"
                     value={form.stockQuantity === 0 ? "" : form.stockQuantity}
                     onChange={(e) => setForm({ ...form, stockQuantity: e.target.value === "" ? 0 : Number(e.target.value) })}

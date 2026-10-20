@@ -44,6 +44,8 @@ public sealed class AiActionService(
             return ApiResult<AiActionProposalResponse>.Fail(interpretedResult.Message);
 
         var action = interpretedResult.Data;
+        if (userRole is not ("TenantAdmin" or "OperationsManager"))
+            return ApiResult<AiActionProposalResponse>.Fail("Only workspace administrators and operations managers can propose business actions.");
         if (RequiresTenantAdmin(action.Intent) && userRole != "TenantAdmin")
             return ApiResult<AiActionProposalResponse>.Fail("Only a workspace administrator can perform this action.");
         return action.Intent switch
@@ -78,6 +80,8 @@ public sealed class AiActionService(
         var action = await db.AiActions.FirstOrDefaultAsync(
             a => a.Id == actionId && a.TenantId == tenantId && a.UserId == userId, ct);
         if (action == null) return ApiResult<AiActionExecutionResponse>.Fail("AI action not found.");
+        if (userRole is not ("TenantAdmin" or "OperationsManager"))
+            return ApiResult<AiActionExecutionResponse>.Fail("Only workspace administrators and operations managers can execute business actions.");
         if (RequiresTenantAdmin(action.Intent) && userRole != "TenantAdmin")
             return ApiResult<AiActionExecutionResponse>.Fail("Only a workspace administrator can perform this action.");
 

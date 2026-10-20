@@ -156,6 +156,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             {
                 t.HasCheckConstraint("CK_Products_DefaultPrice_NonNegative", "\"DefaultPrice\" >= 0");
                 t.HasCheckConstraint("CK_Products_CostPrice_NonNegative", "\"CostPrice\" >= 0");
+                t.HasCheckConstraint("CK_Products_StockQuantity_NonNegative", "\"StockQuantity\" >= 0");
+                t.HasCheckConstraint("CK_Products_MinStockLevel_NonNegative", "\"MinStockLevel\" IS NULL OR \"MinStockLevel\" >= 0");
             });
         });
 

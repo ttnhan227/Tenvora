@@ -8,7 +8,7 @@ namespace Tenvora.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "TenantAdmin")]
 public class AuditController : ControllerBase
 {
     private readonly IAuditLogService _auditLogService;

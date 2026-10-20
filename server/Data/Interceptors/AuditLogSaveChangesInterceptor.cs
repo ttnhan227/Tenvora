@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -146,6 +146,21 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 }
                 newValue = JsonSerializer.Serialize(currentSnapshot);
                 changesList.Add($"{entityType} created with Id {primaryKey}");
+            }
+            else if (entry.State == EntityState.Deleted)
+            {
+                var originalSnapshot = new Dictionary<string, object?>();
+                foreach (var prop in entry.Properties)
+                {
+                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken")
+                    {
+                        originalSnapshot[prop.Metadata.Name] = IsImageProperty(prop.Metadata.Name) && HasStoredImage(prop.OriginalValue)
+                            ? StoredImageMarker
+                            : prop.OriginalValue;
+                    }
+                }
+                oldValue = JsonSerializer.Serialize(originalSnapshot);
+                changesList.Add($"{entityType} deleted with Id {primaryKey}");
             }
 
             var auditLog = new AuditLog

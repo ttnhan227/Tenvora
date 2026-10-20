@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet" alt=".NET 10" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" />
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=flat-square&logo=flutter" alt="Flutter" />
-  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16%2B-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL 16+" />
 </p>
 
 ---
@@ -23,7 +23,7 @@
 
 **Tenvora** is a business-management system built for small and local businesses (retail, wholesale, supply shops). It replaces informal credit notebooks, scattered paper receipts, and manual spreadsheets with an append-only financial ledger, real-time debt tracking, and an integrated native mobile companion.
 
-The architecture enforces strict mathematical invariants on the server: atomic transactions, row-level concurrency locks (`SELECT FOR UPDATE`), double-spend prevention, and immutable before/after audit snapshots.
+The architecture enforces strict mathematical invariants on the server: atomic transactions, advisory write locks for financial consistency, idempotency keys, non-negative inventory check constraints, immutable before/after audit snapshots, and defense-in-depth PostgreSQL Row-Level Security (RLS).
 
 ---
 
@@ -46,7 +46,7 @@ The screenshots show the current English Android application with demonstration 
 * **🧾 Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Google Gemini AI Copilot:** Grounded business analysis using `gemini-3.5-flash` with guarded, server-validated action proposals.
-* **🔒 Tenant Scoping:** Global query filters on EF Core automatically isolate all data queries by verified JWT tenant ID.
+* **🔒 Tenant Scoping & RLS:** Global query filters on EF Core combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
 * **🌐 Bilingual Support:** Native English and Vietnamese interface with `₫` VND currency and localized phone formats.
 
 ---
@@ -56,11 +56,11 @@ The screenshots show the current English Android application with demonstration 
 | Component | Stack | Responsibilities |
 | :--- | :--- | :--- |
 | **Web Frontend** | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query | Web workspace, financial reports, catalog, store management. |
-| **Backend API** | ASP.NET Core (.NET 10), Entity Framework Core, Npgsql | Ledger engine, atomic writes, concurrency locks, JWT authentication. |
-| **Database** | PostgreSQL 16 (Supabase / Self-hosted) | Multi-tenant relational storage, transaction logs, audit history. |
+| **Backend API** | ASP.NET Core (.NET 10), Entity Framework Core, Npgsql | Ledger engine, atomic writes, advisory write locks, JWT auth. |
+| **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Google Gemini API (`gemini-3.5-flash`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (161+ tests), Docker images, verified APK builds; explicit publication. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (218+ tests), Docker images, verified APK builds. |
 
 ---
 
@@ -89,7 +89,16 @@ cp .env.example .env
 ```
 Configure your connection string and API keys in `.env`.
 
-### 2. Run Locally
+### 2. Fast Evaluation / Reviewer Walkthrough (Demo Mode)
+To explore the system with a fully seeded retail store (*"An Nam Specialty Foods"* / *"Tenvora Demo Retail"*), set:
+```bash
+SEED_DEMO_DATA=true
+```
+When started, the seeder automatically populates products, low-stock inventory alerts, customer receivables, supplier payables, posted sales, and operating expenses.
+* **Demo Admin Email:** `owner@tenvora.internal`
+* **Demo Admin Password:** `DemoPassword123!` (or value set in `SEED_ADMIN_PASSWORD`)
+
+### 3. Run Locally
 
 #### Option A: Native Hot-Reload (Recommended for Daily Coding)
 Run the backend and frontend separately in two terminals:
@@ -113,19 +122,23 @@ docker compose up --build
 
 ## 🧪 Automated Testing & Verification
 
-The codebase includes an automated test suite enforcing ledger invariants, concurrency limits, and UI functionality:
+The codebase includes an extensive automated test suite enforcing ledger invariants, concurrency limits, and UI functionality:
 
 ```bash
-# Backend Tests (100 xUnit tests verifying ledger math & tenant boundaries)
-dotnet test Tenvora.sln
+# Run the unified verification pipeline (backend + frontend + lint + build):
+pwsh scripts/verify-all.ps1        # Windows PowerShell
+bash scripts/verify-all.sh         # Linux / macOS
 
-# Frontend Unit Tests (64 Vitest tests covering UI components & business services)
-cd client
-npm test -- --run
+# Or run individual test suites:
+# Backend Tests (127 xUnit tests verifying ledger math, concurrency, and RLS)
+dotnet test server.Tests
+
+# Frontend Unit & Integration Tests (91 Vitest tests across 23 test suites)
+npm --prefix client run test:run
 
 # Frontend Linter & Production Build
-npm run lint
-npm run build
+npm --prefix client run lint
+npm --prefix client run build
 ```
 
 ---
@@ -145,7 +158,7 @@ Tenvora/
 │   ├── Data/               # AppDbContext, migrations, audit interceptors
 │   ├── Domain/Entities/    # Tenant-scoped domain models
 │   └── Services/           # Ledger calculations, business rules, AI services
-├── server.Tests/           # 100 xUnit unit & integration tests
+├── server.Tests/           # 127 xUnit unit, integration, and security regression tests
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration

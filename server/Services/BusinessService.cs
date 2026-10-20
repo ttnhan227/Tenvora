@@ -125,6 +125,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         var validation = ValidateProduct(request.Name, request.Unit, request.DefaultPrice);
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice < 0 || Scale(request.CostPrice) > 4) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
+        if (request.StockQuantity < 0 || Scale(request.StockQuantity) > 4) return ApiResult<ProductDto>.Fail("Stock quantity cannot be negative.");
+        if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
         var image = NormalizeImageDataUrl(request.ImageDataUrl, out var imageError);
         if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
@@ -319,6 +321,43 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
 
         var requestHash = Hash(new { customerId, request.Amount, request.Method, request.Reference, request.Notes, request.PaidAt });
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
+
+        var existingPayments = await db.BusinessPayments.AsNoTracking()
+            .Where(p => p.TenantId == tenantId && p.CustomerId == customerId && p.IdempotencyKey != null && p.IdempotencyKey.StartsWith($"{idempotencyKey}:"))
+            .OrderBy(p => p.IdempotencyKey)
+            .ToListAsync();
+
+        if (existingPayments.Count > 0)
+        {
+            if (existingPayments.First().RequestHash != requestHash)
+                return ApiResult<CustomerAccountPaymentResultDto>.Fail("This idempotency key was already used for a different payment.");
+
+            var saleIds = existingPayments.Select(p => p.SaleId).Distinct().ToList();
+            var replaySales = await db.Sales.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && saleIds.Contains(s.Id))
+                .Include(s => s.Customer)
+                .Include(s => s.Items)
+                .Include(s => s.Payments)
+                .OrderBy(s => s.SoldAt).ThenBy(s => s.CreatedAt)
+                .ToListAsync();
+
+            var allCustomerSales = await db.Sales.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && s.CustomerId == customerId && s.Status == SaleStatuses.Posted)
+                .Include(s => s.Payments)
+                .ToListAsync();
+
+            var totalAllocated = Money(existingPayments.Sum(p => p.Amount));
+            var remainingBalance = Money(allCustomerSales.Sum(s => s.TotalAmount - s.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)));
+
+            if (write != null) await write.CommitAsync();
+
+            return ApiResult<CustomerAccountPaymentResultDto>.Ok(new(
+                TotalAmountPaid: Money(request.Amount),
+                TotalAllocated: totalAllocated,
+                RemainingBalance: remainingBalance,
+                AffectedSales: replaySales.Select(MapSale).ToList()
+            ));
+        }
 
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Id == customerId && c.Status == "Active");
         if (customer == null) return ApiResult<CustomerAccountPaymentResultDto>.Fail("Customer not found.");

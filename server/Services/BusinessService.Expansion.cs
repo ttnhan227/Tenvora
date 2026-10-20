@@ -114,6 +114,9 @@ public sealed partial class BusinessService
         var keyError = ValidateKey(idempotencyKey);
         if (keyError != null) return ApiResult<PurchaseDto>.Fail(keyError);
         if (request.Items == null || request.Items.Count == 0) return ApiResult<PurchaseDto>.Fail("Add at least one purchase item.");
+        var productItems = request.Items.Where(i => i.ProductId.HasValue).ToList();
+        if (productItems.Select(i => i.ProductId!.Value).Distinct().Count() != productItems.Count)
+            return ApiResult<PurchaseDto>.Fail("Add each product only once per purchase.");
         var invoiceImage = NormalizeImageDataUrl(request.InvoiceImageDataUrl, out var invoiceImageError);
         if (invoiceImageError != null) return ApiResult<PurchaseDto>.Fail(invoiceImageError);
         var requestHash = Hash(request);
@@ -191,6 +194,7 @@ public sealed partial class BusinessService
         }
         var purchase = await FindPurchase(tenantId, purchaseId, false);
         if (purchase == null) return ApiResult<PurchaseDto>.Fail("Purchase not found.");
+        if (purchase.Status != "Posted") return ApiResult<PurchaseDto>.Fail("This purchase cannot receive payments.");
         var activePayments = purchase.Payments.Where(p => !p.IsReversed).ToList();
         var remaining = Money(purchase.TotalAmount - activePayments.Sum(p => p.Amount));
         if (request.Amount <= 0 || request.Amount > remaining || Scale(request.Amount) > 4)
@@ -255,32 +259,31 @@ public sealed partial class BusinessService
         var productIds = purchase.Items.Where(i => i.ProductId.HasValue).Select(i => i.ProductId!.Value).Distinct().ToList();
         var products = await db.Products.Where(p => p.TenantId == tenantId && productIds.Contains(p.Id)).ToListAsync();
 
+        var requiredByProduct = purchase.Items
+            .Where(i => i.ProductId.HasValue)
+            .GroupBy(i => i.ProductId!.Value)
+            .ToDictionary(g => g.Key, g => Money(g.Sum(i => i.Quantity)));
+
         // Check if any product has already had received units sold
-        foreach (var item in purchase.Items)
+        foreach (var (productId, totalQuantity) in requiredByProduct)
         {
-            if (item.ProductId.HasValue)
+            var prod = products.FirstOrDefault(p => p.Id == productId);
+            if (prod != null && prod.TrackInventory)
             {
-                var prod = products.FirstOrDefault(p => p.Id == item.ProductId.Value);
-                if (prod != null && prod.TrackInventory)
+                if (prod.StockQuantity < totalQuantity)
                 {
-                    if (prod.StockQuantity < item.Quantity)
-                    {
-                        return ApiResult<PurchaseDto>.Fail($"Cannot void purchase: Product '{prod.Name}' has only {prod.StockQuantity:0.####} in stock, but {item.Quantity:0.####} were received in this purchase. Some items have already been sold. Adjust sales or stock before voiding this purchase.");
-                    }
+                    return ApiResult<PurchaseDto>.Fail($"Cannot void purchase: Product '{prod.Name}' has only {prod.StockQuantity:0.####} in stock, but {totalQuantity:0.####} were received in this purchase. Some items have already been sold. Adjust sales or stock before voiding this purchase.");
                 }
             }
         }
 
-        foreach (var item in purchase.Items)
+        foreach (var (productId, totalQuantity) in requiredByProduct)
         {
-            if (item.ProductId.HasValue)
+            var prod = products.FirstOrDefault(p => p.Id == productId);
+            if (prod != null && prod.TrackInventory)
             {
-                var prod = products.FirstOrDefault(p => p.Id == item.ProductId.Value);
-                if (prod != null && prod.TrackInventory)
-                {
-                    prod.StockQuantity = Money(prod.StockQuantity - item.Quantity);
-                    prod.UpdatedAt = DateTime.UtcNow;
-                }
+                prod.StockQuantity = Money(prod.StockQuantity - totalQuantity);
+                prod.UpdatedAt = DateTime.UtcNow;
             }
         }
 
@@ -376,12 +379,12 @@ public sealed partial class BusinessService
         var normalizedPeriod = (period ?? "today").Trim().ToLowerInvariant();
 
         DateTime periodStart;
-        DateTime periodEnd = now;
+        DateTime periodEnd = todayEnd;
 
         if (from.HasValue)
         {
             periodStart = Utc(from.Value);
-            periodEnd = to.HasValue ? Utc(to.Value.Date.AddDays(1)) : now;
+            periodEnd = to.HasValue ? Utc(to.Value.Date.AddDays(1)) : todayEnd;
             normalizedPeriod = "custom";
         }
         else
@@ -391,15 +394,19 @@ public sealed partial class BusinessService
                 case "week":
                     var diff = (7 + (int)now.DayOfWeek - (int)DayOfWeek.Monday) % 7;
                     periodStart = todayStart.AddDays(-diff);
+                    periodEnd = todayEnd;
                     break;
                 case "month":
                     periodStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                    periodEnd = todayEnd;
                     break;
                 case "year":
                     periodStart = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    periodEnd = todayEnd;
                     break;
                 case "all":
                     periodStart = DateTime.MinValue;
+                    periodEnd = DateTime.MaxValue;
                     break;
                 case "today":
                 default:
@@ -437,13 +444,13 @@ public sealed partial class BusinessService
         var todaySupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => !p.IsReversed && p.PaidAt >= todayStart && p.PaidAt < todayEnd).Sum(p => p.Amount));
         var todayExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= todayStart && e.ExpenseDate < todayEnd).Sum(e => e.Amount));
 
-        var periodSalesList = sales.Where(s => s.SoldAt >= periodStart && s.SoldAt <= periodEnd).ToList();
+        var periodSalesList = sales.Where(s => s.SoldAt >= periodStart && s.SoldAt < periodEnd).ToList();
         var periodSalesAmount = Money(periodSalesList.Sum(s => s.TotalAmount));
         var periodCogsAmount = Money(periodSalesList.SelectMany(s => s.Items).Where(i => i.UnitCost.HasValue).Sum(i => i.Quantity * i.UnitCost!.Value));
-        var periodPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
-        var periodPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= periodStart && p.PurchasedAt <= periodEnd).Sum(p => p.TotalAmount));
-        var periodSupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt <= periodEnd).Sum(p => p.Amount));
-        var periodExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= periodStart && e.ExpenseDate <= periodEnd).Sum(e => e.Amount));
+        var periodPaymentsAmount = Money(sales.SelectMany(s => s.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt < periodEnd).Sum(p => p.Amount));
+        var periodPurchasesAmount = Money(purchases.Where(p => p.PurchasedAt >= periodStart && p.PurchasedAt < periodEnd).Sum(p => p.TotalAmount));
+        var periodSupplierPaymentsAmount = Money(purchases.SelectMany(p => p.Payments).Where(p => !p.IsReversed && p.PaidAt >= periodStart && p.PaidAt < periodEnd).Sum(p => p.Amount));
+        var periodExpensesAmount = Money(expenses.Where(e => e.ExpenseDate >= periodStart && e.ExpenseDate < periodEnd).Sum(e => e.Amount));
         var periodNetProfit = Money(periodSalesAmount - periodCogsAmount - periodExpensesAmount);
 
         var totalOutstandingCustomers = Money(sales.Sum(s => s.TotalAmount - s.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)));

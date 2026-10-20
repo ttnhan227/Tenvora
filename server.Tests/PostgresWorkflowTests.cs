@@ -133,4 +133,68 @@ public sealed class PostgresWorkflowTests
         Assert.Equal(0, await db.BusinessPayments.CountAsync());
         Assert.Equal(2, await db.Sales.CountAsync());
     }
+
+    [PostgresFact]
+    public async Task PostgreSql_RowLevelSecurityAndCheckConstraints_EnforcedAtEngineLevel()
+    {
+        await using var database = new Database();
+        await database.Initialize();
+        var (tenantA, customerA, _) = await Seed(database);
+        var (tenantB, customerB, _) = await Seed(database);
+
+        await using var db = database.Open();
+
+        // 1. Check constraints on Products: negative stock in Postgres fails with CK_Products_StockQuantity_NonNegative
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                @"INSERT INTO ""Products"" (""Id"", ""TenantId"", ""Name"", ""Unit"", ""DefaultPrice"", ""CostPrice"", ""StockQuantity"", ""Currency"", ""IsActive"", ""CreatedAt"", ""TrackInventory"")
+                  VALUES ({0}, {1}, 'Negative DB Stock', 'pcs', 100, 50, -10, 'VND', true, NOW(), true)",
+                Guid.NewGuid(), tenantA);
+        });
+
+        // 2. Configure app role (non-superuser) to verify RLS enforcement
+        await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tenvora_app_user') THEN
+                    CREATE ROLE tenvora_app_user;
+                END IF;
+                GRANT USAGE ON SCHEMA public TO tenvora_app_user;
+                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO tenvora_app_user;
+            END $$;");
+
+        // Open connection and set role to non-superuser (as in production app pool)
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync("SET ROLE tenvora_app_user");
+            await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', {0}, false)", tenantA.ToString());
+
+            // Raw SQL query trying to read tenant B's customer must return 0 rows due to RLS
+            var countB = await db.Customers.FromSqlRaw(@"SELECT * FROM ""Customers"" WHERE ""Id"" = {0}", customerB).CountAsync();
+            Assert.Equal(0, countB);
+
+            // Raw SQL query for tenant A's customer succeeds
+            var countA = await db.Customers.FromSqlRaw(@"SELECT * FROM ""Customers"" WHERE ""Id"" = {0}", customerA).CountAsync();
+            Assert.Equal(1, countA);
+
+            // Raw insert trying to insert a customer belonging to tenant B while pinned to tenant A violates WITH CHECK policy
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO ""Customers"" (""Id"", ""TenantId"", ""Name"", ""Status"", ""CreatedAt"")
+                      VALUES ({0}, {1}, 'Cross-tenant Intruder', 'Active', NOW())",
+                    Guid.NewGuid(), tenantB);
+            });
+
+            // Reset role and tenant session
+            await db.Database.ExecuteSqlRawAsync("RESET ROLE");
+            await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)");
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
 }

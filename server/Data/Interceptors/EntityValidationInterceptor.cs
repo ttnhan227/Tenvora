@@ -24,6 +24,12 @@ public sealed class EntityValidationInterceptor : SaveChangesInterceptor
             {
                 case Product product when product.DefaultPrice < 0:
                     throw new ValidationException("Product price cannot be negative.");
+                case Product product when product.CostPrice < 0:
+                    throw new ValidationException("Product cost price cannot be negative.");
+                case Product product when product.StockQuantity < 0:
+                    throw new ValidationException("Product stock quantity cannot be negative.");
+                case Product product when product.MinStockLevel < 0:
+                    throw new ValidationException("Product minimum stock level cannot be negative.");
                 case Sale sale when sale.TotalAmount <= 0:
                     throw new ValidationException("Sale total must be positive.");
                 case SaleItem item when item.Quantity <= 0 || item.UnitPrice < 0 || item.LineTotal < 0:
