@@ -40,7 +40,7 @@ export function CustomerStatementModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="no-print flex flex-row items-center justify-between">
+        <DialogHeader className="no-print flex flex-row items-center justify-between pr-8">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             <span>{isVietnamese ? "Sổ chi tiết công nợ khách hàng" : "Customer Account Statement"}</span>

@@ -47,11 +47,11 @@ export function PaginationBar({
       <div>
         {isVietnamese ? (
           <span>
-            Hiển thị <strong>{startIdx}</strong> - <strong>{endIdx}</strong> trên <strong>{totalCount}</strong> {itemName ?? "mục"}
+            Hiển thị <strong>{startIdx}</strong> - <strong>{endIdx}</strong> trên <strong>{count}</strong> {itemName ?? "mục"}
           </span>
         ) : (
           <span>
-            Showing <strong>{startIdx}</strong> - <strong>{endIdx}</strong> of <strong>{totalCount}</strong> {itemName ?? "items"}
+            Showing <strong>{startIdx}</strong> - <strong>{endIdx}</strong> of <strong>{count}</strong> {itemName ?? "items"}
           </span>
         )}
       </div>
@@ -60,8 +60,8 @@ export function PaginationBar({
         <Button
           size="sm"
           variant="outline"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={activePage <= 1}
+          onClick={() => onPageChange(activePage - 1)}
           className="h-8 gap-1 px-2.5 text-xs"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -69,14 +69,14 @@ export function PaginationBar({
         </Button>
 
         <span className="font-medium text-foreground px-2">
-          {page} / {Math.max(1, totalPages)}
+          {activePage} / {pages}
         </span>
 
         <Button
           size="sm"
           variant="outline"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
+          disabled={activePage >= pages}
+          onClick={() => onPageChange(activePage + 1)}
           className="h-8 gap-1 px-2.5 text-xs"
         >
           <span>{isVietnamese ? "Sau" : "Next"}</span>

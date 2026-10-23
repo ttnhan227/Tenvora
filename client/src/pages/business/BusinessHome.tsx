@@ -279,6 +279,24 @@ export default function BusinessHome() {
                     </div>
                   </div>
 
+                  <div className="paper-card bg-primary/5 p-5 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-primary">
+                        <Users size={19} />
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold">{isVietnamese ? "Khách hàng còn nợ bạn" : "Customers owe you"}</p>
+                        <p className="tabular-nums text-xl font-bold text-foreground">{businessMoney(data.outstandingCustomers, currency)}</p>
+                      </div>
+                    </div>
+                    <Button asChild variant="ghost" className="mt-3 w-full justify-between">
+                      <Link to="/customers?debt=has_debt">
+                        <span>{isVietnamese ? "Xem công nợ khách hàng" : "See customer balances"}</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+
                   <div className="paper-card bg-[hsl(var(--warning)/.1)] p-5 sm:p-6">
                     <div className="flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-card text-amber-800">

@@ -1,7 +1,7 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, Boxes, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, TrendingUp, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -67,12 +67,45 @@ export default function ProductsPage() {
   const totalCount = pagedResult?.totalCount ?? 0;
   const totalPages = pagedResult?.totalPages ?? 1;
 
+  const { data: allProducts } = useQuery({
+    queryKey: ["products-kpi-summary"],
+    queryFn: () => businessService.getProducts(),
+  });
+
+  const kpiMetrics = useMemo(() => {
+    if (!allProducts || allProducts.length === 0) return null;
+    const tracked = allProducts.filter((p) => p.trackInventory);
+    const lowStockCount = tracked.filter(
+      (p) => (p.stockQuantity ?? 0) <= (p.minStockLevel ?? 0) && (p.stockQuantity ?? 0) > 0,
+    ).length;
+    const outOfStockCount = tracked.filter((p) => (p.stockQuantity ?? 0) <= 0).length;
+    const totalCostValuation = allProducts.reduce(
+      (sum, p) => sum + Math.max(0, p.stockQuantity ?? 0) * (p.costPrice ?? 0),
+      0,
+    );
+    const totalRetailValuation = allProducts.reduce(
+      (sum, p) => sum + Math.max(0, p.stockQuantity ?? 0) * p.defaultPrice,
+      0,
+    );
+    const currency = allProducts[0]?.currency ?? "VND";
+    return {
+      totalProducts: allProducts.length,
+      activeProducts: allProducts.filter((p) => p.isActive).length,
+      lowStockCount,
+      outOfStockCount,
+      totalCostValuation,
+      totalRetailValuation,
+      currency,
+    };
+  }, [allProducts]);
+
   const save = useMutation({
     mutationFn: () =>
       editing ? businessService.updateProduct(editing.id, form) : businessService.createProduct(form),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-kpi-summary"] });
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       setDialogOpen(false);
       toast.success(
@@ -97,6 +130,7 @@ export default function ProductsPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-kpi-summary"] });
       queryClient.invalidateQueries({ queryKey: ["products-paged"] });
       setDeletingProduct(null);
       toast.success(
@@ -207,6 +241,84 @@ export default function ProductsPage() {
             </div>
           }
         />
+
+        {/* Commercial & Inventory Intelligence KPI Banner */}
+        {kpiMetrics && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="paper-card p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {isVietnamese ? "Tổng định giá tồn kho (Giá vốn)" : "Inventory Valuation (Cost)"}
+                </p>
+                <p className="text-xl font-bold tabular-nums text-foreground mt-1">
+                  {businessMoney(kpiMetrics.totalCostValuation, kpiMetrics.currency)}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isVietnamese ? "Giá trị bán lẻ ước tính:" : "Est. retail value:"}{" "}
+                  {businessMoney(kpiMetrics.totalRetailValuation, kpiMetrics.currency)}
+                </p>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Boxes className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="paper-card p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {isVietnamese ? "Mặt hàng đang kinh doanh" : "Active Catalog"}
+                </p>
+                <p className="text-xl font-bold tabular-nums text-foreground mt-1">
+                  {kpiMetrics.activeProducts}{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    / {kpiMetrics.totalProducts} {isVietnamese ? "mã hàng" : "items"}
+                  </span>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isVietnamese ? "Theo dõi số lượng kho tự động" : "Tracked automated stock"}
+                </p>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="paper-card p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  {isVietnamese ? "Cảnh báo nhập hàng" : "Restock Alerts"}
+                </p>
+                <p className="text-xl font-bold tabular-nums mt-1">
+                  {kpiMetrics.outOfStockCount > 0 || kpiMetrics.lowStockCount > 0 ? (
+                    <span className="text-amber-600 dark:text-amber-400">
+                      {kpiMetrics.outOfStockCount + kpiMetrics.lowStockCount}{" "}
+                      <span className="text-xs font-semibold">
+                        {isVietnamese ? "cần bổ sung" : "need restock"}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400 text-base font-semibold">
+                      {isVietnamese ? "Kho ổn định" : "Stock healthy"}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {kpiMetrics.outOfStockCount} {isVietnamese ? "hết hàng" : "out of stock"} ·{" "}
+                  {kpiMetrics.lowStockCount} {isVietnamese ? "dưới mức an toàn" : "below min"}
+                </p>
+              </div>
+              <div
+                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  kpiMetrics.outOfStockCount > 0 || kpiMetrics.lowStockCount > 0
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search and Status Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -355,6 +467,28 @@ export default function ProductsPage() {
                           {businessMoney(product.costPrice ?? 0, product.currency)}
                         </span>
                       </div>
+                      {(() => {
+                        const defaultPrice = product.defaultPrice;
+                        const costPrice = product.costPrice ?? 0;
+                        const grossProfit = defaultPrice - costPrice;
+                        const marginPercent = defaultPrice > 0 ? Math.round((grossProfit / defaultPrice) * 100) : 0;
+                        return (
+                          <div className="flex items-center justify-between text-xs pt-1.5 border-t border-muted/30">
+                            <span className="text-muted-foreground">{isVietnamese ? "Lãi gộp định mức" : "Gross Margin"}</span>
+                            <span
+                              className={`font-semibold tabular-nums ${
+                                marginPercent >= 20
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : marginPercent >= 5
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-destructive"
+                              }`}
+                            >
+                              {marginPercent > 0 ? `+${marginPercent}%` : `${marginPercent}%`} ({businessMoney(grossProfit, product.currency)})
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Stock inventory badge & Quick adjust link */}
@@ -563,6 +697,7 @@ export default function ProductsPage() {
                   type="checkbox"
                   checked={form.trackInventory ?? true}
                   onChange={(e) => setForm({ ...form, trackInventory: e.target.checked })}
+                  className="h-4 w-4 rounded border-input text-primary accent-primary cursor-pointer focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 />
                 <div className="space-y-0.5">
                   <span className="font-medium">{isVietnamese ? "Theo dõi tồn kho tự động" : "Track inventory automatically"}</span>
@@ -578,6 +713,7 @@ export default function ProductsPage() {
                     type="checkbox"
                     checked={form.isActive}
                     onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                    className="h-4 w-4 rounded border-input text-primary accent-primary cursor-pointer focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   />
                   {isVietnamese ? "Đang kinh doanh (có sẵn cho đơn bán mới)" : "Available for new sales"}
                 </label>

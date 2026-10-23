@@ -88,6 +88,7 @@ export default function AuditLogView() {
     { value: "ALL", label: isVietnamese ? "Tất cả hoạt động" : "All activity", count: logs.length },
     { value: "Created", label: isVietnamese ? "Đã tạo" : "Created", count: logs.filter((l) => l.action === "Created").length },
     { value: "Updated", label: isVietnamese ? "Đã cập nhật" : "Updated", count: logs.filter((l) => l.action === "Updated").length },
+    { value: "Deleted", label: isVietnamese ? "Đã xoá" : "Deleted", count: logs.filter((l) => l.action === "Deleted").length },
   ];
 
   return (

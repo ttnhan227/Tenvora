@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Ban,
   Download,
   FileUp,
@@ -74,8 +75,10 @@ export default function PurchasesPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const [open, setOpen] = useState(canManageRecords && params.get("create") === "1");
-  const [supplierId, setSupplierId] = useState("");
+  const [open, setOpen] = useState(
+    canManageRecords && (params.get("create") === "1" || !!params.get("supplier")),
+  );
+  const [supplierId, setSupplierId] = useState(params.get("supplier") ?? "");
   const [items, setItems] = useState<Line[]>([line()]);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [method, setMethod] = useState("Cash");
@@ -99,6 +102,10 @@ export default function PurchasesPage() {
     queryKey: ["suppliers", "active"],
     queryFn: () => businessService.getSuppliers(),
   });
+  const selectedSupplier = useMemo(
+    () => suppliers.data?.find((s) => s.id === supplierId),
+    [suppliers.data, supplierId],
+  );
   const products = useQuery({
     queryKey: ["products", "active"],
     queryFn: () => businessService.getProducts("", true),
@@ -407,9 +414,34 @@ export default function PurchasesPage() {
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Select value={supplierId} onValueChange={setSupplierId}>
                     <SelectTrigger className="flex-1"><SelectValue placeholder={isVietnamese ? "Chọn nhà cung cấp" : "Choose a supplier"} /></SelectTrigger>
-                    <SelectContent>{suppliers.data?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {suppliers.data?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                          {s.outstandingBalance > 0
+                            ? ` (${isVietnamese ? "đang nợ" : "owes"}: ${businessMoney(s.outstandingBalance, s.currency)})`
+                            : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   <Button type="button" variant="outline" asChild><Link to="/suppliers?create=1&returnTo=%2Fpurchases%3Fcreate%3D1"><Plus />{isVietnamese ? "NCC mới" : "New supplier"}</Link></Button>
+                </div>
+              )}
+              {selectedSupplier && selectedSupplier.outstandingBalance > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    {isVietnamese
+                      ? `Bạn đang có công nợ phải trả cho nhà cung cấp này: ${businessMoney(selectedSupplier.outstandingBalance, selectedSupplier.currency)}.`
+                      : `You have an outstanding payable balance for this supplier: ${businessMoney(selectedSupplier.outstandingBalance, selectedSupplier.currency)}.`}
+                  </span>
+                  <Link
+                    to="/suppliers"
+                    className="font-bold underline hover:text-primary shrink-0 ml-2"
+                  >
+                    {isVietnamese ? "Xem số dư" : "View balances"}
+                  </Link>
                 </div>
               )}
             </div>
@@ -488,6 +520,7 @@ export default function PurchasesPage() {
                                 productId: v,
                                 description: p?.name ?? it.description,
                                 unit: p?.unit ?? it.unit,
+                                unitCost: (it.unitCost === 0 && p?.costPrice) ? p.costPrice : it.unitCost,
                               },
                         );
                       }}
@@ -499,7 +532,7 @@ export default function PurchasesPage() {
                         <SelectItem value="none">{isVietnamese ? "Không liên kết hàng hoá" : "No linked product"}</SelectItem>
                         {products.data?.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.name}
+                            {p.name} · {p.trackInventory ? `${isVietnamese ? "Kho" : "Stock"}: ${p.stockQuantity} ${p.unit}` : ""} · {isVietnamese ? "Giá vốn cũ:" : "Prior cost:"} {businessMoney(p.costPrice, p.currency)}
                           </SelectItem>
                         ))}
                       </SelectContent>

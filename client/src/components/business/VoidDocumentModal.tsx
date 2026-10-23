@@ -110,7 +110,7 @@ export function VoidDocumentModal({
                 type="checkbox"
                 checked={reversePayments}
                 onChange={(e) => setReversePayments(e.target.checked)}
-                className="mt-0.5 rounded border-gray-300"
+                className="mt-0.5 h-4 w-4 rounded border-input text-primary accent-primary cursor-pointer focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
               <div className="space-y-0.5">
                 <span className="font-medium text-foreground">

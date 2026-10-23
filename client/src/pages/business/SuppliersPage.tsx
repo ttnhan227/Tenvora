@@ -264,7 +264,21 @@ export default function SuppliersPage() {
                           {isVietnamese ? `${s.purchaseCount} lần nhập hàng` : `${s.purchaseCount} purchases`}
                       </p>
                       </div>
-                      <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                      <div className="flex items-center gap-1.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        {canManageRecords && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            className="h-8 gap-1 text-xs font-semibold"
+                            title={isVietnamese ? "Nhập hàng từ NCC này" : "Create purchase order"}
+                          >
+                            <Link to={`/purchases?create=1&supplier=${s.id}`}>
+                              <Plus className="h-3.5 w-3.5" />
+                              {isVietnamese ? "Nhập hàng" : "Purchase"}
+                            </Link>
+                          </Button>
+                        )}
                         {canManageRecords && <Button variant="ghost" size="icon" aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${s.name}`} onClick={() => edit(s)}><Pencil size={16} /></Button>}
                         {canManageRecords && <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${s.name}`} onClick={() => setDeletingSupplier(s)}><Trash2 size={16} /></Button>}
                       </div>

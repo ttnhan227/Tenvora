@@ -405,7 +405,12 @@ export default function CustomersPage() {
 
             {editing && (
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm hover:bg-muted/40">
-                <input type="checkbox" checked={form.status === "Active"} onChange={(e) => setForm({ ...form, status: e.target.checked ? "Active" : "Archived" })} />
+                <input
+                  type="checkbox"
+                  checked={form.status === "Active"}
+                  onChange={(e) => setForm({ ...form, status: e.target.checked ? "Active" : "Archived" })}
+                  className="h-4 w-4 rounded border-input text-primary accent-primary cursor-pointer focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                />
                 {isVietnamese ? "Đang giao dịch (có sẵn cho đơn bán mới)" : "Active and available for new sales"}
               </label>
             )}

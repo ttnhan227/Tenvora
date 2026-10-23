@@ -24,6 +24,7 @@ import {
   X,
   Zap,
   Ban,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { QueryErrorState } from "@/components/business/QueryErrorState";
@@ -179,7 +180,7 @@ export default function SalesPage() {
     queryKey: ["products", "active"],
     queryFn: () => businessService.getProducts("", true),
   });
-  const customers = customersQuery.data ?? [];
+  const customers = useMemo(() => customersQuery.data ?? [], [customersQuery.data]);
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
   const { data: salesData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["sales-paged", search, page],
@@ -191,6 +192,20 @@ export default function SalesPage() {
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [items],
+  );
+  const totalEstimatedCost = useMemo(
+    () =>
+      items.reduce((sum, item) => {
+        const prod = products.find((p) => p.id === item.productId);
+        return sum + (prod?.costPrice ?? 0) * item.quantity;
+      }, 0),
+    [items, products],
+  );
+  const totalEstimatedProfit = total - totalEstimatedCost;
+  const orderMarginPercent = total > 0 ? Math.round((totalEstimatedProfit / total) * 100) : 0;
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => c.id === customerId),
+    [customers, customerId],
   );
   const currency = products[0]?.currency || customers[0]?.currency || "USD";
 
@@ -721,11 +736,33 @@ export default function SalesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                          {customer.outstandingBalance > 0
+                            ? ` (${isVietnamese ? "còn nợ" : "owes"}: ${businessMoney(customer.outstandingBalance, customer.currency)})`
+                            : ""}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Button type="button" variant="outline" asChild><Link to="/customers?create=1&returnTo=%2Fsales%3Fcreate%3D1"><Plus />{isVietnamese ? "Khách mới" : "New customer"}</Link></Button>
+                </div>
+              )}
+              {selectedCustomer && selectedCustomer.outstandingBalance > 0 && (
+                <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    {isVietnamese
+                      ? `${selectedCustomer.name} đang có số dư nợ cũ: ${businessMoney(selectedCustomer.outstandingBalance, selectedCustomer.currency)}.`
+                      : `${selectedCustomer.name} has an existing outstanding balance: ${businessMoney(selectedCustomer.outstandingBalance, selectedCustomer.currency)}.`}
+                  </span>
+                  <Link
+                    to={`/customers/${selectedCustomer.id}`}
+                    target="_blank"
+                    className="font-bold underline hover:text-primary shrink-0 ml-2"
+                  >
+                    {isVietnamese ? "Xem sổ nợ" : "View statement"}
+                  </Link>
                 </div>
               )}
             </div>
@@ -835,7 +872,7 @@ export default function SalesPage() {
                       <SelectContent>
                         {products.map((option) => (
                           <SelectItem key={option.id} value={option.id}>
-                            {option.name} / {option.unit}
+                            {option.name} / {option.unit} · {option.trackInventory ? `${isVietnamese ? "Kho" : "Stock"}: ${option.stockQuantity}` : (isVietnamese ? "Dịch vụ" : "Service")} · {businessMoney(option.defaultPrice, option.currency)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -882,14 +919,33 @@ export default function SalesPage() {
                       <Minus size={16} />
                     </Button>
                     {product && (
-                      <p className="text-xs text-muted-foreground sm:col-span-4">
-                        {item.quantity} {product.unit} ×{" "}
-                        {businessMoney(item.unitPrice, product.currency)} ={" "}
-                        {businessMoney(
-                          item.quantity * item.unitPrice,
-                          product.currency,
-                        )}
-                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:col-span-4 pt-1">
+                        <span className="text-muted-foreground">
+                          {item.quantity} {product.unit} × {businessMoney(item.unitPrice, product.currency)} ={" "}
+                          <strong className="text-foreground">{businessMoney(item.quantity * item.unitPrice, product.currency)}</strong>
+                        </span>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {product.trackInventory && (
+                            item.quantity > product.stockQuantity ? (
+                              <span className="inline-flex items-center gap-1 font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-md">
+                                <AlertTriangle className="h-3 w-3" />
+                                {isVietnamese ? "Vượt tồn kho:" : "Exceeds stock:"} {product.stockQuantity} {product.unit} {isVietnamese ? "khả dụng" : "available"}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground bg-muted px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                {isVietnamese ? "Kho:" : "Stock:"} {product.stockQuantity} {product.unit}
+                              </span>
+                            )
+                          )}
+
+                          {product.costPrice > 0 && item.unitPrice > 0 && (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md text-[11px]">
+                              {isVietnamese ? "Lãi gộp ước tính:" : "Est. line profit:"} {businessMoney((item.unitPrice - product.costPrice) * item.quantity, currency)} ({Math.round(((item.unitPrice - product.costPrice) / item.unitPrice) * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
@@ -897,7 +953,14 @@ export default function SalesPage() {
             </div>
             <div className="rounded-2xl border bg-accent/55 p-5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold">{t("common.total")}</span>
+                <div>
+                  <span className="text-sm font-bold">{t("common.total")}</span>
+                  {totalEstimatedCost > 0 && total > 0 && (
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
+                      {isVietnamese ? "Lợi nhuận ước tính:" : "Est. gross profit:"} {businessMoney(totalEstimatedProfit, currency)} ({orderMarginPercent}%)
+                    </p>
+                  )}
+                </div>
                 <span className="tabular-nums text-2xl font-bold">
                   {businessMoney(total, currency)}
                 </span>

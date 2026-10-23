@@ -267,7 +267,7 @@ export function DataTable<T>({
               size="sm"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="h-6 px-2 text-[10px] font-mono border-border bg-card"
+              className="h-7 sm:h-6 px-2.5 sm:px-2 text-xs sm:text-[10px] font-mono border-border bg-card min-w-[32px]"
             >
               <ChevronLeft className="h-3 w-3 mr-0.5" />
               {isVietnamese ? "Trước" : "Prev"}
@@ -280,7 +280,7 @@ export function DataTable<T>({
               size="sm"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="h-6 px-2 text-[10px] font-mono border-border bg-card"
+              className="h-7 sm:h-6 px-2.5 sm:px-2 text-xs sm:text-[10px] font-mono border-border bg-card min-w-[32px]"
             >
               {isVietnamese ? "Sau" : "Next"}
               <ChevronRight className="h-3 w-3 ml-0.5" />
