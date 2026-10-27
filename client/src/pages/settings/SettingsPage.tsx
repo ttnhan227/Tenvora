@@ -793,7 +793,7 @@ export default function SettingsPage() {
                     {isDeletingData ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>{t("common.deleting", "Đang xóa...")}</span>
+                        <span>{isVietnamese ? "Đang xóa..." : "Deleting..."}</span>
                       </>
                     ) : (
                       <>

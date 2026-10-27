@@ -31,7 +31,4 @@ public sealed class AccountController(AccountDeletionService deletion, PersonalD
         var result = await personalData.DeleteAsync(User.GetTenantId(), User.GetUserId(), request.Categories);
         return result.Success ? Ok(result) : BadRequest(result);
     }
-
-    [HttpGet("data/categories")]
-    public IActionResult Categories() => Ok(ApiResult<string[]>.Ok(PersonalDataDeletionService.Categories));
 }
