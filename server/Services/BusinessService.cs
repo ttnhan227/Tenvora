@@ -127,7 +127,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         if (request.CostPrice < 0 || Scale(request.CostPrice) > 4) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
         if (request.StockQuantity < 0 || Scale(request.StockQuantity) > 4) return ApiResult<ProductDto>.Fail("Stock quantity cannot be negative.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
-        var image = NormalizeImageDataUrl(request.ImageDataUrl, out var imageError);
+        var image = NormalizeImageUrl(request.ImageDataUrl, out var imageError);
         if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Sku == sku))
@@ -155,7 +155,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice.HasValue && (request.CostPrice.Value < 0 || Scale(request.CostPrice.Value) > 4)) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
-        var image = NormalizeImageDataUrl(request.ImageDataUrl, out var imageError);
+        var image = NormalizeImageUrl(request.ImageDataUrl, out var imageError);
         if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Id != productId && p.Sku == sku))
@@ -617,37 +617,32 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
     private async Task<string> Currency(Guid tenantId) =>
         (await db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.BaseCurrency).FirstOrDefaultAsync())?.ToUpperInvariant() ?? "USD";
 
-    private static string? NormalizeImageDataUrl(string? value, out string? error)
+    private static string? NormalizeImageUrl(string? value, out string? error)
     {
         error = null;
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         var trimmed = value.Trim();
-        var allowedPrefixes = new[]
+        // Accept a Supabase Storage URL (or any public HTTP(S) URL)
+        if (!trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            "data:image/jpeg;base64,",
-            "data:image/png;base64,",
-            "data:image/webp;base64,"
-        };
-        var prefix = allowedPrefixes.FirstOrDefault(p => trimmed.StartsWith(p, StringComparison.OrdinalIgnoreCase));
-        if (prefix == null)
-        {
-            error = "Images must be JPEG, PNG, or WebP files.";
+            error = "Image must be a valid Supabase Storage URL.";
             return null;
         }
 
         try
         {
-            var bytes = Convert.FromBase64String(trimmed[prefix.Length..]);
-            if (bytes.Length == 0 || bytes.Length > 2_000_000)
+            var uri = new Uri(trimmed);
+            if (uri.Host.IndexOf('.') < 0)
             {
-                error = "Images must be smaller than 2 MB after processing.";
+                error = "Invalid image URL.";
                 return null;
             }
         }
-        catch (FormatException)
+        catch (UriFormatException)
         {
-            error = "The image data is invalid.";
+            error = "Invalid image URL.";
             return null;
         }
 
