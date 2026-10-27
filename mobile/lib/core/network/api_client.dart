@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../domain/models.dart';
 import '../storage/session_store.dart';
 
 class ApiFailure implements Exception {
@@ -146,7 +148,7 @@ class ApiClient {
     if (bytes == null || fileName == null || fileName.isEmpty) return null;
     try {
       // Get authenticated user profile to obtain userId
-      final profile = UserProfile.fromJson(await _api.get('/auth/me'));
+      final profile = UserProfile.fromJson(await get('/auth/me'));
       final userId = profile.id;
       if (userId.isEmpty) return null;
 
