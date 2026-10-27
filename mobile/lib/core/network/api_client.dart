@@ -156,7 +156,8 @@ class ApiClient {
       // Build Supabase Storage upload URL (bucket: receipts)
       final bucket = 'receipts';
       final filePath = '$userId/$fileName';
-      final uploadUrl = '$storageUrl/storage/v1/object/uploads?bucket=$bucket&name=${Uri.encodeComponent(filePath)}&access_token=$anonKey';
+      final uploadUrl =
+          '$storageUrl/storage/v1/object/uploads?bucket=$bucket&name=${Uri.encodeComponent(filePath)}&access_token=$anonKey';
 
       // Create the upload request (Supabase uses signed upload URLs for direct upload)
       final client = Dio();
@@ -164,10 +165,7 @@ class ApiClient {
       client.options.headers['apikey'] = supabaseStorageUrl;
       client.options.headers['Content-Type'] = 'application/octet-stream';
 
-      final response = await client.post(
-        uploadUrl,
-        data: bytes,
-      );
+      final response = await client.post(uploadUrl, data: bytes);
 
       if (response.statusCode != 200) return null;
 
