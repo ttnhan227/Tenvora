@@ -337,5 +337,6 @@
   "Payroll": "Lohnkosten",
   "Supplies": "Betriebsmittel",
   "All": "Alle",
-  "Saving…": "Wird gespeichert…"
+  "Saving…": "Wird gespeichert…",
+  "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.": "Sie können einige Ihrer Daten löschen, ohne Ihr Konto zu löschen. Auf der Website öffnen Sie Einstellungen, dann Konto und Ihre Daten: Löschen Sie Ihre KI-Gespräche, entfernen Sie Ihren Namen, Ihre E-Mail-Adresse und die Geräte-IP aus dem Aktivitätsverlauf des Arbeitsbereichs oder melden Sie Ihre Geräte ab. Geteilte Geschäftsdaten bleiben in Ihrem Arbeitsbereich."
 }

@@ -389,6 +389,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Betriebsmittel",
     "All": "Alle",
     "Saving…": "Wird gespeichert…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Sie können einige Ihrer Daten löschen, ohne Ihr Konto zu löschen. Auf der Website öffnen Sie Einstellungen, dann Konto und Ihre Daten: Löschen Sie Ihre KI-Gespräche, entfernen Sie Ihren Namen, Ihre E-Mail-Adresse und die Geräte-IP aus dem Aktivitätsverlauf des Arbeitsbereichs oder melden Sie Ihre Geräte ab. Geteilte Geschäftsdaten bleiben in Ihrem Arbeitsbereich.",
   },
   "en": {
     "Before using AI": "Before using AI",
@@ -773,6 +775,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Supplies",
     "All": "All",
     "Saving…": "Saving…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.",
   },
   "es": {
     "Before using AI": "Antes de usar la IA",
@@ -1159,6 +1163,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Suministros",
     "All": "Todos",
     "Saving…": "Guardando…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Puedes eliminar algunos de tus datos sin eliminar tu cuenta. En el sitio web, abre Configuración, luego Cuenta y Tus datos: borra tus conversaciones de IA, quita tu nombre, correo y la IP del dispositivo del historial de actividad del espacio de trabajo, o cierra sesión en tus dispositivos. Los registros comerciales compartidos permanecen en tu espacio de trabajo.",
   },
   "fr": {
     "Before using AI": "Avant d’utiliser l’IA",
@@ -1549,6 +1555,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Fournitures",
     "All": "Tous",
     "Saving…": "Enregistrement…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Vous pouvez supprimer certaines de vos données sans supprimer votre compte. Sur le site, ouvrez Paramètres, puis Compte et Vos données : effacez vos conversations IA, retirez votre nom, votre e-mail et l'IP de votre appareil de l'historique d'activité de l'espace de travail, ou déconnectez vos appareils. Les enregistrements commerciaux partagés restent dans votre espace de travail.",
   },
   "id": {
     "Before using AI": "Sebelum menggunakan AI",
@@ -1934,6 +1942,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Perlengkapan",
     "All": "Semua",
     "Saving…": "Menyimpan…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Anda dapat menghapus sebagian data tanpa menghapus akun. Di situs web, buka Pengaturan, lalu Akun dan Data Anda: hapus percakapan AI Anda, hapus nama, email, dan IP perangkat dari riwayat aktivitas ruang kerja, atau keluar dari perangkat Anda. Catatan bisnis bersama tetap berada di ruang kerja Anda.",
   },
   "pt-BR": {
     "Before using AI": "Antes de usar a IA",
@@ -2320,6 +2330,8 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Suprimentos",
     "All": "Todos",
     "Saving…": "Salvando…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Você pode excluir parte dos seus dados sem excluir sua conta. No site, abra Configurações, depois Conta e Seus dados: apague suas conversas de IA, remova seu nome, e-mail e o IP do dispositivo do histórico de atividades do espaço de trabalho ou saia dos seus dispositivos. Os registros comerciais compartilhados permanecem no seu espaço de trabalho.",
   },
   "vi": {
     "Before using AI": "Trước khi dùng AI",
@@ -2702,5 +2714,7 @@ const Map<String, Map<String, String>> languageCatalogs = {
     "Supplies": "Vật tư",
     "All": "Tất cả",
     "Saving…": "Đang lưu…",
+    "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.":
+        "Bạn có thể xóa một phần dữ liệu mà không cần xóa tài khoản. Trên website, mở Cài đặt, rồi Tài khoản và Dữ liệu của bạn: xóa hội thoại AI, bỏ tên, email và địa chỉ IP của bạn khỏi lịch sử hoạt động, hoặc đăng xuất thiết bị. Sổ sách dùng chung vẫn giữ trong doanh nghiệp.",
   },
 };

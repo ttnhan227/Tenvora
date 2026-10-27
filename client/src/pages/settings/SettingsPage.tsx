@@ -17,6 +17,7 @@ import {
   BookOpenCheck,
   Sun,
   Moon,
+  Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -28,6 +29,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { COMMON_CURRENCIES, BusinessType } from "@/data/businessProfiles";
 import { toast } from "sonner";
+import apiClient from "@/services/apiClient";
+import { getApiErrorMessage } from "@/lib/apiErrors";
+
+// Categories accepted by POST /account/data/delete. Deleting them never deletes the
+// account itself; full account deletion stays on /delete-account.
+const DATA_CATEGORIES = [
+  {
+    id: "ai_history",
+    en: { label: "AI conversations", desc: "Delete your AI conversations, messages and proposed actions. Business records created through the assistant are not affected." },
+    vi: { label: "Hội thoại AI", desc: "Xóa hội thoại, tin nhắn và đề xuất thao tác AI. Sổ sách đã tạo qua trợ lý không bị ảnh hưởng." },
+  },
+  {
+    id: "activity_trail",
+    en: { label: "My activity history", desc: "Remove your name, email and device IP from the workspace activity history. Business records themselves stay with your team." },
+    vi: { label: "Lịch sử hoạt động của tôi", desc: "Bỏ tên, email và địa chỉ IP của bạn khỏi lịch sử hoạt động. Sổ sách kinh doanh vẫn giữ cho nhóm." },
+  },
+  {
+    id: "sessions",
+    en: { label: "Signed-in devices", desc: "Sign out every device that is currently signed in to your account." },
+    vi: { label: "Thiết bị đang đăng nhập", desc: "Đăng xuất mọi thiết bị đang đăng nhập vào tài khoản của bạn." },
+  },
+] as const;
 
 export default function SettingsPage() {
   const { user, updateSettings, setPassword } = useAuth();
@@ -56,6 +79,11 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  // Partial data deletion state (keeps the account)
+  const [selectedData, setSelectedData] = useState<string[]>([]);
+  const [isDeletingData, setIsDeletingData] = useState(false);
+  const [confirmDataDeletion, setConfirmDataDeletion] = useState(false);
 
   const profileId = user?.id;
   const profileCompanyName = user?.companyName || "";
@@ -108,6 +136,45 @@ export default function SettingsPage() {
       toast.error(t("settings.savedFailed", "Lưu cài đặt thất bại."));
     } finally {
       setIsSavingStore(false);
+    }
+  };
+
+  const toggleDataCategory = (id: string) => {
+    setConfirmDataDeletion(false);
+    setSelectedData((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  };
+
+  const handleDeleteData = async () => {
+    if (selectedData.length === 0) return;
+    if (!confirmDataDeletion) {
+      setConfirmDataDeletion(true);
+      return;
+    }
+
+    setIsDeletingData(true);
+    try {
+      const response = await apiClient.post("/account/data/delete", { categories: selectedData });
+      if (response.data.success !== true) throw new Error(response.data.message || "Deletion failed");
+      toast.success(
+        isVietnamese
+          ? "Đã xóa dữ liệu đã chọn. Tài khoản của bạn vẫn được giữ."
+          : "Selected data deleted. Your account was kept."
+      );
+      setSelectedData([]);
+      setConfirmDataDeletion(false);
+      queryClient.invalidateQueries();
+    } catch (failure) {
+      toast.error(
+        getApiErrorMessage(
+          failure,
+          isVietnamese ? "Không thể xóa dữ liệu. Thử lại." : "Could not delete your data. Try again.",
+          isVietnamese
+        )
+      );
+    } finally {
+      setIsDeletingData(false);
     }
   };
 
@@ -666,6 +733,103 @@ export default function SettingsPage() {
                     )}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            {/* Your data: partial deletion without deleting the account */}
+            <Card className="rounded-2xl border">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-primary" />
+                  {t("settings.dataSection", "Dữ liệu của bạn")}
+                </CardTitle>
+                <CardDescription>
+                  {isVietnamese
+                    ? "Chọn dữ liệu cá nhân muốn xóa mà không cần xóa tài khoản. Sổ sách dùng chung của doanh nghiệp không bị xóa."
+                    : "Choose which personal data to delete without deleting your account. Your business records are not removed."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {DATA_CATEGORIES.map((category) => {
+                    const copy = isVietnamese ? category.vi : category.en;
+                    const checked = selectedData.includes(category.id);
+                    return (
+                      <label
+                        key={category.id}
+                        className="flex cursor-pointer items-start gap-3 rounded-xl border bg-muted/30 p-4"
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-5 w-5 shrink-0 accent-primary"
+                          checked={checked}
+                          onChange={() => toggleDataCategory(category.id)}
+                        />
+                        <span className="space-y-1">
+                          <span className="block text-sm font-bold">{copy.label}</span>
+                          <span className="block text-xs text-muted-foreground leading-relaxed">{copy.desc}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {confirmDataDeletion && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
+                    {isVietnamese
+                      ? `Xóa vĩnh viễn ${selectedData.length} mục đã chọn? Không thể hoàn tác. Nhấn nút lần nữa để xác nhận.`
+                      : `Permanently delete ${selectedData.length} selected item(s)? This cannot be undone. Press the button again to confirm.`}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isDeletingData || selectedData.length === 0}
+                    onClick={() => void handleDeleteData()}
+                    className="min-h-[48px] px-6 text-sm font-bold rounded-xl gap-2"
+                  >
+                    {isDeletingData ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>{t("common.deleting", "Đang xóa...")}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        <span>
+                          {confirmDataDeletion
+                            ? isVietnamese
+                              ? "Xác nhận xóa"
+                              : "Confirm delete"
+                            : isVietnamese
+                              ? "Xóa dữ liệu đã chọn"
+                              : "Delete selected data"}
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                  {confirmDataDeletion && !isDeletingData && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-[48px] px-6 text-sm font-bold rounded-xl"
+                      onClick={() => setConfirmDataDeletion(false)}
+                    >
+                      {isVietnamese ? "Hủy" : "Cancel"}
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {isVietnamese
+                    ? "Xóa dữ liệu ở đây không xóa tài khoản."
+                    : "Deleting data here does not delete your account."}{" "}
+                  <Link className="underline" to="/delete-account">
+                    {isVietnamese ? "Xóa tài khoản" : "Delete account"}
+                  </Link>
+                </p>
               </CardContent>
             </Card>
           </div>
