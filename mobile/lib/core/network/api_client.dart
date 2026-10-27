@@ -5,7 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
-import '../domain/models.dart';
+import '../../domain/models.dart';
 import '../storage/session_store.dart';
 
 class ApiFailure implements Exception {
