@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -7,6 +7,8 @@ import { authService } from "@/services/authService";
 import apiClient from "@/services/apiClient";
 import DeleteAccountPage from "@/pages/DeleteAccountPage";
 import PrivacyPage from "@/pages/PrivacyPage";
+import SettingsPage from "@/pages/settings/SettingsPage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/services/apiClient", () => ({default: {get: vi.fn(), post: vi.fn()}}));
 const profile = {id: "u", tenantId: "t", email: "owner@test.invalid", role: "TenantAdmin", isActive: true, companyName: "Fixture", preferredCurrency: "USD"};
@@ -50,6 +52,22 @@ describe("release readiness", () => {
     await screen.findByText("Your account has been deleted.");
     expect(apiClient.post).toHaveBeenCalledWith("/account/delete",{confirmationEmail:profile.email});
     expect(localStorage.getItem("accessToken")).toBeNull();
+  });
+  it("settings can delete some data without deleting the account", async () => {
+    seed(); vi.spyOn(authService,"getProfile").mockResolvedValue({success:true,data:profile});
+    vi.mocked(apiClient.post).mockResolvedValue({data:{success:true}});
+    render(<BrowserRouter><QueryClientProvider client={new QueryClient()}><LanguageProvider defaultLanguage="en"><AuthProvider><SettingsPage /></AuthProvider></LanguageProvider></QueryClientProvider></BrowserRouter>);
+    fireEvent.click(await screen.findByRole("button",{name:"Account & Security"}));
+    const card = (await screen.findByText("Your data")).closest(".rounded-2xl") as HTMLElement;
+    const del = () => within(card).getByRole("button",{name:/Delete selected data|Confirm delete/});
+    expect(del()).toBeDisabled();
+    fireEvent.click(within(card).getAllByRole("checkbox")[0]);
+    fireEvent.click(del());
+    expect(apiClient.post).not.toHaveBeenCalled(); // first press arms the confirmation
+    fireEvent.click(within(card).getByRole("button",{name:"Confirm delete"}));
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith("/account/data/delete",{categories:["ai_history"]}));
+    expect(within(card).getByText(/does not delete your account/)).toBeInTheDocument();
+    expect(within(card).getByRole("link",{name:"Delete account"})).toHaveAttribute("href","/delete-account");
   });
   it("privacy page explains AI processing and links to web deletion", () => {
     render(<BrowserRouter><LanguageProvider defaultLanguage="en"><PrivacyPage /></LanguageProvider></BrowserRouter>);

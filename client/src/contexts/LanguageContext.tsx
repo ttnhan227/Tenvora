@@ -111,6 +111,7 @@ const viTranslations: Translations = {
 
   // Tab 3: Account & Security
   "settings.tabAccount": "Tài khoản & Mật khẩu",
+  "settings.dataSection": "Dữ liệu của bạn",
   "settings.accountTitle": "Tài khoản & Bảo mật cá nhân",
   "settings.accountSubtitle": "Quản lý họ tên chủ tiệm, email và thiết lập mật khẩu đăng nhập.",
   "settings.ownerName": "Họ và tên chủ tiệm",
@@ -242,6 +243,7 @@ const enTranslations: Translations = {
 
   // Tab 3: Account & Security
   "settings.tabAccount": "Account & Security",
+  "settings.dataSection": "Your data",
   "settings.accountTitle": "Account & Credentials",
   "settings.accountSubtitle": "Manage your owner name, login email, and password security.",
   "settings.ownerName": "Shop Owner Full Name",
