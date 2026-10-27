@@ -162,6 +162,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IGoogleAuthValidator, GoogleAuthValidator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<AccountDeletionService>();
+builder.Services.AddScoped<PersonalDataDeletionService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();
 builder.Services.AddScoped<IAiAssistantService, AiAssistantService>();

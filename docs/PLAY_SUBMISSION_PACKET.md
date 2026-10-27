@@ -24,6 +24,8 @@ Privacy: https://tenvora-client.onrender.com/privacy
 
 Account deletion: https://tenvora-client.onrender.com/delete-account
 
+Manage or delete some of your data without deleting your account: https://tenvora-client.onrender.com/settings
+
 Use screenshots captured from the current signed Android release. Recheck them against the Play-installed build before submission. Do not use the illustrative website dashboards as screenshots or claim unverified merchant counts, uptime, speed or revenue.
 
 ## App access instructions (English)
@@ -55,6 +57,16 @@ This is a code-based worksheet, not a pre-certified declaration. Check each fina
 Purposes to assess: app functionality, account management, security/fraud prevention. No ad SDK or advertising-ID permission was found in the inspected mobile release. Do not claim an independent security certification.
 
 HTTPS release API and disabled cleartext traffic support encryption in transit; this is not an end-to-end encryption claim. Account deletion is available in-app and on the public website. Explain shared-record and backup retention as in the privacy policy.
+
+### Data deletion answers (Play Console)
+
+| Console prompt | Answer | Where |
+| --- | --- | --- |
+| Link to delete the app account | Yes | https://tenvora-client.onrender.com/delete-account |
+| In-app path | Settings → Delete account | Requires the signed-in account's exact email |
+| Do you provide a way to delete some or all user data without deleting the account? | Yes | https://tenvora-client.onrender.com/settings — Settings → Account → Your data |
+
+"Your data" posts `POST /api/account/data/delete` on the updated backend. The signed-in member picks any of: AI conversations, messages and proposals; their name, email and device IP in the workspace activity history; or signed-in device sessions. Shared business records stay with the workspace and account deletion is unchanged. Confirm the deployed URLs before submitting; do not claim in-app data deletion until the mobile build exposes the same action.
 
 Third-party processing: Render frontend hosting, Google Cloud Run backend hosting, Supabase database, Google sign-in, Google Gemini and Mistral AI fallback. Mistral data processing and account-level data-use settings must match the consent/privacy disclosures; do not assume Google terms apply to Mistral. The owner confirmed on October 7 that the Gemini API Cloud project has billing enabled. Google's paid-service terms say prompts/responses are not used for product improvement; limited abuse/security/legal retention still applies. Evaluate Google's service-provider and user-initiated/disclosure-and-consent sharing exceptions against actual processing. An exception to the form's “sharing” definition does not remove the requirement to disclose off-device collection or describe providers in Privacy. Keep this billing configuration active and verify future provider changes before updating declarations.
 

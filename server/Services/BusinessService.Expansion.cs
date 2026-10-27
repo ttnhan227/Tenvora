@@ -117,7 +117,7 @@ public sealed partial class BusinessService
         var productItems = request.Items.Where(i => i.ProductId.HasValue).ToList();
         if (productItems.Select(i => i.ProductId!.Value).Distinct().Count() != productItems.Count)
             return ApiResult<PurchaseDto>.Fail("Add each product only once per purchase.");
-        var invoiceImage = NormalizeImageDataUrl(request.InvoiceImageDataUrl, out var invoiceImageError);
+        var invoiceImage = NormalizeImageUrl(request.InvoiceImageDataUrl, out var invoiceImageError);
         if (invoiceImageError != null) return ApiResult<PurchaseDto>.Fail(invoiceImageError);
         var requestHash = Hash(request);
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
@@ -311,7 +311,7 @@ public sealed partial class BusinessService
         var category = request.Category?.Trim();
         if (string.IsNullOrWhiteSpace(category)) return ApiResult<BusinessExpenseDto>.Fail("Expense category is required.");
         if (request.Amount <= 0 || Scale(request.Amount) > 4) return ApiResult<BusinessExpenseDto>.Fail("Expense amount must be positive with at most four decimal places.");
-        var receiptImage = NormalizeImageDataUrl(request.ReceiptImageDataUrl, out var receiptImageError);
+        var receiptImage = NormalizeImageUrl(request.ReceiptImageDataUrl, out var receiptImageError);
         if (receiptImageError != null) return ApiResult<BusinessExpenseDto>.Fail(receiptImageError);
         var hash = Hash(request);
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
@@ -339,7 +339,7 @@ public sealed partial class BusinessService
         var category = request.Category?.Trim();
         if (string.IsNullOrWhiteSpace(category)) return ApiResult<BusinessExpenseDto>.Fail("Expense category is required.");
         if (request.Amount <= 0 || Scale(request.Amount) > 4) return ApiResult<BusinessExpenseDto>.Fail("Expense amount must be positive with at most four decimal places.");
-        var receiptImage = NormalizeImageDataUrl(request.ReceiptImageDataUrl, out var receiptImageError);
+        var receiptImage = NormalizeImageUrl(request.ReceiptImageDataUrl, out var receiptImageError);
         if (receiptImageError != null) return ApiResult<BusinessExpenseDto>.Fail(receiptImageError);
 
         await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);

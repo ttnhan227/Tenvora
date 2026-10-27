@@ -24,6 +24,10 @@ The prepared listing files, feature graphics, icon and actual Android screenshot
 
 Settings and the public web deletion page require the signed-in account's exact email. A sole member's workspace, financial records and photos are erased. In a shared workspace, personal credentials/profile/AI conversations are erased; shared records remain with actor identity removed. A final active administrator must appoint another active administrator before leaving a team. Existing provider backups follow provider retention; do not promise instantaneous backup erasure.
 
+## Partial data deletion (no account deletion)
+
+The website's Settings → Account → Your data panel lets a signed-in member delete some of their data while keeping the account and the workspace: AI conversations, messages and proposals; their name, email and device IP in the workspace activity history; and signed-in device sessions. It calls `POST /api/account/data/delete` with the selected categories. Shared business records are never removed by this path, so it answers Play's "delete some data without deleting the account" prompt with the `/settings` URL. It needs the updated backend; the mobile build links to the web panel from its privacy screen.
+
 ## AI response reports
 
 Mobile assistant replies include an in-app report action. The server saves reports against only the reporter's own conversation and logs message/tenant IDs without reply or business content. Review reports routinely in restricted database access:

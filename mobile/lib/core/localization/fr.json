@@ -337,5 +337,6 @@
   "Payroll": "Salaires",
   "Supplies": "Fournitures",
   "All": "Tous",
-  "Saving…": "Enregistrement…"
+  "Saving…": "Enregistrement…",
+  "You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.": "Vous pouvez supprimer certaines de vos données sans supprimer votre compte. Sur le site, ouvrez Paramètres, puis Compte et Vos données : effacez vos conversations IA, retirez votre nom, votre e-mail et l'IP de votre appareil de l'historique d'activité de l'espace de travail, ou déconnectez vos appareils. Les enregistrements commerciaux partagés restent dans votre espace de travail."
 }

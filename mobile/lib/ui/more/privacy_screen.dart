@@ -39,6 +39,16 @@ class PrivacyScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          Text(
+            tr(
+              context,
+              'You can delete some of your data without deleting your account. On the website, open Settings, then Account and Your data: erase your AI conversations, remove your name, email and device IP from the workspace activity history, or sign out your devices. Shared business records stay with your workspace.',
+              'Bạn có thể xóa một phần dữ liệu mà không cần xóa tài khoản. Trên website, mở Cài đặt, rồi Tài khoản và Dữ liệu của bạn: xóa hội thoại AI, bỏ tên, email và địa chỉ IP của bạn khỏi lịch sử hoạt động, hoặc đăng xuất thiết bị. Sổ sách dùng chung vẫn giữ trong doanh nghiệp.',
+            ),
+          ),
+          const SizedBox(height: 8),
+          const SelectableText('https://tenvora-client.onrender.com/settings'),
+          const SizedBox(height: 16),
           const SelectableText('https://tenvora-client.onrender.com/privacy'),
           const SizedBox(height: 8),
           Text(
