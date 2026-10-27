@@ -150,7 +150,7 @@ class ApiClient {
       final userId = profile.id;
       if (userId.isEmpty) return null;
 
-      final storageUrl = supabaseUrl;
+      final storageUrl = supabaseStorageUrl;
       final anonKey = supabaseAnonKey;
 
       // Build Supabase Storage upload URL (bucket: receipts)
@@ -161,7 +161,7 @@ class ApiClient {
       // Create the upload request (Supabase uses signed upload URLs for direct upload)
       final client = Dio();
       client.options.headers['Authorization'] = 'Bearer $anonKey';
-      client.options.headers['apikey'] = supabaseUrl;
+      client.options.headers['apikey'] = supabaseStorageUrl;
       client.options.headers['Content-Type'] = 'application/octet-stream';
 
       final response = await client.post(
@@ -264,8 +264,8 @@ class ApiClient {
     }
   }
 
-  static const String supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
+  static const String supabaseStorageUrl = String.fromEnvironment(
+    'SUPABASE_STORAGE_URL',
     defaultValue: 'https://xxxxxx.supabase.co',
   );
   static const String supabaseAnonKey = String.fromEnvironment(
