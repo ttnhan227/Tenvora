@@ -97,6 +97,8 @@ jobs:
           INPUT_API_URL: ${{ inputs.api_base_url }}
           CONFIG_API_URL: ${{ vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID }}
+          SUPABASE_STORAGE_URL: ${{ vars.SUPABASE_STORAGE_URL || secrets.SUPABASE_STORAGE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
           PUBLISH: ${{ inputs.publish || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
           API_URL="${INPUT_API_URL:-$CONFIG_API_URL}"
@@ -106,6 +108,7 @@ jobs:
           fi
 
           DART_DEFINES="--dart-define=API_BASE_URL=$API_URL"
+DART_DEFINES="$DART_DEFINES --dart-define=SUPABASE_STORAGE_URL=$SUPABASE_STORAGE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
           if [ -n "$GOOGLE_CLIENT_ID" ]; then
             echo "Configuring GOOGLE_SERVER_CLIENT_ID in APK"
             DART_DEFINES="$DART_DEFINES --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_CLIENT_ID"
