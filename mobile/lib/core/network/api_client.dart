@@ -138,6 +138,49 @@ class ApiClient {
     }
   }
 
+  Future<String?> uploadFile(
+    String path, {
+    required Uint8List? bytes,
+    required String? fileName,
+  }) async {
+    if (bytes == null || fileName == null || fileName.isEmpty) return null;
+    try {
+      // Get authenticated user profile to obtain userId
+      final profile = UserProfile.fromJson(await _api.get('/auth/me'));
+      final userId = profile.id;
+      if (userId.isEmpty) return null;
+
+      final storageUrl = supabaseUrl;
+      final anonKey = supabaseAnonKey;
+
+      // Build Supabase Storage upload URL (bucket: receipts)
+      final bucket = 'receipts';
+      final filePath = '$userId/$fileName';
+      final uploadUrl = '$storageUrl/storage/v1/object/uploads?bucket=$bucket&name=${Uri.encodeComponent(filePath)}&access_token=$anonKey';
+
+      // Create the upload request (Supabase uses signed upload URLs for direct upload)
+      final client = Dio();
+      client.options.headers['Authorization'] = 'Bearer $anonKey';
+      client.options.headers['apikey'] = supabaseUrl;
+      client.options.headers['Content-Type'] = 'application/octet-stream';
+
+      final response = await client.post(
+        uploadUrl,
+        data: bytes,
+      );
+
+      if (response.statusCode != 200) return null;
+
+      // Extract the location from the response to construct the public URL
+      final location = response.data['location'] as String?;
+      if (location == null) return null;
+
+      return '$storageUrl/storage/v1/object/public/$bucket/$filePath';
+    } on Exception {
+      return null;
+    }
+  }
+
   Future<String?> _performRefresh() async {
     final refresh = _store.refreshToken;
     if (refresh == null) return null;
@@ -220,6 +263,15 @@ class ApiClient {
       throw _failure(error);
     }
   }
+
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://xxxxxx.supabase.co',
+  );
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxxxx',
+  );
 
   static Map<String, dynamic> _unwrap(dynamic value) {
     if (value is! Map) return {'value': value};
