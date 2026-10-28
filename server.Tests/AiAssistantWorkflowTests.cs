@@ -270,6 +270,27 @@ public sealed class AiAssistantWorkflowTests
     }
 
     [Fact]
+    public async Task ProposeAndCreateMultipleProductsCreatesAllProducts()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = Setup(db);
+
+        var prompt = "Add 5 products:\n1. Apple - $10\n2. Banana - $20\n3. Orange - $15\n4. Mango - $25\n5. Grape - $30";
+        var createBatch = await actions.ProposeAsync(tenantId, userId, new(prompt));
+        Assert.Equal("create_product", createBatch.Data!.Intent);
+        Assert.Equal(5, createBatch.Data.Details.Count - 1); // Total products key + 5 items
+
+        await actions.ConfirmAsync(tenantId, userId, createBatch.Data.ActionId!.Value, true);
+        var products = await db.Products.Where(p => p.TenantId == tenantId).ToListAsync();
+        Assert.Equal(5, products.Count);
+        Assert.Contains(products, p => p.Name == "Apple" && p.DefaultPrice == 10m);
+        Assert.Contains(products, p => p.Name == "Banana" && p.DefaultPrice == 20m);
+        Assert.Contains(products, p => p.Name == "Orange" && p.DefaultPrice == 15m);
+        Assert.Contains(products, p => p.Name == "Mango" && p.DefaultPrice == 25m);
+        Assert.Contains(products, p => p.Name == "Grape" && p.DefaultPrice == 30m);
+    }
+
+    [Fact]
     public async Task PurchaseAndSupplierPaymentAreBoundedConfirmedActions()
     {
         await using var db = Db();

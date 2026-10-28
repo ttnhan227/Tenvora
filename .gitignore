@@ -103,6 +103,7 @@ server/Uploads/
 !server/Uploads/.gitkeep
 recon-reports/
 .audit/
+.scratch/
 client/playwright-report/
 client/test-results/
 

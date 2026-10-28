@@ -52,13 +52,21 @@ jobs:
         env:
           API_URL: ${{ vars.MOBILE_API_BASE_URL }}
           GOOGLE_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+          SUPABASE_STORAGE_URL: ${{ vars.SUPABASE_STORAGE_URL || secrets.SUPABASE_STORAGE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
           BUILD_NUMBER: ${{ inputs.build_number || vars.PLAY_VERSION_CODE || '1' }}
         run: |
           set -euo pipefail
           [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]
           [[ "$API_URL" == https://* && "$API_URL" != *localhost* && "$API_URL" != *example.com* ]]
           [[ "$GOOGLE_ID" == *.apps.googleusercontent.com ]]
-          flutter build appbundle --release --build-number="$BUILD_NUMBER" "--dart-define=API_BASE_URL=$API_URL" "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_ID"
+
+          DART_DEFINES="--dart-define=API_BASE_URL=$API_URL --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_ID"
+          if [ -n "$SUPABASE_STORAGE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            DART_DEFINES="$DART_DEFINES --dart-define=SUPABASE_STORAGE_URL=$SUPABASE_STORAGE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+          fi
+
+          flutter build appbundle --release --build-number="$BUILD_NUMBER" $DART_DEFINES
       - name: Verify bundle, certificate, permissions and 16 KB compatibility
         run: |
           set -euo pipefail
