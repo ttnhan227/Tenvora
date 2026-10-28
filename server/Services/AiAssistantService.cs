@@ -293,9 +293,9 @@ Output JSON only.";
             return ApiResult<AiInterpretedAction>.Ok(new("update_settings", 0.96m, Currency: string.IsNullOrWhiteSpace(code) ? null : code));
         }
 
-        var customerMentioned = contextEntity == "customer" || Regex.IsMatch(lower, @"\b(customer|client|khách|khách hàng)\b");
-        var productMentioned = contextEntity == "product" || Regex.IsMatch(lower, @"\b(product|item|service|sản phẩm|hàng hóa|hàng hoá)\b");
-        var supplierMentioned = contextEntity == "supplier" || Regex.IsMatch(lower, @"\b(supplier|vendor|nhà cung cấp)\b");
+        var customerMentioned = contextEntity == "customer" || Regex.IsMatch(lower, @"\b(customer|customers|client|clients|khách|khách hàng)\b");
+        var productMentioned = contextEntity == "product" || Regex.IsMatch(lower, @"\b(product|products|item|items|service|services|sản phẩm|hàng hóa|hàng hoá)\b");
+        var supplierMentioned = contextEntity == "supplier" || Regex.IsMatch(lower, @"\b(supplier|suppliers|vendor|vendors|nhà cung cấp)\b");
 
         if (isCreate && customerMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("create_customer", 0.96m,

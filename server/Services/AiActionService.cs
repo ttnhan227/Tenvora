@@ -429,25 +429,128 @@ public sealed class AiActionService(
     private async Task<ApiResult<AiActionProposalResponse>> ProposeCreateProduct(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext, AiInterpretedAction parsed, string currency, CancellationToken ct)
     {
+        var multipleProducts = ExtractMultipleProducts(source, currency);
+        if (multipleProducts.Count > 1)
+        {
+            var payload = new ActionPayload(Products: multipleProducts);
+            var details = new Dictionary<string, string?>
+            {
+                ["Total products"] = $"{multipleProducts.Count}"
+            };
+            for (int i = 0; i < multipleProducts.Count; i++)
+            {
+                var prod = multipleProducts[i];
+                details[$"Product {i + 1}"] = $"{prod.Name} — {FormatAmount(prod.UnitPrice, currency)} / {prod.Unit}";
+            }
+            var summary = IsVietnamese(source)
+                ? $"Tạo {multipleProducts.Count} sản phẩm ({string.Join(", ", multipleProducts.Take(3).Select(p => p.Name))}{(multipleProducts.Count > 3 ? "..." : "")})?"
+                : $"Create {multipleProducts.Count} products ({string.Join(", ", multipleProducts.Take(3).Select(p => p.Name))}{(multipleProducts.Count > 3 ? "..." : "")})?";
+
+            return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "create_product", source, uiContext,
+                payload, summary, details, ct, "Low"));
+        }
+
         var name = NormalizeDraftName(parsed.EntityName);
         if (!string.IsNullOrWhiteSpace(name) &&
             await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Name.ToLower() == name.ToLower() && p.IsActive, ct))
             return ApiResult<AiActionProposalResponse>.Ok(Clarification("create_product", $"An active product named {name} already exists."));
         var unit = string.IsNullOrWhiteSpace(parsed.Unit) ? "item" : parsed.Unit.Trim();
-        var payload = new ActionPayload(Name: name, Unit: unit, UnitPrice: Math.Max(0, parsed.Amount), Notes: parsed.Notes);
+        var singlePayload = new ActionPayload(Name: name, Unit: unit, UnitPrice: Math.Max(0, parsed.Amount), Notes: parsed.Notes);
         var pendingSaleMatch = Regex.Match(source, @"continue pending sale:\s*(.+)$", RegexOptions.IgnoreCase);
-        var details = new Dictionary<string, string?>
+        var singleDetails = new Dictionary<string, string?>
         {
             ["Product"] = name,
             ["Unit"] = unit,
-            ["Default price"] = FormatAmount(payload.UnitPrice, currency)
+            ["Default price"] = FormatAmount(singlePayload.UnitPrice, currency)
         };
-        if (pendingSaleMatch.Success) details["Pending sale"] = pendingSaleMatch.Groups[1].Value.Trim();
+        if (pendingSaleMatch.Success) singleDetails["Pending sale"] = pendingSaleMatch.Groups[1].Value.Trim();
         return ApiResult<AiActionProposalResponse>.Ok(await PersistProposal(tenantId, userId, "create_product", source, uiContext,
-            payload, IsVietnamese(source)
+            singlePayload, IsVietnamese(source)
                 ? (string.IsNullOrWhiteSpace(name) ? "Tạo sản phẩm mới?" : $"Tạo sản phẩm {name}?")
                 : (string.IsNullOrWhiteSpace(name) ? "Create a product?" : $"Create product {name}?"),
-            details, ct, "Low"));
+            singleDetails, ct, "Low"));
+    }
+
+    private static List<ProductItemPayload> ExtractMultipleProducts(string source, string currency)
+    {
+        var items = new List<ProductItemPayload>();
+        var lines = Regex.Split(source, @"[\r\n;]+");
+        foreach (var line in lines)
+        {
+            var trimmed = Regex.Replace(line, @"^\s*[\d\.\-\*\•\+]+[\)\.]?\s*", "").Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+            if (Regex.IsMatch(trimmed, @"^(?:create|add|new|tạo|thêm)\s+\d+\s+(?:products|sản phẩm|items)", RegexOptions.IgnoreCase))
+                continue;
+
+            var priceMatch = Regex.Match(trimmed, @"^(.*?)(?::|\-|\(|\bđ\b|\$)\s*([\d\.,]+(?:\s*(?:k|thousand|ngàn|ngàn|triệu|m|usd|vnd|đ))?)\s*\)?$", RegexOptions.IgnoreCase);
+            if (priceMatch.Success)
+            {
+                var name = priceMatch.Groups[1].Value.Trim(' ', ':', '-', '(', ')', ',');
+                var priceStr = priceMatch.Groups[2].Value;
+                var price = ParseAmountString(priceStr, currency);
+                if (!string.IsNullOrWhiteSpace(name) && name.Length >= 2)
+                {
+                    items.Add(new ProductItemPayload(name, "item", price));
+                }
+            }
+            else
+            {
+                var cleaned = NormalizeDraftName(trimmed);
+                if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length >= 2 && !cleaned.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    items.Add(new ProductItemPayload(cleaned, "item", 0m));
+                }
+            }
+        }
+
+        if (items.Count <= 1)
+        {
+            var listMatch = Regex.Match(source, @"(?:products|sản phẩm|mặt hàng|items)(?:\:\s*|\s+là\s*|\s+bao gồm\s*)(.+)$", RegexOptions.IgnoreCase);
+            if (listMatch.Success)
+            {
+                var parts = listMatch.Groups[1].Value.Split(',');
+                if (parts.Length > 1)
+                {
+                    var parsed = new List<ProductItemPayload>();
+                    foreach (var part in parts)
+                    {
+                        var pTrim = part.Trim();
+                        var priceMatch = Regex.Match(pTrim, @"^(.*?)(?::|\-|\(|\$)\s*([\d\.,]+(?:\s*k)?)\s*\)?$", RegexOptions.IgnoreCase);
+                        if (priceMatch.Success)
+                        {
+                            var name = priceMatch.Groups[1].Value.Trim(' ', ':', '-', '(', ')');
+                            var price = ParseAmountString(priceMatch.Groups[2].Value, currency);
+                            if (!string.IsNullOrWhiteSpace(name)) parsed.Add(new ProductItemPayload(name, "item", price));
+                        }
+                        else
+                        {
+                            var name = NormalizeDraftName(pTrim);
+                            if (!string.IsNullOrWhiteSpace(name)) parsed.Add(new ProductItemPayload(name, "item", 0m));
+                        }
+                    }
+                    if (parsed.Count > 1) return parsed;
+                }
+            }
+        }
+
+        return items;
+    }
+
+    private static decimal ParseAmountString(string val, string currency)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return 0m;
+        var lower = val.ToLowerInvariant().Trim();
+        var numMatch = Regex.Match(lower, @"([\d\.,]+)");
+        if (!numMatch.Success) return 0m;
+        var numStr = numMatch.Groups[1].Value.Replace(",", "");
+        if (!decimal.TryParse(numStr, System.Globalization.CultureInfo.InvariantCulture, out var num)) return 0m;
+
+        if (lower.Contains('k') || lower.Contains("ngàn") || lower.Contains("ngan") || lower.Contains("thousand"))
+            num *= 1000m;
+        else if (lower.Contains('m') || lower.Contains("triệu") || lower.Contains("trieu") || lower.Contains("million"))
+            num *= 1000000m;
+
+        return num;
     }
 
     private async Task<ApiResult<AiActionProposalResponse>> ProposeCreateSupplier(
@@ -741,6 +844,26 @@ public sealed class AiActionService(
 
     private async Task<ApiResult<AiActionExecutionResponse>> ExecuteCreateProduct(AiAction action, ActionPayload payload)
     {
+        if (payload.Products != null && payload.Products.Count > 0)
+        {
+            var createdNames = new List<string>();
+            foreach (var prod in payload.Products)
+            {
+                if (string.IsNullOrWhiteSpace(prod.Name)) continue;
+                var res = await business.CreateProductAsync(action.TenantId,
+                    new CreateProductRequest(prod.Name, null, prod.Unit ?? "item", prod.UnitPrice, Notes: prod.Notes));
+                if (res.Success && res.Data != null)
+                {
+                    createdNames.Add(res.Data.Name);
+                }
+            }
+            if (createdNames.Count > 0)
+            {
+                return ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status,
+                    $"Created {createdNames.Count} products: {string.Join(", ", createdNames)}.", "Product", null));
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(payload.Name)) return ApiResult<AiActionExecutionResponse>.Fail("Product name is missing.");
         var result = await business.CreateProductAsync(action.TenantId,
             new CreateProductRequest(payload.Name, null, payload.Unit ?? "item", payload.UnitPrice, Notes: payload.Notes));
@@ -1014,6 +1137,7 @@ public sealed class AiActionService(
                 Email = Optional(input.Email),
                 Address = Optional(input.Address)
             },
+            "create_product" when payload.Products != null && payload.Products.Count > 0 => payload,
             "create_product" or "update_product" => payload with
             {
                 Name = Required(input.Name, "Product name"),
@@ -1077,6 +1201,8 @@ public sealed class AiActionService(
         return $"{amount:N0} {cur}";
     }
 
+    public sealed record ProductItemPayload(string Name, string Unit = "item", decimal UnitPrice = 0m, string? Notes = null);
+
     private sealed record ActionPayload(
         Guid? CustomerId = null,
         string? CustomerName = null,
@@ -1100,7 +1226,8 @@ public sealed class AiActionService(
         string? Currency = null,
         string? Status = null,
         string? Description = null,
-        string? Notes = null);
+        string? Notes = null,
+        List<ProductItemPayload>? Products = null);
 
     private sealed record CustomerChoice(Guid Id, string Name);
     private sealed record ProductChoice(Guid Id, string Name, string Unit, decimal DefaultPrice);
