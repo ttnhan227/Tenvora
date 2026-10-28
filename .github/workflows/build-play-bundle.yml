@@ -10,7 +10,7 @@ on:
         required: true
         type: string
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: play-bundle-${{ github.ref }}
   cancel-in-progress: false
@@ -67,6 +67,7 @@ jobs:
           fi
 
           flutter build appbundle --release --build-number="$BUILD_NUMBER" $DART_DEFINES
+          flutter build apk --release --build-number="$BUILD_NUMBER" $DART_DEFINES
       - name: Verify bundle, certificate, permissions and 16 KB compatibility
         run: |
           set -euo pipefail
@@ -85,6 +86,15 @@ jobs:
           name: tenvora-play-bundle
           path: play-release/
           if-no-files-found: error
+      - name: Create or update nightly release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: nightly
+          name: "Latest Nightly Build"
+          body: "Automatically generated APK build from the latest commit on main."
+          prerelease: true
+          files: mobile/build/app/outputs/flutter-apk/app-release.apk
       - name: Remove signing material
         if: always()
         run: rm -f mobile/android/key.properties mobile/android/tenvora-upload-key.jks
