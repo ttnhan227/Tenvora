@@ -112,6 +112,11 @@ builder.Services.AddCors(options =>
         }
 
         policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
+            .SetIsOriginAllowed(origin =>
+            {
+                var host = new Uri(origin).Host;
+                return host == "localhost" || host == "127.0.0.1";
+            })
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

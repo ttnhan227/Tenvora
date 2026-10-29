@@ -33,9 +33,10 @@ const DataImportsPage = lazy(() => import("./pages/business/DataImportsPage"));
 const MobileLandingPage = lazy(() => import("./pages/MobileLandingPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
 const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 
-const isPublicPage = (pathname: string) => ["/", "/mobile", "/download", "/privacy", "/delete-account", "/login", "/register"].includes(pathname.replace(/\/$/, "") || "/");
+const isPublicPage = (pathname: string) => ["/", "/mobile", "/download", "/privacy", "/terms", "/delete-account", "/login", "/register"].includes(pathname.replace(/\/$/, "") || "/");
 
 const currentLanguageIsVietnamese = () => {
   if (isPublicPage(window.location.pathname)) return false;
@@ -97,6 +98,7 @@ export default function App() {
         <Route path="/" element={<Index />} />
         <Route path="/mobile" element={<MobileLandingPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route path="/download" element={<Navigate to="/mobile" replace />} />
         <Route path="/login" element={<Login />} />
