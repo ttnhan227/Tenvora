@@ -1,3 +1,17 @@
+run {
+    System.clearProperty("ANDROID_PREFS_ROOT")
+    try {
+        val processEnvClass = Class.forName("java.lang.ProcessEnvironment")
+        for (fieldName in listOf("theCaseInsensitiveEnvironment", "theEnvironment", "theUnmodifiableEnvironment")) {
+            try {
+                val field = processEnvClass.getDeclaredField(fieldName)
+                field.isAccessible = true
+                (field.get(null) as? MutableMap<String, String>)?.remove("ANDROID_PREFS_ROOT")
+            } catch (_: Exception) {}
+        }
+    } catch (_: Exception) {}
+}
+
 pluginManagement {
     val flutterSdkPath =
         run {

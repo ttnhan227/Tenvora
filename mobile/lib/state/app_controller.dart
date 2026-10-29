@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 import '../core/localization/languages.dart';
+import '../core/utils/formatters.dart';
 
 import '../core/storage/session_store.dart';
 import '../core/network/api_client.dart';
@@ -79,7 +80,7 @@ class AppController extends ChangeNotifier {
       user = session.user;
       return true;
     } catch (error) {
-      lastError = error.toString();
+      lastError = readableError(error);
       return false;
     } finally {
       busy = false;
@@ -110,7 +111,7 @@ class AppController extends ChangeNotifier {
       user = session.user;
       return true;
     } catch (error) {
-      lastError = error.toString();
+      lastError = readableError(error);
       return false;
     } finally {
       busy = false;
@@ -148,7 +149,7 @@ class AppController extends ChangeNotifier {
       user = session.user;
       return true;
     } catch (error) {
-      lastError = error.toString();
+      lastError = readableError(error);
       return false;
     } finally {
       busy = false;
