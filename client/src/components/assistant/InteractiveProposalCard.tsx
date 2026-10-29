@@ -15,11 +15,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AiActionInputOverrides, AiActionProposalResponse } from "@/services/aiService";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface InteractiveProposalCardProps {
   proposal: AiActionProposalResponse;
   busy: boolean;
-  isVietnamese: boolean;
+  isVietnamese?: boolean;
   currency?: string;
   onDecision: (confirmed: boolean, input?: AiActionInputOverrides) => Promise<boolean> | boolean;
   onReply?: (text: string) => void;
@@ -82,49 +83,62 @@ function parseInitialPrice(val?: string | null): number {
 
 function completedContext(
   proposal: AiActionProposalResponse,
-  isVietnamese: boolean,
+  t?: (key: string, fallback?: string) => string,
 ): Array<[string, string]> {
+  const tr = (k: string, fb: string) => (t ? t(k, fb) : fb);
   const fields: Array<[string, string, string[]]> = [];
   if (["create_customer", "update_customer", "archive_customer"].includes(proposal.intent)) {
     fields.push(
-      [isVietnamese ? "Khách hàng" : "Customer", "Name", ["Name", "Customer", "CustomerName"]],
-      [isVietnamese ? "Điện thoại" : "Phone", "Phone", ["Phone"]],
-      ["Email", "Email", ["Email"]],
-      [isVietnamese ? "Địa chỉ" : "Address", "Address", ["Address"]],
+      [tr("common.customer", "Customer"), "Name", ["Name", "Customer", "CustomerName"]],
+      [tr("common.phone", "Phone"), "Phone", ["Phone"]],
+      [tr("common.email", "Email"), "Email", ["Email"]],
+      [tr("common.address", "Address"), "Address", ["Address"]],
     );
   } else if (["create_product", "update_product", "archive_product"].includes(proposal.intent)) {
-    fields.push(
-      [isVietnamese ? "Sản phẩm" : "Product", "Name", ["Name", "Product", "ProductName"]],
-      [isVietnamese ? "Đơn vị" : "Unit", "Unit", ["Unit"]],
-      [isVietnamese ? "Giá" : "Price", "UnitPrice", ["UnitPrice", "Default price", "Price"]],
-    );
+    const hasBatch = Boolean(detail(proposal, "Total products")) || Object.keys(proposal.details || {}).some(k => /^product\s*\d+/i.test(k));
+    if (hasBatch) {
+      if (detail(proposal, "Total products")) {
+        fields.push([tr("proposal.totalProducts", "Total Products"), "Total products", ["Total products"]]);
+      }
+      Object.keys(proposal.details || {}).forEach(k => {
+        if (/^product\s*\d+/i.test(k)) {
+          fields.push([k, k, [k]]);
+        }
+      });
+    } else {
+      fields.push(
+        [tr("common.product", "Product"), "Name", ["Name", "Product", "ProductName"]],
+        [tr("common.unit", "Unit"), "Unit", ["Unit"]],
+        [tr("common.price", "Price"), "UnitPrice", ["UnitPrice", "Default price", "Price"]],
+      );
+    }
   } else if (["create_supplier", "update_supplier", "archive_supplier"].includes(proposal.intent)) {
     fields.push(
-      [isVietnamese ? "Nhà cung cấp" : "Supplier", "Name", ["Name", "Supplier", "SupplierName"]],
-      [isVietnamese ? "Điện thoại" : "Phone", "Phone", ["Phone"]],
-      ["Email", "Email", ["Email"]],
-      [isVietnamese ? "Địa chỉ" : "Address", "Address", ["Address"]],
+      [tr("common.supplier", "Supplier"), "Name", ["Name", "Supplier", "SupplierName"]],
+      [tr("common.phone", "Phone"), "Phone", ["Phone"]],
+      [tr("common.email", "Email"), "Email", ["Email"]],
+      [tr("common.address", "Address"), "Address", ["Address"]],
     );
   } else if (proposal.intent === "expense") {
     fields.push(
-      [isVietnamese ? "Danh mục" : "Category", "Category", ["Category"]],
-      [isVietnamese ? "Số tiền" : "Amount", "Amount", ["Amount"]],
-      [isVietnamese ? "Mô tả" : "Description", "Description", ["Description"]],
+      [tr("common.category", "Category"), "Category", ["Category"]],
+      [tr("common.amount", "Amount"), "Amount", ["Amount"]],
+      [tr("common.description", "Description"), "Description", ["Description"]],
     );
   } else if (proposal.intent === "sale" || proposal.intent === "purchase") {
     fields.push(
-      [isVietnamese ? "Khách hàng" : "Customer", "CustomerName", ["Customer", "CustomerName", "Supplier", "SupplierName"]],
-      [isVietnamese ? "Mặt hàng" : "Item", "ProductName", ["Product", "ProductName"]],
-      [isVietnamese ? "Số lượng" : "Quantity", "Quantity", ["Quantity"]],
-      [isVietnamese ? "Tổng tiền" : "Total", "Amount", ["Total", "Amount"]],
+      [tr("common.customer", "Customer"), "CustomerName", ["Customer", "CustomerName", "Supplier", "SupplierName"]],
+      [tr("common.item", "Item"), "ProductName", ["Product", "ProductName"]],
+      [tr("common.quantity", "Quantity"), "Quantity", ["Quantity"]],
+      [tr("common.total", "Total"), "Amount", ["Total", "Amount"]],
     );
   } else if (proposal.intent.includes("payment")) {
     fields.push(
-      [isVietnamese ? "Đối tượng" : "Account", "Account", ["CustomerName", "SupplierName", "Customer", "Supplier"]],
-      [isVietnamese ? "Số tiền" : "Amount", "Amount", ["Amount"]],
+      [tr("common.account", "Account"), "Account", ["CustomerName", "SupplierName", "Customer", "Supplier"]],
+      [tr("common.amount", "Amount"), "Amount", ["Amount"]],
     );
   } else if (proposal.intent === "update_settings") {
-    fields.push([isVietnamese ? "Tiền tệ" : "Currency", "Currency", ["Currency"]]);
+    fields.push([tr("common.currency", "Currency"), "Currency", ["Currency"]]);
   }
 
   const seen = new Set<string>();
@@ -140,11 +154,13 @@ function completedContext(
 export function InteractiveProposalCard({
   proposal,
   busy,
-  isVietnamese,
+  isVietnamese: isVietnameseProp,
   currency = "VND",
   onDecision,
   onReply,
 }: InteractiveProposalCardProps) {
+  const { t, isVietnamese: contextIsVi } = useLanguage();
+  const isVietnamese = isVietnameseProp ?? contextIsVi;
   const isTerminal = ["Executed", "Cancelled", "Expired", "Failed"].includes(proposal.status);
   const isProcessing = proposal.status === "Executing";
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -322,13 +338,13 @@ export function InteractiveProposalCard({
     const statusMessage = proposal.status === "Executed"
       ? (resultMessage || proposal.summary)
       : proposal.status === "Cancelled"
-        ? (isVietnamese ? "Thao tác đã được hủy bỏ." : "Action was cancelled.")
+        ? (t("proposal.actionCancelled", "Action was cancelled."))
         : proposal.status === "Expired"
-          ? (isVietnamese ? "Đề xuất đã hết hạn. Hãy yêu cầu Tenvora chuẩn bị lại." : "This proposal expired. Ask Tenvora to prepare it again.")
+          ? (t("proposal.actionExpired", "This proposal expired. Ask Tenvora to prepare it again."))
           : proposal.status === "Failed"
-            ? (isVietnamese ? "Thao tác không thể hoàn tất. Hãy kiểm tra và thử lại bằng yêu cầu mới." : "This action could not be completed. Review it and try a new request.")
-            : (isVietnamese ? "Thao tác đang được xử lý…" : "This action is being processed…");
-    const context = proposal.status === "Executed" ? completedContext(proposal, isVietnamese) : [];
+            ? (t("proposal.actionFailed", "This action could not be completed. Review it and try a new request."))
+            : (t("proposal.actionProcessing", "This action is being processed…"));
+    const context = proposal.status === "Executed" ? completedContext(proposal, t) : [];
     return (
       <div className="mt-3.5 rounded-xl border border-border/60 bg-muted/30 p-3.5 text-xs">
         <div className="flex items-start gap-2.5">
@@ -342,7 +358,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {proposal.status === "Executed"
-                ? (isVietnamese ? "Đã hoàn tất" : "Completed")
+                ? (t("proposal.completed", "Completed"))
                 : proposal.status}
             </span>
             <p className="mt-0.5 font-semibold text-foreground">{statusMessage}</p>
@@ -362,6 +378,75 @@ export function InteractiveProposalCard({
     );
   }
 
+  // 2a. Batch Product Proposal
+  if (proposal.intent === "create_product" && detail(proposal, "Total products")) {
+    const totalCount = detail(proposal, "Total products");
+    return (
+      <div className="mt-3.5 rounded-xl border border-emerald-300/70 bg-emerald-50/70 p-3.5 dark:border-emerald-900/60 dark:bg-emerald-950/25">
+        <div className="flex items-start gap-2.5">
+          <Package className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                {t("proposal.createProductsBatch", { count: totalCount }, `Create ${totalCount} Products Batch`)}
+              </span>
+              <span className="rounded bg-emerald-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                {proposal.riskLevel}
+              </span>
+            </div>
+            <p className="mt-1 font-semibold text-foreground text-sm">{proposal.summary}</p>
+
+            <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {Object.entries(proposal.details)
+                .filter(([k]) => k.toLowerCase().startsWith("product "))
+                .map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between gap-2 rounded bg-background/80 p-2 border border-border/40 text-xs">
+                    <span className="font-semibold text-foreground truncate">{k}</span>
+                    <span className="text-muted-foreground text-[11px] shrink-0 font-mono">{v}</span>
+                  </div>
+                ))}
+            </div>
+
+            <div className="mt-3.5 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy || isSubmitting}
+                onClick={handleDismiss}
+                className="h-8 text-xs gap-1"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("proposal.dismiss", "Dismiss")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy || isSubmitting}
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  try {
+                    await onDecision(true);
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="h-8 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                {t("proposal.confirmCreateProducts", { count: totalCount }, `Confirm & Create ${totalCount} Products`)}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 2. Interactive Product Creation / Editing Form
   if (proposal.intent === "create_product" || proposal.intent === "update_product") {
     return (
@@ -374,7 +459,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                {isVietnamese ? "Thông tin sản phẩm" : "Product Details"}
+                {t("proposal.productDetails", "Product Details")}
               </span>
               <span className="rounded bg-emerald-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
                 {proposal.riskLevel}
@@ -385,7 +470,7 @@ export function InteractiveProposalCard({
             <div className="mt-3 space-y-2.5">
               <div>
                 <label className="text-[11px] font-semibold text-foreground block mb-1">
-                  {isVietnamese ? "Tên sản phẩm *" : "Product Name *"}
+                  {t("proposal.productNameLabel", "Product Name *")}
                 </label>
                 <Input
                   value={productName}
@@ -446,7 +531,7 @@ export function InteractiveProposalCard({
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
-                {isVietnamese ? "Hủy" : "Dismiss"}
+                {t("proposal.dismiss", "Dismiss")}
               </Button>
               <Button
                 type="submit"
@@ -482,7 +567,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-                {isVietnamese ? "Thông tin khách hàng" : "Customer Details"}
+                {t("proposal.customerDetails", "Customer Details")}
               </span>
               <span className="rounded bg-sky-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
                 {proposal.riskLevel}
@@ -493,7 +578,7 @@ export function InteractiveProposalCard({
             <div className="mt-3 space-y-2.5">
               <div>
                 <label className="text-[11px] font-semibold text-foreground block mb-1">
-                  {isVietnamese ? "Tên khách hàng *" : "Customer Name *"}
+                  {t("proposal.customerNameLabel", "Customer Name *")}
                 </label>
                 <Input
                   value={customerName}
@@ -560,7 +645,7 @@ export function InteractiveProposalCard({
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
-                {isVietnamese ? "Hủy" : "Dismiss"}
+                {t("proposal.dismiss", "Dismiss")}
               </Button>
               <Button
                 type="submit"
@@ -596,7 +681,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400">
-                {isVietnamese ? "Thông tin nhà cung cấp" : "Supplier Details"}
+                {t("proposal.supplierDetails", "Supplier Details")}
               </span>
               <span className="rounded bg-violet-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/60 dark:text-violet-300">
                 {proposal.riskLevel}
@@ -607,7 +692,7 @@ export function InteractiveProposalCard({
             <div className="mt-3 space-y-2.5">
               <div>
                 <label className="text-[11px] font-semibold text-foreground block mb-1">
-                  {isVietnamese ? "Tên nhà cung cấp *" : "Supplier Name *"}
+                  {t("proposal.supplierNameLabel", "Supplier Name *")}
                 </label>
                 <Input
                   value={supplierName}
@@ -674,7 +759,7 @@ export function InteractiveProposalCard({
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
-                {isVietnamese ? "Hủy" : "Dismiss"}
+                {t("proposal.dismiss", "Dismiss")}
               </Button>
               <Button
                 type="submit"
@@ -710,7 +795,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-                {isVietnamese ? "Ghi nhận chi phí" : "Record Expense"}
+                {t("proposal.recordExpenseTitle", "Record Expense")}
               </span>
               <span className="rounded bg-rose-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 dark:bg-rose-900/60 dark:text-rose-300">
                 {proposal.riskLevel}
@@ -754,7 +839,7 @@ export function InteractiveProposalCard({
 
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                  {isVietnamese ? "Ghi chú / Diễn giải" : "Description / Notes"}
+                  {t("proposal.descriptionNotes", "Description / Notes")}
                 </label>
                 <Input
                   value={expenseDescription}
@@ -776,7 +861,7 @@ export function InteractiveProposalCard({
                 className="h-8 text-xs gap-1"
               >
                 <X className="h-3.5 w-3.5" />
-                {isVietnamese ? "Hủy" : "Dismiss"}
+                {t("proposal.dismiss", "Dismiss")}
               </Button>
               <Button
                 type="submit"
@@ -789,7 +874,7 @@ export function InteractiveProposalCard({
                 ) : (
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 )}
-                {isVietnamese ? "Xác nhận & Ghi chi phí" : "Confirm & Record Expense"}
+                {t("proposal.confirmRecordExpense", "Confirm & Record Expense")}
               </Button>
             </div>
           </div>
@@ -808,7 +893,7 @@ export function InteractiveProposalCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-                {isVietnamese ? "Cần thêm thông tin" : "Clarification Needed"}
+                {t("proposal.clarificationNeeded", "Clarification Needed")}
               </span>
             </div>
 
@@ -817,7 +902,7 @@ export function InteractiveProposalCard({
             {proposal.candidates && proposal.candidates.length > 0 && (
               <div className="mt-2.5 space-y-1">
                 <p className="text-[11px] text-muted-foreground">
-                  {isVietnamese ? "Chọn một gợi ý:" : "Select an option:"}
+                  {t("proposal.selectOption", "Select an option:")}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {proposal.candidates.map((c) => (
@@ -865,7 +950,7 @@ export function InteractiveProposalCard({
                 className="h-8 gap-1 text-xs shrink-0"
               >
                 <Send className="h-3 w-3" />
-                <span>{isVietnamese ? "Gửi" : "Send"}</span>
+                <span>{t("proposal.send", "Send")}</span>
               </Button>
             </form>
           </div>
@@ -882,7 +967,7 @@ export function InteractiveProposalCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              {isVietnamese ? "Đề xuất giao dịch" : "Proposed Action"}
+              {t("proposal.proposedAction", "Proposed Action")}
             </span>
             <span className="rounded bg-amber-200/60 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
               {proposal.riskLevel}
@@ -949,7 +1034,7 @@ export function InteractiveProposalCard({
                 className="h-8 gap-1 text-xs"
               >
                 <X className="h-3.5 w-3.5" />
-                {isVietnamese ? "Hủy" : "Dismiss"}
+                {t("proposal.dismiss", "Dismiss")}
               </Button>
               <Button
                 type="button"
@@ -959,7 +1044,7 @@ export function InteractiveProposalCard({
                 className="h-8 gap-1 bg-emerald-600 text-white hover:bg-emerald-700 text-xs shadow-sm font-semibold"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                {isVietnamese ? "Xác nhận & Ghi sổ" : "Approve & Record"}
+                {t("proposal.approveRecord", "Approve & Record")}
               </Button>
             </div>
           </div>

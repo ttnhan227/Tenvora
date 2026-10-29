@@ -7,6 +7,7 @@ using Tenvora.Api.Data;
 using Tenvora.Api.Data.Interceptors;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Models;
+using Tenvora.Api.Localization;
 using Tenvora.Api.Services;
 using Xunit;
 
@@ -770,4 +771,308 @@ public sealed class AiAssistantWorkflowTests
         Assert.Equal("Product created: Matcha.", confirmed.Data.Proposal.Summary);
         Assert.False(confirmed.Data.Proposal.RequiresConfirmation);
     }
+
+    private static (AiAssistantService Parser, AiActionService Actions, BusinessService Business, Guid TenantId, Guid UserId) SetupWithLocale(AppDbContext db, string acceptLanguage)
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        db.Tenants.Add(new Tenant
+        {
+            Id = tenantId,
+            CompanyName = "Tiệm Tạp Hóa Cô Ba",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "VND",
+            BusinessType = "retail",
+            PlanType = "Business",
+            Status = "Active"
+        });
+        db.Users.Add(new User
+        {
+            Id = userId,
+            TenantId = tenantId,
+            Email = "owner@example.test",
+            Role = "TenantAdmin",
+            IsActive = true,
+            PreferredCurrency = "VND"
+        });
+        db.SaveChanges();
+
+        var business = new BusinessService(db);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AI_PROVIDER_API_KEY"] = ""
+        }).Build();
+        var parser = new AiAssistantService(db, business, configuration, new DummyHttpClientFactory(), NullLogger<AiAssistantService>.Instance);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers["Accept-Language"] = acceptLanguage;
+        var localizer = new AppLocalizer(new HttpContextAccessor { HttpContext = httpContext });
+        var actions = new AiActionService(db, parser, business, new HttpContextAccessor { HttpContext = httpContext }, null, localizer);
+        return (parser, actions, business, tenantId, userId);
+    }
+
+    [Fact]
+    public async Task Add5RandomAnimeProducts_ProposesAndPersists5DistinctProductsAtomically()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "en");
+
+        // 1. Propose
+        var proposal = await actions.ProposeAsync(tenantId, userId, new("ADD 5 RANDOM ANIME PRODUCTS"));
+
+        Assert.True(proposal.Success);
+        Assert.NotNull(proposal.Data);
+        Assert.Equal("create_product", proposal.Data.Intent);
+        Assert.Equal("PendingConfirmation", proposal.Data.Status);
+        Assert.True(proposal.Data.RequiresConfirmation);
+        Assert.NotNull(proposal.Data.ActionId);
+
+        // Verification of proposal details
+        Assert.Equal("5", proposal.Data.Details["Total products"]);
+        for (int i = 1; i <= 5; i++)
+        {
+            Assert.True(proposal.Data.Details.ContainsKey($"Product {i}"));
+            var itemSummary = proposal.Data.Details[$"Product {i}"];
+            Assert.False(string.IsNullOrWhiteSpace(itemSummary));
+            // Crucial: Must NOT contain the raw command text as a product name
+            Assert.DoesNotContain("ADD 5 RANDOM ANIME PRODUCTS", itemSummary, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("5 RANDOM ANIME", itemSummary, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Before confirmation, database MUST NOT have any products
+        Assert.Empty(await db.Products.Where(p => p.TenantId == tenantId).ToListAsync());
+
+        // 2. Confirm execution
+        var execution = await actions.ConfirmAsync(tenantId, userId, proposal.Data.ActionId.Value, true);
+
+        Assert.True(execution.Success);
+        Assert.NotNull(execution.Data);
+        Assert.Equal("Executed", execution.Data.Status);
+        Assert.Contains("Created 5 products", execution.Data.Message, StringComparison.OrdinalIgnoreCase);
+
+        // 3. Database read-back verification: Exactly 5 active products persisted in DB
+        var persisted = await db.Products.Where(p => p.TenantId == tenantId && p.IsActive).ToListAsync();
+        Assert.Equal(5, persisted.Count);
+
+        // All 5 must have distinct names and valid IDs
+        var names = persisted.Select(p => p.Name).ToHashSet();
+        Assert.Equal(5, names.Count);
+
+        foreach (var p in persisted)
+        {
+            Assert.Equal("item", p.Unit);
+            Assert.Equal(0m, p.DefaultPrice); // Unspecified prices default to 0
+            Assert.Contains("Sample Anime", p.Notes, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task VietnamesePrompt_Tao5SanPhamAnimeNgauNhien_ProposesAndExecutes5DistinctProducts()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "vi");
+
+        var proposal = await actions.ProposeAsync(tenantId, userId, new("Tạo 5 sản phẩm anime ngẫu nhiên"));
+
+        Assert.True(proposal.Success);
+        Assert.Equal("5", proposal.Data!.Details["Total products"]);
+
+        // Execute confirmation
+        var execution = await actions.ConfirmAsync(tenantId, userId, proposal.Data.ActionId!.Value, true);
+        Assert.True(execution.Success);
+
+        var persisted = await db.Products.Where(p => p.TenantId == tenantId && p.IsActive).ToListAsync();
+        Assert.Equal(5, persisted.Count);
+        Assert.Equal(5, persisted.Select(p => p.Name).Distinct().Count());
+        foreach (var p in persisted)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(p.Name));
+            // Must not be the raw phrase
+            Assert.DoesNotContain("ngẫu nhiên chủ đề anime vào kho hàng", p.Name);
+        }
+    }
+
+    [Theory]
+    [InlineData("Create 10 random stationery products", 10)]
+    [InlineData("Add three fictional fantasy-themed products", 3)]
+    [InlineData("Generate 7 sample products with realistic names and descriptions", 7)]
+    public async Task DynamicGenerationSupportsArbitraryThemesWithoutHardcodedBranches(string prompt, int expectedCount)
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "en");
+
+        var proposal = await actions.ProposeAsync(tenantId, userId, new(prompt));
+
+        Assert.True(proposal.Success);
+        Assert.Equal(expectedCount.ToString(), proposal.Data!.Details["Total products"]);
+
+        var execution = await actions.ConfirmAsync(tenantId, userId, proposal.Data.ActionId!.Value, true);
+        Assert.True(execution.Success);
+
+        var persisted = await db.Products.Where(p => p.TenantId == tenantId && p.IsActive).ToListAsync();
+        Assert.Equal(expectedCount, persisted.Count);
+        Assert.Equal(expectedCount, persisted.Select(p => p.Name).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task ExplicitlyUnassignedPrices_PromptRequestsNoPricesYet_SetsPricesToZero()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "en");
+
+        var proposal = await actions.ProposeAsync(tenantId, userId,
+            new("Add five anime products to inventory, but don't assign prices yet"));
+
+        Assert.True(proposal.Success);
+        Assert.Equal("5", proposal.Data!.Details["Total products"]);
+
+        var execution = await actions.ConfirmAsync(tenantId, userId, proposal.Data.ActionId!.Value, true);
+        Assert.True(execution.Success);
+
+        var persisted = await db.Products.Where(p => p.TenantId == tenantId && p.IsActive).ToListAsync();
+        Assert.Equal(5, persisted.Count);
+        Assert.All(persisted, p => Assert.Equal(0m, p.DefaultPrice));
+    }
+
+    [Fact]
+    public async Task DuplicateCandidateProductsInBatch_IsRejectedWithClarification()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "en");
+
+        var duplicateItems = new List<AiProposeProductItem>
+        {
+            new("Naruto Figure", "item", 100_000m),
+            new("Naruto Figure", "item", 100_000m),
+        };
+
+        var proposal = await actions.ProposeAsync(tenantId, userId,
+            new("create_product", null, duplicateItems));
+
+        Assert.True(proposal.Success);
+        Assert.NotNull(proposal.Data);
+        Assert.Equal("NeedsClarification", proposal.Data.Status);
+        Assert.False(proposal.Data.RequiresConfirmation);
+        Assert.Contains("duplicate name", proposal.Data.Summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(await db.Products.ToListAsync());
+    }
+
+    [Fact]
+    public async Task CandidateProductCollidingWithActiveProductInDb_IsRejectedWithClarification()
+    {
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = SetupWithLocale(db, "en");
+
+        // Seed existing active product
+        await business.CreateProductAsync(tenantId, new("Existing Anime Figurine", null, "item", 50_000m, null));
+
+        var batchWithCollision = new List<AiProposeProductItem>
+        {
+            new("Existing Anime Figurine", "item", 50_000m),
+            new("New Unique Figurine", "item", 60_000m),
+        };
+
+        var proposal = await actions.ProposeAsync(tenantId, userId,
+            new("create_product", null, batchWithCollision));
+
+        Assert.True(proposal.Success);
+        Assert.NotNull(proposal.Data);
+        Assert.Equal("NeedsClarification", proposal.Data.Status);
+        Assert.False(proposal.Data.RequiresConfirmation);
+        Assert.Contains("already exists", proposal.Data.Summary, StringComparison.OrdinalIgnoreCase);
+
+        // Ensure New Unique Figurine was NOT created
+        var persisted = await db.Products.Where(p => p.TenantId == tenantId && p.IsActive).ToListAsync();
+        Assert.Single(persisted);
+        Assert.Equal("Existing Anime Figurine", persisted[0].Name);
+    }
+
+    [Fact]
+    public async Task TenantIsolation_TenantBCannotConfirmOrViewTenantAProposal()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantAId, userAId) = SetupWithLocale(db, "en");
+
+        // Tenant B setup
+        var tenantBId = Guid.NewGuid();
+        var userBId = Guid.NewGuid();
+        db.Tenants.Add(new Tenant
+        {
+            Id = tenantBId,
+            CompanyName = "Tenant B",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "VND",
+            BusinessType = "retail",
+            PlanType = "Business",
+            Status = "Active"
+        });
+        db.Users.Add(new User
+        {
+            Id = userBId,
+            TenantId = tenantBId,
+            Email = "tenantb@example.test",
+            Role = "TenantAdmin",
+            IsActive = true,
+            PreferredCurrency = "VND"
+        });
+        await db.SaveChangesAsync();
+
+        // Tenant A proposes 5 anime products
+        var proposalA = await actions.ProposeAsync(tenantAId, userAId, new("ADD 5 RANDOM ANIME PRODUCTS"));
+        Assert.True(proposalA.Success);
+        var actionId = proposalA.Data!.ActionId!.Value;
+
+        // Tenant B attempts to confirm Tenant A's action
+        var attackResult = await actions.ConfirmAsync(tenantBId, userBId, actionId, true);
+        Assert.False(attackResult.Success);
+
+        // Verification: Neither Tenant A nor Tenant B has products created
+        Assert.Empty(await db.Products.Where(p => p.TenantId == tenantBId).ToListAsync());
+        Assert.Empty(await db.Products.Where(p => p.TenantId == tenantAId).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Idempotency_ReconfirmingExecutedBatchDoesNotCreateDuplicates()
+    {
+        await using var db = Db();
+        var (_, actions, _, tenantId, userId) = SetupWithLocale(db, "en");
+
+        var proposal = await actions.ProposeAsync(tenantId, userId, new("ADD 5 RANDOM ANIME PRODUCTS"));
+        var actionId = proposal.Data!.ActionId!.Value;
+
+        // First confirmation
+        var exec1 = await actions.ConfirmAsync(tenantId, userId, actionId, true);
+        Assert.True(exec1.Success);
+        Assert.Equal(5, await db.Products.CountAsync(p => p.TenantId == tenantId && p.IsActive));
+
+        // Second confirmation (replay attack / duplicate click)
+        var exec2 = await actions.ConfirmAsync(tenantId, userId, actionId, true);
+        Assert.True(exec2.Success);
+        Assert.Equal("Executed", exec2.Data!.Status);
+
+        // Persistence verification: Still exactly 5 products
+        Assert.Equal(5, await db.Products.CountAsync(p => p.TenantId == tenantId && p.IsActive));
+    }
+
+    [Fact]
+    public async Task Localization_UIHeaderDeterminesProposalSummaryLanguage_WhilePreservingEntityNames()
+    {
+        await using var db = Db();
+
+        // 1. Vietnamese UI (Accept-Language: vi) with English prompt
+        var (_, actionsVi, _, tenantId1, userId1) = SetupWithLocale(db, "vi");
+        var proposalVi = await actionsVi.ProposeAsync(tenantId1, userId1, new("Create 3 gaming keyboard products"));
+        Assert.True(proposalVi.Success);
+        // Summary must be localized in Vietnamese: "Tạo 3 sản phẩm (Gaming Keyboard... )?"
+        Assert.StartsWith("Tạo 3 sản phẩm", proposalVi.Data!.Summary);
+        Assert.Contains("Gaming Keyboard", proposalVi.Data!.Summary);
+
+        // 2. English UI (Accept-Language: en) with Vietnamese prompt
+        var (_, actionsEn, _, tenantId2, userId2) = SetupWithLocale(db, "en");
+        var proposalEn = await actionsEn.ProposeAsync(tenantId2, userId2, new("Tạo 3 sản phẩm bàn phím cơ"));
+        Assert.True(proposalEn.Success);
+        // Summary must be localized in English: "Create 3 products (Bàn Phím Cơ... )?"
+        Assert.StartsWith("Create 3 products", proposalEn.Data!.Summary);
+        Assert.Contains("Bàn Phím Cơ", proposalEn.Data!.Summary);
+    }
 }
+

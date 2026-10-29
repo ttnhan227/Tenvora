@@ -56,24 +56,24 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
     const errs: typeof fieldErrors = {};
 
     if (hasPassword && !currentPassword) {
-      errs.currentPassword = isVietnamese ? "Nhập mật khẩu hiện tại." : "Enter your current password.";
+      errs.currentPassword = t("security.enterCurrentPassword", "Enter your current password.");
     }
 
     if (!newPassword) {
-      errs.newPassword = isVietnamese ? "Nhập mật khẩu mới." : "Enter a new password.";
+      errs.newPassword = t("security.enterNewPassword", "Enter a new password.");
     } else if (
       newPassword.length < 12 ||
       !/[A-Z]/.test(newPassword) ||
       !/[a-z]/.test(newPassword) ||
       !/\d/.test(newPassword)
     ) {
-      errs.newPassword = isVietnamese ? "Dùng ít nhất 12 ký tự, gồm chữ hoa, chữ thường và số." : "Use 12 or more characters with uppercase, lowercase, and a number.";
+      errs.newPassword = t("security.passwordRequirement", "Use 12 or more characters with uppercase, lowercase, and a number.");
     }
 
     if (!confirmPassword) {
-      errs.confirmPassword = isVietnamese ? "Nhập lại mật khẩu mới." : "Confirm your new password.";
+      errs.confirmPassword = t("security.confirmNewPassword", "Confirm your new password.");
     } else if (confirmPassword !== newPassword) {
-      errs.confirmPassword = isVietnamese ? "Mật khẩu không khớp." : "Passwords do not match.";
+      errs.confirmPassword = t("security.passwordsDoNotMatch", "Passwords do not match.");
     }
 
     setFieldErrors(errs);
@@ -97,18 +97,18 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
       if (result.success) {
         setSuccessMessage(
           hasPassword
-            ? (isVietnamese ? "Đã đổi mật khẩu thành công." : "Your password has been changed successfully.")
-            : (isVietnamese ? "Đã tạo mật khẩu. Bạn có thể đăng nhập bằng Google hoặc email và mật khẩu." : "Your password has been created! You can now log in using either Google or your email and password.")
+            ? t("security.passwordChangedSuccess", "Your password has been changed successfully.")
+            : t("security.passwordCreatedSuccess", "Your password has been created! You can now log in using either Google or your email and password.")
         );
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setFieldErrors({});
       } else {
-        setError(result.message || (isVietnamese ? "Không thể cập nhật mật khẩu. Vui lòng kiểm tra lại." : "Unable to update password. Please check your details."));
+        setError(result.message || t("security.passwordUpdateError", "Unable to update password. Please check your details."));
       }
     } catch {
-      setError(isVietnamese ? "Đã xảy ra lỗi. Vui lòng thử lại." : "An unexpected error occurred. Please try again.");
+      setError(t("security.genericError", "An unexpected error occurred. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

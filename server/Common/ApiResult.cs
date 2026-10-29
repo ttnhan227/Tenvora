@@ -10,11 +10,11 @@ public class ApiResult
     public static ApiResult Ok(string? message = null) =>
         new() { Success = true, Message = message ?? "Success" };
 
-    public static ApiResult Fail(string error) =>
-        new() { Success = false, Message = error, Errors = [error], Code = "request_invalid" };
+    public static ApiResult Fail(string error, string? code = null) =>
+        new() { Success = false, Message = error, Errors = [error], Code = code ?? (error.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "not_found" : "request_invalid") };
 
-    public static ApiResult Fail(List<string> errors) =>
-        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors, Code = "request_invalid" };
+    public static ApiResult Fail(List<string> errors, string? code = null) =>
+        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors, Code = code ?? "request_invalid" };
 }
 
 public class ApiResult<T> : ApiResult
@@ -24,11 +24,11 @@ public class ApiResult<T> : ApiResult
     public static ApiResult<T> Ok(T data, string? message = null) =>
         new() { Success = true, Data = data, Message = message ?? "Success" };
 
-    public new static ApiResult<T> Fail(string error) =>
-        new() { Success = false, Message = error, Errors = [error], Code = "request_invalid" };
+    public new static ApiResult<T> Fail(string error, string? code = null) =>
+        new() { Success = false, Message = error, Errors = [error], Code = code ?? (error.Contains("not found", StringComparison.OrdinalIgnoreCase) ? "not_found" : "request_invalid") };
 
-    public new static ApiResult<T> Fail(List<string> errors) =>
-        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors, Code = "request_invalid" };
+    public new static ApiResult<T> Fail(List<string> errors, string? code = null) =>
+        new() { Success = false, Message = errors.FirstOrDefault() ?? "Operation failed", Errors = errors, Code = code ?? "request_invalid" };
 }
 
 public static class ApiResultExtensions
@@ -36,9 +36,13 @@ public static class ApiResultExtensions
     public static Microsoft.AspNetCore.Mvc.IActionResult ToActionResult(this ApiResult result)
     {
         if (result.Success) return new Microsoft.AspNetCore.Mvc.OkObjectResult(result);
-        if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        if (result.Code == "not_found" || result.Code == "resource_not_found" || result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Code = "not_found";
             return new Microsoft.AspNetCore.Mvc.NotFoundObjectResult(result);
-        if (result.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || result.Message.Contains("current state", StringComparison.OrdinalIgnoreCase))
+        }
+        if (result.Code == "state_conflict" || result.Code == "duplicate_record" || result.Code == "concurrency_conflict" ||
+            result.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || result.Message.Contains("current state", StringComparison.OrdinalIgnoreCase))
         {
             result.Code = "state_conflict";
             return new Microsoft.AspNetCore.Mvc.ConflictObjectResult(result);
@@ -49,9 +53,13 @@ public static class ApiResultExtensions
     public static Microsoft.AspNetCore.Mvc.IActionResult ToActionResult<T>(this ApiResult<T> result)
     {
         if (result.Success) return new Microsoft.AspNetCore.Mvc.OkObjectResult(result);
-        if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        if (result.Code == "not_found" || result.Code == "resource_not_found" || result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Code = "not_found";
             return new Microsoft.AspNetCore.Mvc.NotFoundObjectResult(result);
-        if (result.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || result.Message.Contains("current state", StringComparison.OrdinalIgnoreCase))
+        }
+        if (result.Code == "state_conflict" || result.Code == "duplicate_record" || result.Code == "concurrency_conflict" ||
+            result.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || result.Message.Contains("current state", StringComparison.OrdinalIgnoreCase))
         {
             result.Code = "state_conflict";
             return new Microsoft.AspNetCore.Mvc.ConflictObjectResult(result);

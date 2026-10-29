@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage, SUPPORTED_LANGUAGES } from "@/contexts/LanguageContext";
 import { COMMON_CURRENCIES, BusinessType } from "@/data/businessProfiles";
 import { toast } from "sonner";
 import apiClient from "@/services/apiClient";
@@ -37,18 +37,24 @@ import { getApiErrorMessage } from "@/lib/apiErrors";
 const DATA_CATEGORIES = [
   {
     id: "ai_history",
-    en: { label: "AI conversations", desc: "Delete your AI conversations, messages and proposed actions. Business records created through the assistant are not affected." },
-    vi: { label: "Hội thoại AI", desc: "Xóa hội thoại, tin nhắn và đề xuất thao tác AI. Sổ sách đã tạo qua trợ lý không bị ảnh hưởng." },
+    labelKey: "settings.dataCategory.ai_history.label",
+    descKey: "settings.dataCategory.ai_history.desc",
+    defaultLabel: "AI conversations",
+    defaultDesc: "Delete your AI conversations, messages and proposed actions. Business records created through the assistant are not affected.",
   },
   {
     id: "activity_trail",
-    en: { label: "My activity history", desc: "Remove your name, email and device IP from the workspace activity history. Business records themselves stay with your team." },
-    vi: { label: "Lịch sử hoạt động của tôi", desc: "Bỏ tên, email và địa chỉ IP của bạn khỏi lịch sử hoạt động. Sổ sách kinh doanh vẫn giữ cho nhóm." },
+    labelKey: "settings.dataCategory.activity_trail.label",
+    descKey: "settings.dataCategory.activity_trail.desc",
+    defaultLabel: "My activity history",
+    defaultDesc: "Remove your name, email and device IP from the workspace activity history. Business records themselves stay with your team.",
   },
   {
     id: "sessions",
-    en: { label: "Signed-in devices", desc: "Sign out every device that is currently signed in to your account." },
-    vi: { label: "Thiết bị đang đăng nhập", desc: "Đăng xuất mọi thiết bị đang đăng nhập vào tài khoản của bạn." },
+    labelKey: "settings.dataCategory.sessions.label",
+    descKey: "settings.dataCategory.sessions.desc",
+    defaultLabel: "Signed-in devices",
+    defaultDesc: "Sign out every device that is currently signed in to your account.",
   },
 ] as const;
 
@@ -157,11 +163,7 @@ export default function SettingsPage() {
     try {
       const response = await apiClient.post("/account/data/delete", { categories: selectedData });
       if (response.data.success !== true) throw new Error(response.data.message || "Deletion failed");
-      toast.success(
-        isVietnamese
-          ? "Đã xóa dữ liệu đã chọn. Tài khoản của bạn vẫn được giữ."
-          : "Selected data deleted. Your account was kept."
-      );
+      toast.success(t("settings.deleteDataSuccess", "Selected data deleted. Your account was kept."));
       setSelectedData([]);
       setConfirmDataDeletion(false);
       queryClient.invalidateQueries();
@@ -169,7 +171,7 @@ export default function SettingsPage() {
       toast.error(
         getApiErrorMessage(
           failure,
-          isVietnamese ? "Không thể xóa dữ liệu. Thử lại." : "Could not delete your data. Try again.",
+          t("settings.deleteDataError", "Could not delete your data. Try again."),
           isVietnamese
         )
       );
@@ -183,20 +185,12 @@ export default function SettingsPage() {
     setPasswordError(null);
 
     if (newPassword.length < 12) {
-      setPasswordError(
-        isVietnamese
-          ? "Mật khẩu mới phải có tối thiểu 12 ký tự."
-          : "New password must be at least 12 characters."
-      );
+      setPasswordError(t("settings.passwordMinLength", "New password must be at least 12 characters."));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError(
-        isVietnamese
-          ? "Mật khẩu xác nhận không khớp."
-          : "Passwords do not match."
-      );
+      setPasswordError(t("settings.passwordMismatch", "Passwords do not match."));
       return;
     }
 
@@ -518,52 +512,34 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Vietnamese */}
-                  <div
-                    onClick={() => setLanguage("vi")}
-                    className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
-                      isVietnamese
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:border-primary/40 bg-card"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">🇻🇳</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-base">{t("settings.langVi", "🇻🇳 Tiếng Việt")}</p>
-                          {isVietnamese && <Check className="h-5 w-5 text-primary" />}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {SUPPORTED_LANGUAGES.map((langItem) => {
+                    const isSelected = language === langItem.code;
+                    return (
+                      <div
+                        key={langItem.code}
+                        onClick={() => setLanguage(langItem.code)}
+                        className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "border-border hover:border-primary/40 bg-card"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-3xl" role="img" aria-hidden="true">{langItem.flag}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-base">{langItem.name}</p>
+                              {isSelected && <Check className="h-5 w-5 text-primary" />}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                              {langItem.englishName}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                          {t("settings.langViDesc", "Toàn bộ giao diện bằng tiếng Việt bình dị, rõ ràng, không dùng thuật ngữ khó hiểu.")}
-                        </p>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* English */}
-                  <div
-                    onClick={() => setLanguage("en")}
-                    className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
-                      !isVietnamese
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border hover:border-primary/40 bg-card"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">🇬🇧</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-base">{t("settings.langEn", "🇬🇧 English")}</p>
-                          {!isVietnamese && <Check className="h-5 w-5 text-primary" />}
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                          {t("settings.langEnDesc", "Full English interface for business records and reports.")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -752,7 +728,8 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {DATA_CATEGORIES.map((category) => {
-                    const copy = isVietnamese ? category.vi : category.en;
+                    const label = t(category.labelKey, category.defaultLabel);
+                    const desc = t(category.descKey, category.defaultDesc);
                     const checked = selectedData.includes(category.id);
                     return (
                       <label
@@ -766,8 +743,8 @@ export default function SettingsPage() {
                           onChange={() => toggleDataCategory(category.id)}
                         />
                         <span className="space-y-1">
-                          <span className="block text-sm font-bold">{copy.label}</span>
-                          <span className="block text-xs text-muted-foreground leading-relaxed">{copy.desc}</span>
+                          <span className="block text-sm font-bold">{label}</span>
+                          <span className="block text-xs text-muted-foreground leading-relaxed">{desc}</span>
                         </span>
                       </label>
                     );
@@ -776,9 +753,7 @@ export default function SettingsPage() {
 
                 {confirmDataDeletion && (
                   <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive">
-                    {isVietnamese
-                      ? `Xóa vĩnh viễn ${selectedData.length} mục đã chọn? Không thể hoàn tác. Nhấn nút lần nữa để xác nhận.`
-                      : `Permanently delete ${selectedData.length} selected item(s)? This cannot be undone. Press the button again to confirm.`}
+                    {t("settings.deleteSelectedDataConfirm", { count: selectedData.length }, `Permanently delete ${selectedData.length} selected item(s)? This cannot be undone. Press the button again to confirm.`)}
                   </div>
                 )}
 
@@ -793,19 +768,15 @@ export default function SettingsPage() {
                     {isDeletingData ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>{isVietnamese ? "Đang xóa..." : "Deleting..."}</span>
+                        <span>{t("common.deleting", "Deleting...")}</span>
                       </>
                     ) : (
                       <>
                         <Trash2 className="h-4 w-4" />
                         <span>
                           {confirmDataDeletion
-                            ? isVietnamese
-                              ? "Xác nhận xóa"
-                              : "Confirm delete"
-                            : isVietnamese
-                              ? "Xóa dữ liệu đã chọn"
-                              : "Delete selected data"}
+                            ? t("settings.confirmDelete", "Confirm delete")
+                            : t("settings.deleteSelectedData", "Delete selected data")}
                         </span>
                       </>
                     )}
@@ -817,17 +788,15 @@ export default function SettingsPage() {
                       className="min-h-[48px] px-6 text-sm font-bold rounded-xl"
                       onClick={() => setConfirmDataDeletion(false)}
                     >
-                      {isVietnamese ? "Hủy" : "Cancel"}
+                      {t("common.cancel", "Cancel")}
                     </Button>
                   )}
                 </div>
 
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  {isVietnamese
-                    ? "Xóa dữ liệu ở đây không xóa tài khoản."
-                    : "Deleting data here does not delete your account."}{" "}
+                  {t("settings.deleteDataNote", "Deleting data here does not delete your account.")}{" "}
                   <Link className="underline" to="/delete-account">
-                    {isVietnamese ? "Xóa tài khoản" : "Delete account"}
+                    {t("settings.deleteAccount", "Delete account")}
                   </Link>
                 </p>
               </CardContent>
@@ -836,8 +805,8 @@ export default function SettingsPage() {
         )}
 
         <div className="flex flex-wrap gap-5 border-t pt-5 text-sm">
-          <Link className="underline" to="/privacy">{isVietnamese ? "Quyền riêng tư" : "Privacy policy"}</Link>
-          <Link className="text-destructive underline" to="/delete-account">{isVietnamese ? "Xóa tài khoản" : "Delete account"}</Link>
+          <Link className="underline" to="/privacy">{t("settings.privacyPolicy", "Privacy policy")}</Link>
+          <Link className="text-destructive underline" to="/delete-account">{t("settings.deleteAccount", "Delete account")}</Link>
         </div>
       </div>
     </DashboardLayout>
