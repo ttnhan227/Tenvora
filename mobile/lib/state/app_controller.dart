@@ -1,5 +1,6 @@
-import 'dart:ui' show PlatformDispatcher;
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,8 @@ class AppController extends ChangeNotifier {
   ThemeMode themeMode = ThemeMode.system;
   String? lastError;
   bool _googleInitialized = false;
+  StreamSubscription<GoogleSignInAuthenticationEvent>?
+  _googleAuthenticationSubscription;
 
   bool get isAuthenticated => user != null;
 
@@ -46,6 +49,29 @@ class AppController extends ChangeNotifier {
         _ => ThemeMode.system,
       };
       await sessionStore.initialize();
+      if (kIsWeb && !_googleInitialized) {
+        const serverClientId = String.fromEnvironment(
+          'GOOGLE_SERVER_CLIENT_ID',
+        );
+        final google = GoogleSignIn.instance;
+        _googleAuthenticationSubscription ??= google.authenticationEvents
+            .listen(
+              (event) {
+                if (event is GoogleSignInAuthenticationEventSignIn) {
+                  unawaited(_handleGoogleWebLogin(event.user));
+                }
+              },
+              onError: (Object error) {
+                lastError = readableError(error);
+                notifyListeners();
+              },
+            );
+        await google.initialize(
+          clientId: serverClientId.isEmpty ? null : serverClientId,
+          serverClientId: null,
+        );
+        _googleInitialized = true;
+      }
       if (sessionStore.accessToken != null) {
         try {
           user = await repository.profile();
@@ -119,7 +145,36 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<void> _handleGoogleWebLogin(GoogleSignInAccount account) async {
+    busy = true;
+    lastError = null;
+    notifyListeners();
+    try {
+      final auth = account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Google did not return an identity token.');
+      }
+      final session = await repository.googleLogin(idToken);
+      await sessionStore.save(
+        access: session.accessToken,
+        refresh: session.refreshToken,
+      );
+      user = session.user;
+    } catch (error) {
+      lastError = readableError(error);
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> loginWithGoogle() async {
+    if (kIsWeb) {
+      lastError = 'Use the Google sign-in button to continue.';
+      notifyListeners();
+      return false;
+    }
     busy = true;
     lastError = null;
     notifyListeners();
@@ -137,7 +192,8 @@ class AppController extends ChangeNotifier {
         _googleInitialized = true;
       }
       final account = await google.authenticate();
-      final idToken = account.authentication.idToken;
+      final auth = account.authentication;
+      final idToken = auth.idToken;
       if (idToken == null || idToken.isEmpty) {
         throw Exception('Google did not return an identity token.');
       }

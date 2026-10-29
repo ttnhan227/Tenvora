@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../more/privacy_screen.dart';
@@ -6,6 +7,7 @@ import '../../core/utils/formatters.dart';
 import '../../state/app_controller.dart';
 import '../widgets/common.dart';
 import '../widgets/language_picker.dart';
+import 'google_button/google_button.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -285,17 +287,21 @@ class _AuthScreenState extends State<AuthScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    onPressed: app.busy ? null : _google,
-                    icon: const Icon(Icons.g_mobiledata, size: 28),
-                    label: Text(
-                      tr(
-                        context,
-                        'Continue with Google',
-                        'Tiếp tục với Google',
+                  buildGoogleSignInButton(
+                    context: context,
+                    busy: app.busy,
+                    onPressed: _google,
+                  ),
+                  if (kIsWeb && app.lastError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      app.lastError!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed:
