@@ -24,6 +24,11 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    const currentLang = localStorage.getItem("tenvora_lang") || "vi";
+    if (config.headers) {
+      config.headers["Accept-Language"] = currentLang;
+    }
+
     // Let the browser set multipart boundary for FormData uploads.
     if (typeof FormData !== "undefined" && config.data instanceof FormData && config.headers) {
       delete (config.headers as any)["Content-Type"];

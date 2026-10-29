@@ -59,7 +59,15 @@ class ApiClient {
 
   static String get _baseUrl {
     const configured = String.fromEnvironment('API_BASE_URL');
-    if (configured.isNotEmpty) return configured.replaceAll(RegExp(r'/+$'), '');
+    if (configured.isNotEmpty) {
+      final cleaned = configured.replaceAll(RegExp(r'/+$'), '');
+      if (Platform.isAndroid) {
+        return cleaned
+            .replaceFirst('localhost', '10.0.2.2')
+            .replaceFirst('127.0.0.1', '10.0.2.2');
+      }
+      return cleaned;
+    }
     if (kIsWeb) {
       return 'http://127.0.0.1:5000/api';
     }

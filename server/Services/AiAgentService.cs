@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 using Tenvora.Api.Dtos;
+using Tenvora.Api.Localization;
 using Tenvora.Api.Models;
 
 namespace Tenvora.Api.Services;
@@ -21,6 +22,7 @@ public sealed class AiAgentService : IAiAgentService
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AiAgentService> _logger;
+    private readonly IAppLocalizer _localizer;
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web)
     {
@@ -33,7 +35,8 @@ public sealed class AiAgentService : IAiAgentService
         IAiActionService actionService,
         IConfiguration config,
         IHttpClientFactory httpClientFactory,
-        ILogger<AiAgentService> logger)
+        ILogger<AiAgentService> logger,
+        IAppLocalizer? localizer = null)
     {
         _context = context;
         _businessService = businessService;
@@ -41,6 +44,7 @@ public sealed class AiAgentService : IAiAgentService
         _config = config;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _localizer = localizer ?? new AppLocalizer();
     }
 
     public async Task<ApiResult<AiAgentChatResponse>> AgentChatAsync(
@@ -110,9 +114,13 @@ public sealed class AiAgentService : IAiAgentService
                 if (isConfirm || isCancel)
                 {
                     var execResult = await _actionService.ConfirmAsync(tenantId, userId, pendingAction.Id, isConfirm, userRole, ct);
+                    var isViConfirm = Regex.IsMatch(lower, @"^(đồng ý|dong y|xác nhận|xac nhan|ừ|uh|có|chốt|thực hiện|không|khong|hủy|huỷ|huy|thôi|bỏ qua)$")
+                        || Regex.IsMatch(rawText, "[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]");
+                    var replyCulture = isViConfirm ? "vi" : (_localizer.CurrentCultureCode == "vi" && !Regex.IsMatch(lower, @"^(yes|y|confirm|confirmed|ok|okay|no|n|cancel|stop)$") ? "vi" : "en");
+
                     var replyMsg = execResult.Success
-                        ? (isConfirm ? $"Đã xác nhận và thực hiện: {execResult.Data?.Message}" : "Đã hủy thao tác.")
-                        : $"Không thể thực hiện: {execResult.Message}";
+                        ? (isConfirm ? _localizer.GetStringForCulture(replyCulture, "agent.confirmed_and_executed", execResult.Data?.Message ?? "") : _localizer.GetStringForCulture(replyCulture, "agent.action_cancelled"))
+                        : _localizer.GetStringForCulture(replyCulture, "agent.action_failed", execResult.Message ?? "");
 
                     var assistantConfirmMsg = new AiConversationMessage
                     {
@@ -238,7 +246,7 @@ public sealed class AiAgentService : IAiAgentService
         _context.AiConversationMessages.Add(assistantMessage);
 
         conversation.UpdatedAt = DateTime.UtcNow;
-        if (conversation.Title == "Cuộc trò chuyện mới" && rawText.Length > 0)
+        if ((conversation.Title == "Cuộc trò chuyện mới" || conversation.Title == "New conversation" || conversation.Title == _localizer.GetString("agent.new_conversation")) && rawText.Length > 0)
         {
             conversation.Title = rawText.Length > 40 ? rawText.Substring(0, 37) + "..." : rawText;
         }
@@ -361,7 +369,7 @@ public sealed class AiAgentService : IAiAgentService
         {
             TenantId = tenantId,
             UserId = userId,
-            Title = string.IsNullOrWhiteSpace(title) ? "Cuộc trò chuyện mới" : title,
+            Title = string.IsNullOrWhiteSpace(title) ? _localizer.GetString("agent.new_conversation") : title,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -400,7 +408,7 @@ User Role: {userRole}
 
 RULES:
 1. Always use available tools when the user asks about facts, balances, inventory, or financial summaries. Do NOT guess numbers.
-2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm.
+2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm. When the user asks to create multiple products or generate sample/themed/random products, understand the requested quantity and theme, dynamically generate the requested number of distinct candidate products with meaningful names into the 'products' array parameter of 'propose_transaction'.
 3. Be concise (2-4 sentences or clear bullet points), polite, professional, and friendly.
 4. Answer naturally in the language of the user's question, including English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Do not translate record identifiers or user-entered business names.
 5. Format monetary amounts with comma separators and currency (e.g. 150,000 {currency}).
@@ -523,7 +531,7 @@ RULES:
             });
         }
 
-        return new AgentTurnResult("Đã hoàn tất truy vấn dữ liệu.", capturedProposal, executedTools);
+        return new AgentTurnResult(_localizer.GetString("agent.query_completed"), capturedProposal, executedTools);
     }
 
     private async Task<(object Result, string Summary, AiActionProposalResponse? Proposal)> ExecuteToolAsync(
@@ -689,17 +697,37 @@ RULES:
             {
                 if (userRole is not ("TenantAdmin" or "OperationsManager"))
                 {
-                    return (new { success = false, message = "Permission denied. Only workspace administrators and operations managers can propose business transactions." },
-                            "Không có quyền đề xuất giao dịch",
+                    var unauthorizedMsg = _localizer.GetString("error.unauthorized_action");
+                    return (new { success = false, message = unauthorizedMsg },
+                            unauthorizedMsg,
                             null);
                 }
                 var instruction = args.TryGetProperty("instruction", out var inst) ? inst.GetString() ?? "" : "";
+                List<AiProposeProductItem>? candidateProducts = null;
+                if (args.TryGetProperty("products", out var prodsEl) && prodsEl.ValueKind == JsonValueKind.Array)
+                {
+                    candidateProducts = new List<AiProposeProductItem>();
+                    foreach (var itemEl in prodsEl.EnumerateArray())
+                    {
+                        var pName = itemEl.TryGetProperty("name", out var nEl) ? nEl.GetString() : null;
+                        if (string.IsNullOrWhiteSpace(pName)) continue;
+                        var pUnit = itemEl.TryGetProperty("unit", out var uEl) ? uEl.GetString() : "item";
+                        var pPrice = itemEl.TryGetProperty("price", out var prEl) && prEl.TryGetDecimal(out var dPrice) ? dPrice : 0m;
+                        var pNotes = itemEl.TryGetProperty("notes", out var noEl) ? noEl.GetString() : null;
+                        candidateProducts.Add(new AiProposeProductItem(pName, pUnit, pPrice, pNotes));
+                    }
+                }
+
                 var propResult = await _actionService.ProposeAsync(
-                    tenantId, userId, new AiProposeActionRequest(instruction, uiContext), userRole, ct);
+                    tenantId, userId, new AiProposeActionRequest(instruction, uiContext, candidateProducts), userRole, ct);
 
                 if (propResult.Success && propResult.Data != null)
                 {
                     var isClarification = propResult.Data.Status == AiActionStatuses.NeedsClarification || propResult.Data.ActionId == null;
+                    var summaryMsg = isClarification
+                        ? _localizer.GetString("agent.need_info", propResult.Data.Summary)
+                        : _localizer.GetString("agent.prepared_action", propResult.Data.Summary);
+
                     return (new
                     {
                         success = true,
@@ -710,10 +738,10 @@ RULES:
                         status = propResult.Data.Status,
                         details = propResult.Data.Details,
                         candidates = propResult.Data.Candidates
-                    }, isClarification ? $"Cần thêm thông tin: {propResult.Data.Summary}" : $"Chuẩn bị giao dịch: {propResult.Data.Summary}", propResult.Data);
+                    }, summaryMsg, propResult.Data);
                 }
 
-                return (new { success = false, message = propResult.Message }, "Không thể tạo đề xuất giao dịch", null);
+                return (new { success = false, message = propResult.Message }, propResult.Message ?? "Failed", null);
             }
 
             default:
@@ -838,13 +866,31 @@ RULES:
             new
             {
                 name = "propose_transaction",
-                description = "Propose and prepare a financial or operational transaction (recording sale, purchase, expense, customer debt payment, supplier payment, creating product/customer/supplier) for human-in-the-loop review and approval.",
+                description = "Propose and prepare a financial or operational transaction (recording sale, purchase, expense, customer debt payment, supplier payment, creating single or multiple products/customers/suppliers) for human-in-the-loop review and approval.",
                 parameters = new
                 {
                     type = "OBJECT",
                     properties = new
                     {
-                        instruction = new { type = "STRING", description = "Exact natural language action to record, e.g. 'Bán 5kg gạo cho anh Nam giá 100k' or 'Chi 300k tiền điện' or 'Anh Nam vừa trả 2 triệu'" }
+                        instruction = new { type = "STRING", description = "Exact natural language action to record, e.g. 'Bán 5kg gạo cho anh Nam giá 100k' or 'Chi 300k tiền điện' or 'Add 5 random anime products'" },
+                        action_type = new { type = "STRING", description = "Optional action type: create_product, sale, purchase, expense, debt_payment, supplier_payment, create_customer, create_supplier" },
+                        products = new
+                        {
+                            type = "ARRAY",
+                            description = "List of candidate products when creating single or multiple products. Generate distinct, meaningful product names matching requested theme and quantity.",
+                            items = new
+                            {
+                                type = "OBJECT",
+                                properties = new
+                                {
+                                    name = new { type = "STRING", description = "Product name" },
+                                    unit = new { type = "STRING", description = "Unit of measurement (e.g. item, kg, box)" },
+                                    price = new { type = "NUMBER", description = "Default selling price (0 if unspecified or instructed not to set)" },
+                                    notes = new { type = "STRING", description = "Notes or sample description" }
+                                },
+                                required = new[] { "name" }
+                            }
+                        }
                     },
                     required = new[] { "instruction" }
                 }
@@ -865,7 +911,7 @@ User Role: {userRole}
 
 RULES:
 1. Always use available tools when the user asks about facts, balances, inventory, or financial summaries. Do NOT guess numbers.
-2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm.
+2. If the user asks to record or perform a transaction (e.g. sale, purchase, expense, customer debt payment, supplier payment, creating customer/supplier/product), call 'propose_transaction' with the full instruction so the user receives a safe preview card to confirm. When the user asks to create multiple products or generate sample/themed/random products, understand the requested quantity and theme, dynamically generate the requested number of distinct candidate products with meaningful names into the 'products' array parameter of 'propose_transaction'.
 3. Be concise (2-4 sentences or clear bullet points), polite, professional, and friendly.
 4. Answer naturally in the language of the user's question, including English, Vietnamese, Spanish, French, German, Brazilian Portuguese and Indonesian. Do not translate record identifiers or user-entered business names.
 5. Format monetary amounts with comma separators and currency (e.g. 150,000 {currency}).
@@ -1029,7 +1075,7 @@ RULES:
             return new AgentTurnResult(answer, capturedProposal, executedTools);
         }
 
-        return new AgentTurnResult("Đã hoàn tất truy vấn dữ liệu.", capturedProposal, executedTools);
+        return new AgentTurnResult(_localizer.GetString("agent.query_completed"), capturedProposal, executedTools);
     }
 
     private static string Truncate(string value, int max) =>
@@ -1050,7 +1096,7 @@ RULES:
         CancellationToken ct)
     {
         var lower = prompt.ToLowerInvariant();
-        var vietnamese = IsVietnamese(prompt);
+        var vietnamese = _localizer.CurrentCultureCode == "vi" || Regex.IsMatch(prompt, "[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]");
         string Money(decimal amount) => $"{amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)} {currency}";
         var toolCalls = new List<AiAgentToolCallInfo>();
 
@@ -1064,23 +1110,17 @@ RULES:
             {
                 var p = propResult.Data;
                 var isClarification = p.Status == AiActionStatuses.NeedsClarification || p.ActionId == null;
-                var isVi = IsVietnamese(prompt);
+                var isVi = vietnamese;
 
                 if (isClarification)
                 {
-                    toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Cần thêm thông tin: {p.Summary}" : $"Need info: {p.Summary}", p));
-                    var question = isVi
-                        ? $"{p.Summary}\n\nBạn vui lòng cho biết thêm thông tin (ví dụ: tên, giá bán, hoặc đơn vị tính) bằng cách nhập trực tiếp vào thẻ hoặc gửi tin nhắn để tôi chuẩn bị thao tác."
-                        : $"{p.Summary}\n\nPlease provide the missing details (e.g. name, price, or unit) in the card or chat so I can prepare the action for you.";
-
+                    toolCalls.Add(new AiAgentToolCallInfo("prepare_action", _localizer.GetString("agent.need_info", p.Summary), p));
+                    var question = _localizer.GetString("agent.need_info", p.Summary);
                     return new AgentTurnResult(question, p, toolCalls);
                 }
 
-                toolCalls.Add(new AiAgentToolCallInfo("prepare_action", isVi ? $"Chuẩn bị: {p.Summary}" : $"Prepared: {p.Summary}", p));
-                var confirmMsg = isVi
-                    ? $"Tôi đã chuẩn bị thao tác: **{p.Summary}**.\n\nVui lòng kiểm tra chi tiết trên thẻ bên dưới rồi xác nhận để hoàn tất."
-                    : $"I've prepared this action: **{p.Summary}**.\n\nPlease review the details in the card below, then confirm to complete it.";
-
+                toolCalls.Add(new AiAgentToolCallInfo("prepare_action", _localizer.GetString("agent.prepared_action", p.Summary), p));
+                var confirmMsg = _localizer.GetString("agent.prepared_action", p.Summary);
                 return new AgentTurnResult(confirmMsg, p, toolCalls);
             }
         }
@@ -1263,9 +1303,5 @@ RULES:
         );
     }
 
-    private static bool IsVietnamese(string text)
-    {
-        return Regex.IsMatch(text, "[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]")
-            || Regex.IsMatch(text, @"\b(hom nay|ban duoc|doanh thu|ai no|tien no|chi tieu|cua hang|toi|giup|tao|them|san pham|don ban|kho|ton kho)\b", RegexOptions.IgnoreCase);
-    }
+
 }

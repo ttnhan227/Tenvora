@@ -64,9 +64,17 @@ public record AiUiContext(
     IReadOnlyDictionary<string, string>? Filters = null
 );
 
+public record AiProposeProductItem(
+    string Name,
+    string? Unit = null,
+    decimal UnitPrice = 0m,
+    string? Notes = null
+);
+
 public record AiProposeActionRequest(
     [Required, MaxLength(2000)] string Text,
-    AiUiContext? UiContext = null
+    AiUiContext? UiContext = null,
+    List<AiProposeProductItem>? Products = null
 );
 
 public record AiActionCandidate(Guid Id, string Label, string? Detail = null);

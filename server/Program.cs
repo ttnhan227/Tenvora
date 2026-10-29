@@ -11,6 +11,7 @@ using System.Security.Claims;
 using Tenvora.Api.Common;
 using Tenvora.Api.Data;
 using Tenvora.Api.Data.Interceptors;
+using Tenvora.Api.Localization;
 using Tenvora.Api.Middleware;
 using Tenvora.Api.Repositories;
 using Tenvora.Api.Services;
@@ -47,6 +48,8 @@ if (!string.IsNullOrWhiteSpace(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
+builder.Services.AddLocalization();
+builder.Services.AddSingleton<IAppLocalizer, AppLocalizer>();
 builder.Services.AddControllers(options => options.Filters.Add<WorkflowExceptionFilter>());
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
 {
@@ -327,6 +330,14 @@ if (Directory.Exists(webRootPath))
     app.UseStaticFiles();
 }
 
+var supportedCultures = AppLocalizer.SupportedCultures;
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(AppLocalizer.DefaultCulture)
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+localizationOptions.ApplyCurrentCultureToResponseHeaders = true;
+app.UseRequestLocalization(localizationOptions);
+
 app.UseCors("ClientApp");
 app.UseAuthentication();
 app.UseRateLimiter();
@@ -351,7 +362,8 @@ app.Use(async (context, next) =>
             if (!isActive)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { success = false, error = "Your account is inactive. Contact your organization administrator." });
+                var localizer = context.RequestServices.GetRequiredService<IAppLocalizer>();
+                await context.Response.WriteAsJsonAsync(new { success = false, error = localizer.GetString("error.account_inactive"), code = "account_inactive" });
                 return;
             }
         }

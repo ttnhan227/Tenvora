@@ -270,7 +270,7 @@ Output JSON only.";
         var currency = tenant?.BaseCurrency ?? "VND";
         var lower = text.Trim().ToLowerInvariant();
         var contextEntity = uiContext?.Entity?.ToLowerInvariant();
-        var isCreate = Regex.IsMatch(lower, @"\b(create|add|new|tạo|thêm)\b");
+        var isCreate = Regex.IsMatch(lower, @"\b(create|add|new|generate|make|tạo|thêm|sinh)\b");
         var isUpdate = Regex.IsMatch(lower, @"\b(change|update|edit|set|đổi|sửa|cập nhật)\b");
         var isArchive = Regex.IsMatch(lower, @"\b(delete|remove|archive|deactivate|xóa|xoá|lưu trữ|ngừng)\b");
         var isCancel = Regex.IsMatch(lower, @"\b(cancel|void|hủy|huỷ)\b");
@@ -294,17 +294,20 @@ Output JSON only.";
         }
 
         var customerMentioned = contextEntity == "customer" || Regex.IsMatch(lower, @"\b(customer|customers|client|clients|khách|khách hàng)\b");
-        var productMentioned = contextEntity == "product" || Regex.IsMatch(lower, @"\b(product|products|item|items|service|services|sản phẩm|hàng hóa|hàng hoá)\b");
+        var productMentioned = contextEntity == "product" || Regex.IsMatch(lower, @"\b(product|products|item|items|goods|service|services|sản phẩm|mặt hàng|hàng hóa|hàng hoá)\b");
         var supplierMentioned = contextEntity == "supplier" || Regex.IsMatch(lower, @"\b(supplier|suppliers|vendor|vendors|nhà cung cấp)\b");
 
         if (isCreate && customerMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("create_customer", 0.96m,
                 EntityName: ExtractCreatedName(text, "customer|client|khách hàng|khách", contextEntity == "customer"),
                 Phone: ExtractPhone(text), Email: ExtractEmail(text), Address: ExtractLabeledValue(text, "address|địa chỉ"), Notes: text));
-        if (isCreate && productMentioned)
+        if (isCreate && (productMentioned || (!customerMentioned && !supplierMentioned && IsMultipleProductRequest(text))))
+        {
+            var isMultiple = IsMultipleProductRequest(text);
             return ApiResult<AiInterpretedAction>.Ok(new("create_product", 0.96m,
-                EntityName: ExtractCreatedName(text, "product|item|service|sản phẩm|hàng hóa|hàng hoá", contextEntity == "product"),
+                EntityName: isMultiple ? null : ExtractCreatedName(text, "product|item|service|sản phẩm|hàng hóa|hàng hoá", contextEntity == "product"),
                 Amount: ExtractProductPrice(text, currency), Unit: ExtractUnit(text), Notes: text));
+        }
         if (isCreate && supplierMentioned)
             return ApiResult<AiInterpretedAction>.Ok(new("create_supplier", 0.96m,
                 EntityName: ExtractCreatedName(text, "supplier|vendor|nhà cung cấp", contextEntity == "supplier"),
@@ -643,6 +646,28 @@ Output JSON only.";
             || Regex.IsMatch(text, @"\b(hom nay|ban duoc|doanh thu|ai no|tien no|chi tieu|cua hang|toi|giup)\b");
     }
 
+    private static bool IsMultipleProductRequest(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        if (text.Contains('\n') || text.Contains('\r') || text.Contains(';')) return true;
+        if (Regex.IsMatch(lower, @"(?:products|sản phẩm|mặt hàng|items)\s*(?::|\s+là|\s+bao gồm)", RegexOptions.IgnoreCase)) return true;
+
+        var qtyMatch = Regex.Match(lower, @"\b(?<qty>\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s+.*?\b(?:products|items|goods|sản phẩm|mặt hàng|hàng hoá)\b", RegexOptions.IgnoreCase);
+        if (qtyMatch.Success)
+        {
+            var val = qtyMatch.Groups["qty"].Value;
+            if (int.TryParse(val, out var q))
+            {
+                if (q > 1) return true;
+                if (q == 1) return false;
+            }
+            return true;
+        }
+
+        if (Regex.IsMatch(lower, @"\b(sample|random|ngẫu nhiên|mẫu)\s+(?:products|sản phẩm|items)\b", RegexOptions.IgnoreCase)) return true;
+        return false;
+    }
+
     private static string? ExtractCreatedName(string text, string entityPattern, bool contextOnly = false)
     {
         // 1. "add X as [a] product / thêm X làm sản phẩm / thêm X vào danh mục sản phẩm"
@@ -711,6 +736,10 @@ Output JSON only.";
         cleaned = cleaned.Trim(' ', ',', '.', ':', ';', '\'', '"');
         if (string.IsNullOrWhiteSpace(cleaned)) return null;
         if (StopArticles.Contains(cleaned)) return null;
+        if (Regex.IsMatch(cleaned, @"^(?:\d+|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s+(?:random|sample|fictional|realistic|ngẫu nhiên|mẫu|giả tưởng)", RegexOptions.IgnoreCase))
+            return null;
+        if (Regex.IsMatch(cleaned, @"^(?:random|sample|fictional|realistic|ngẫu nhiên|mẫu|giả tưởng)\s+(?:chủ đề\s+)?(?:[a-zA-Z\p{L}\-\s]+?)(?:\s+(?:vào\s+kho|vào\s+kho\s+hàng))?$", RegexOptions.IgnoreCase))
+            return null;
         return cleaned;
     }
 

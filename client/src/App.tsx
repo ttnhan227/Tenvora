@@ -1,3 +1,4 @@
+import { translationsMap, type SupportedLanguage } from "@/locales";
 import { lazy, Suspense, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -38,25 +39,23 @@ const DeleteAccountPage = lazy(() => import("./pages/DeleteAccountPage"));
 
 const isPublicPage = (pathname: string) => ["/", "/mobile", "/download", "/privacy", "/terms", "/delete-account", "/login", "/register"].includes(pathname.replace(/\/$/, "") || "/");
 
-const currentLanguageIsVietnamese = () => {
-  if (isPublicPage(window.location.pathname)) return false;
+const getCurrentLanguage = (): SupportedLanguage => {
+  if (isPublicPage(window.location.pathname)) return "en";
   try {
-    return localStorage.getItem("tenvora_lang") === "vi";
+    const saved = localStorage.getItem("tenvora_lang") as SupportedLanguage | null;
+    if (saved && saved in translationsMap) return saved;
   } catch {
-    return false;
+    // ignore
   }
+  return "en";
 };
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
       if (query.meta?.suppressErrorToast) return;
-      const isVietnamese = currentLanguageIsVietnamese();
-      const info = getApiErrorInfo(
-        error,
-        isVietnamese ? "Không thể tải dữ liệu. Vui lòng thử lại." : "Could not load data. Please try again.",
-        isVietnamese,
-      );
+      const lang = getCurrentLanguage();
+      const info = getApiErrorInfo(error, "Could not load data. Please try again.", lang);
       // Several dashboard queries can fail together (for example when the API is
       // offline). Keep that as one actionable notification instead of a toast storm.
       toast.error(info.message, { id: "api-query-error" });
@@ -65,12 +64,8 @@ const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
       if (mutation.meta?.suppressErrorToast || mutation.options.onError) return;
-      const isVietnamese = currentLanguageIsVietnamese();
-      const info = getApiErrorInfo(
-        error,
-        isVietnamese ? "Không thể hoàn tất thao tác." : "Could not complete the operation.",
-        isVietnamese,
-      );
+      const lang = getCurrentLanguage();
+      const info = getApiErrorInfo(error, "Could not complete the operation.", lang);
       toast.error(info.message);
     },
   }),

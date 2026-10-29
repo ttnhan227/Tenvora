@@ -1,280 +1,39 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
+import { translationsMap, type SupportedLanguage, enTranslations } from "@/locales";
 
-export type Language = "vi" | "en";
+export type Language = SupportedLanguage;
 
-interface Translations {
-  [key: string]: string;
+export interface AppLanguageInfo {
+  code: Language;
+  name: string;        // Native name
+  englishName: string; // English name
+  flag: string;        // Flag emoji
 }
 
-const viTranslations: Translations = {
-  // Navigation & Sections
-  "nav.today": "Hôm nay",
-  "nav.records": "Sổ ghi chép",
-  "nav.operations": "Vận hành kinh doanh",
-  "nav.setup": "Cài đặt kinh doanh",
-  "nav.home": "Trang chủ",
-  "nav.agent": "Trợ lý AI",
-  "nav.sales": "Sổ bán hàng",
-  "nav.purchases": "Nhập hàng",
-  "nav.expenses": "Sổ chi tiêu",
-  "nav.reports": "Báo cáo kinh doanh",
-  "nav.customers": "Khách hàng & Sổ nợ",
-  "nav.suppliers": "Nhà cung cấp",
-  "nav.products": "Hàng hoá",
-  "nav.imports": "Nhập dữ liệu",
-  "nav.team": "Nhân viên",
-  "nav.audit": "Lịch sử ghi chép",
-  "nav.settings": "Cài đặt cửa hàng",
-  "nav.more": "Thêm",
+export const SUPPORTED_LANGUAGES: AppLanguageInfo[] = [
+  { code: "en", name: "English", englishName: "English", flag: "🇬🇧" },
+  { code: "vi", name: "Tiếng Việt", englishName: "Vietnamese", flag: "🇻🇳" },
+  { code: "es", name: "Español", englishName: "Spanish", flag: "🇪🇸" },
+  { code: "fr", name: "Français", englishName: "French", flag: "🇫🇷" },
+  { code: "de", name: "Deutsch", englishName: "German", flag: "🇩🇪" },
+  { code: "pt-BR", name: "Português (Brasil)", englishName: "Brazilian Portuguese", flag: "🇧🇷" },
+  { code: "id", name: "Bahasa Indonesia", englishName: "Indonesian", flag: "🇮🇩" },
+];
 
-  // Header & Global Actions
-  "header.yourRecords": "Sổ ghi chép của bạn",
-  "header.newSale": "+ Bán hàng",
-  "header.aiAssistant": "Trợ lý AI",
-  "header.security": "Bảo mật",
-  "header.settings": "Cài đặt",
-  "header.signOut": "Đăng xuất",
-  "header.language": "Ngôn ngữ",
-  "header.googleAccount": "Tài khoản Google",
-  "header.businessAccount": "Tài khoản cửa hàng",
-  "header.yourBusiness": "Cửa hàng của bạn",
-  "header.notebook": "Sổ tay",
+export interface FormatOptions {
+  currency?: string;
+  decimals?: number;
+}
 
-  // Common Actions
-  "common.save": "Lưu thay đổi",
-  "common.saving": "Đang lưu...",
-  "common.cancel": "Huỷ bỏ",
-  "common.edit": "Chỉnh sửa",
-  "common.delete": "Xoá",
-  "common.close": "Đóng",
-  "common.confirm": "Xác nhận",
-  "common.search": "Tìm kiếm...",
-  "common.filter": "Lọc",
-  "common.all": "Tất cả",
-  "common.status": "Trạng thái",
-  "common.active": "Đang hoạt động",
-  "common.archived": "Đã lưu trữ",
-  "common.total": "Tổng cộng",
-  "common.paid": "Đã thu / Đã trả",
-  "common.debt": "Còn nợ",
-  "common.success": "Thành công",
-  "common.error": "Có lỗi xảy ra",
-  "common.copied": "Đã sao chép",
-  "common.details": "Chi tiết",
-  "common.back": "Quay lại",
-  "common.next": "Tiếp theo",
-  "common.viewAll": "Xem tất cả",
-
-  // Business Home & Dashboard
-  "home.greeting": "Xin chào",
-  "home.summaryTitle": "Tình hình kinh doanh hôm nay",
-  "home.todaySales": "Doanh thu bán hôm nay",
-  "home.cashCollected": "Tiền mặt thực thu",
-  "home.todayExpenses": "Khoản đã chi hôm nay",
-  "home.customerDebts": "Khách đang còn nợ",
-  "home.quickRecordTitle": "Ghi nhanh bằng AI",
-  "home.quickRecordPlaceholder": "Ví dụ: Bán cho chị Lan 5kg gạo 125 ngàn nợ 50 ngàn...",
-  "home.confirmRecord": "Xác nhận ghi vào sổ (1 chạm)",
-  "home.recentSales": "Đơn hàng gần đây",
-  "home.noSalesToday": "Hôm nay chưa có đơn nào, hãy bấm nút '+ Bán hàng' để bắt đầu!",
-
-  // Settings Page
-  "settings.pageTitle": "Cài đặt",
-  "settings.pageSubtitle": "Quản lý thông tin cửa hàng, giao diện và tài khoản của bạn.",
-  "settings.savedSuccess": "Đã lưu cài đặt thành công!",
-  "settings.savedFailed": "Lưu cài đặt thất bại, vui lòng kiểm tra lại.",
-  
-  // Tab 1: Store & Business Profile
-  "settings.tabStore": "Cửa hàng",
-  "settings.storeTitle": "Thông tin cửa hàng & Kinh doanh",
-  "settings.storeSubtitle": "Tên tiệm và loại hình buôn bán giúp Tenvora tối ưu sổ sách phù hợp nhất.",
-  "settings.storeName": "Tên cửa hàng / Tên tiệm",
-  "settings.storeNamePlaceholder": "Ví dụ: Tạp hoá An Nhiên, Quán Cơm Bình Dân...",
-  "settings.businessType": "Loại hình kinh doanh",
-  "settings.currency": "Đơn vị tiền tệ chính",
-  "settings.phone": "Số điện thoại cửa hàng / Liên hệ",
-  "settings.phonePlaceholder": "090xxxxxxx (hiển thị trên sổ & hoá đơn)",
-  "settings.saveStoreBtn": "Lưu thông tin cửa hàng",
-
-  // Tab 2: Language & Display
-  "settings.tabDisplay": "Ngôn ngữ & Hiển thị",
-  "settings.displayTitle": "Ngôn ngữ & Hiển thị",
-  "settings.displaySubtitle": "Chọn ngôn ngữ và giao diện phù hợp với bạn.",
-  "settings.languageSection": "Ngôn ngữ hiển thị",
-  "settings.langVi": "🇻🇳 Tiếng Việt",
-  "settings.langViDesc": "Toàn bộ giao diện bằng tiếng Việt bình dị, rõ ràng, không dùng thuật ngữ khó hiểu.",
-  "settings.langEn": "🇬🇧 English",
-  "settings.langEnDesc": "Full English interface for business records and reports.",
-  "settings.themeSection": "Màu sắc giao diện",
-  "settings.themeLight": "Giao diện Sáng (Ban ngày)",
-  "settings.themeDark": "Giao diện Tối (Ban đêm dịu mắt)",
-
-  // Tab 3: Account & Security
-  "settings.tabAccount": "Tài khoản & Mật khẩu",
-  "settings.dataSection": "Dữ liệu của bạn",
-  "settings.accountTitle": "Tài khoản & Bảo mật cá nhân",
-  "settings.accountSubtitle": "Quản lý họ tên chủ tiệm, email và thiết lập mật khẩu đăng nhập.",
-  "settings.ownerName": "Họ và tên chủ tiệm",
-  "settings.ownerNamePlaceholder": "Ví dụ: Nguyễn Văn An...",
-  "settings.email": "Email đăng nhập",
-  "settings.googleConnected": "Đã liên kết với Google",
-  "settings.googleDesc": "Bạn có thể đăng nhập nhanh 1 chạm bằng Google mà không cần nhớ mật khẩu.",
-  "settings.passwordSection": "Đổi / Thiết lập mật khẩu",
-  "settings.currentPassword": "Mật khẩu hiện tại",
-  "settings.newPassword": "Mật khẩu mới (tối thiểu 12 ký tự)",
-  "settings.confirmPassword": "Nhập lại mật khẩu mới",
-  "settings.savePasswordBtn": "Cập nhật mật khẩu",
-  "settings.passwordUpdatedSuccess": "Đổi mật khẩu thành công!",
-
-  // Business Profiles
-  "profile.retail": "Tạp hoá & Cửa hàng bán lẻ",
-  "profile.retailDesc": "Bán hàng hoá, bánh kẹo, đồ uống, quần áo, quản lý tồn kho và sổ nợ khách.",
-  "profile.food": "Quán ăn / Café / Trà sữa",
-  "profile.foodDesc": "Bán món ăn, thức uống, ghi nhanh thu chi trong ca và mua nguyên vật liệu.",
-  "profile.services": "Dịch vụ & Khách hàng",
-  "profile.servicesDesc": "Sửa chữa, làm đẹp, tư vấn, dịch vụ tính tiền theo lượt hoặc theo công việc.",
-  "profile.simple": "Sổ tay thu chi cá nhân",
-  "profile.simpleDesc": "Ghi chép tiền vào, tiền ra hàng ngày đơn giản nhất như một cuốn sổ giấy.",
-};
-
-const enTranslations: Translations = {
-  // Navigation & Sections
-  "nav.today": "Today",
-  "nav.records": "Record book",
-  "nav.operations": "Business operations",
-  "nav.setup": "Business setup",
-  "nav.home": "Home",
-  "nav.agent": "AI Agent",
-  "nav.sales": "Sales",
-  "nav.purchases": "Purchases",
-  "nav.expenses": "Expenses",
-  "nav.reports": "Reports",
-  "nav.customers": "Customers",
-  "nav.suppliers": "Suppliers",
-  "nav.products": "Products",
-  "nav.imports": "Import data",
-  "nav.team": "Team",
-  "nav.audit": "Record history",
-  "nav.settings": "Settings",
-  "nav.more": "More",
-
-
-  // Header & Global Actions
-  "header.yourRecords": "Your records",
-  "header.newSale": "+ New sale",
-  "header.aiAssistant": "AI Assistant",
-  "header.security": "Security",
-  "header.settings": "Settings",
-  "header.signOut": "Sign out",
-  "header.language": "Language",
-  "header.googleAccount": "Google account",
-  "header.businessAccount": "Business account",
-  "header.yourBusiness": "Your business",
-  "header.notebook": "notebook",
-
-  // Common Actions
-  "common.save": "Save changes",
-  "common.saving": "Saving...",
-  "common.cancel": "Cancel",
-  "common.edit": "Edit",
-  "common.delete": "Delete",
-  "common.close": "Close",
-  "common.confirm": "Confirm",
-  "common.search": "Search...",
-  "common.filter": "Filter",
-  "common.all": "All",
-  "common.status": "Status",
-  "common.active": "Active",
-  "common.archived": "Archived",
-  "common.total": "Total",
-  "common.paid": "Paid",
-  "common.debt": "Outstanding balance",
-  "common.success": "Success",
-  "common.error": "An error occurred",
-  "common.copied": "Copied",
-  "common.details": "Details",
-  "common.back": "Back",
-  "common.next": "Next",
-  "common.viewAll": "View all",
-
-  // Business Home & Dashboard
-  "home.greeting": "Hello",
-  "home.summaryTitle": "Today's business summary",
-  "home.todaySales": "Today's sales",
-  "home.cashCollected": "Cash collected",
-  "home.todayExpenses": "Today's expenses",
-  "home.customerDebts": "Customer debt ledger",
-  "home.quickRecordTitle": "Quick record with AI",
-  "home.quickRecordPlaceholder": "E.g.: Sold Lan 5kg rice 125k, owes 50k...",
-  "home.confirmRecord": "Confirm & save to book (1 tap)",
-  "home.recentSales": "Recent sales",
-  "home.noSalesToday": "No sales recorded today yet. Tap '+ New sale' to start!",
-
-  // Settings Page
-  "settings.pageTitle": "Settings",
-  "settings.pageSubtitle": "Manage your business profile, appearance, and account.",
-  "settings.savedSuccess": "Settings saved successfully!",
-  "settings.savedFailed": "Failed to save settings. Please check your input.",
-  
-  // Tab 1: Store & Business Profile
-  "settings.tabStore": "Store profile",
-  "settings.storeTitle": "Store & Business Details",
-  "settings.storeSubtitle": "Your shop name and business type help Tenvora tailor the best notebook experience.",
-  "settings.storeName": "Store / Shop Name",
-  "settings.storeNamePlaceholder": "E.g.: Lan's Grocery, Corner Bakery...",
-  "settings.businessType": "Business Type",
-  "settings.currency": "Primary Currency",
-  "settings.phone": "Store Contact Phone",
-  "settings.phonePlaceholder": "090xxxxxxx (shown on customer records & receipts)",
-  "settings.saveStoreBtn": "Save store details",
-
-  // Tab 2: Language & Display
-  "settings.tabDisplay": "Language & Display",
-  "settings.displayTitle": "Language & Accessibility Settings",
-  "settings.displaySubtitle": "Choose your preferred language and color theme.",
-  "settings.languageSection": "Display Language",
-  "settings.langVi": "🇻🇳 Tiếng Việt (Vietnamese)",
-  "settings.langViDesc": "Natural Vietnamese terminology tailored for Vietnamese shopkeepers.",
-  "settings.langEn": "🇬🇧 English",
-  "settings.langEnDesc": "Full English interface for business records and reports.",
-  "settings.themeSection": "Color Theme",
-  "settings.themeLight": "Light Theme (Daytime)",
-  "settings.themeDark": "Dark Theme (Gentle on the eyes)",
-
-  // Tab 3: Account & Security
-  "settings.tabAccount": "Account & Security",
-  "settings.dataSection": "Your data",
-  "settings.accountTitle": "Account & Credentials",
-  "settings.accountSubtitle": "Manage your owner name, login email, and password security.",
-  "settings.ownerName": "Shop Owner Full Name",
-  "settings.ownerNamePlaceholder": "E.g.: John Doe...",
-  "settings.email": "Login Email",
-  "settings.googleConnected": "Linked to Google",
-  "settings.googleDesc": "You can sign in with 1 tap using Google without having to remember a password.",
-  "settings.passwordSection": "Change / Set Password",
-  "settings.currentPassword": "Current password",
-  "settings.newPassword": "New password (at least 12 characters)",
-  "settings.confirmPassword": "Confirm new password",
-  "settings.savePasswordBtn": "Update password",
-  "settings.passwordUpdatedSuccess": "Password updated successfully!",
-
-  // Business Profiles
-  "profile.retail": "Retail Store or Shop",
-  "profile.retailDesc": "Products, groceries, fashion, customer sales & supplier restock.",
-  "profile.food": "Food, Café & Restaurant",
-  "profile.foodDesc": "Dishes, beverages, shift cash register & daily ingredients.",
-  "profile.services": "Services & Clients",
-  "profile.servicesDesc": "Client billing, repairs, consulting & appointments.",
-  "profile.simple": "Simple Cashbook",
-  "profile.simpleDesc": "Easiest digital replacement for your daily paper notebook.",
-};
-
-interface LanguageContextType {
+export interface LanguageContextType {
   language: Language;
   canChangeLanguage: boolean;
   setLanguage: (lang: Language) => void;
   isVietnamese: boolean;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, paramsOrFallback?: Record<string, string | number> | string, fallback?: string) => string;
+  formatCurrency: (amount: number, currency?: string) => string;
+  formatNumber: (value: number, decimals?: number) => string;
+  formatDate: (date: Date | string, options?: Intl.DateTimeFormatOptions) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -285,22 +44,44 @@ interface LanguageProviderProps {
   fixedLanguage?: Language;
 }
 
+function interpolate(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    return key in params ? String(params[key]) : `{${key}}`;
+  });
+}
+
+function resolveLocaleTag(lang: Language): string {
+  switch (lang) {
+    case "vi": return "vi-VN";
+    case "es": return "es-ES";
+    case "fr": return "fr-FR";
+    case "de": return "de-DE";
+    case "pt-BR": return "pt-BR";
+    case "id": return "id-ID";
+    case "en":
+    default:
+      return "en-US";
+  }
+}
+
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, defaultLanguage, fixedLanguage }) => {
   const [preferredLanguage, setLanguageState] = useState<Language>(() => {
     try {
-      const saved = localStorage.getItem("tenvora_lang");
-      if (saved === "vi" || saved === "en") return saved;
-      if (defaultLanguage) return defaultLanguage;
+      const saved = localStorage.getItem("tenvora_lang") as Language | null;
+      if (saved && saved in translationsMap) return saved;
+      if (defaultLanguage && defaultLanguage in translationsMap) return defaultLanguage;
       return "en";
     } catch {
       return defaultLanguage || "en";
     }
   });
 
-  const language = fixedLanguage ?? preferredLanguage;
+  const language: Language = fixedLanguage ?? preferredLanguage;
 
   const setLanguage = useCallback((lang: Language) => {
     if (fixedLanguage) return;
+    if (!(lang in translationsMap)) return;
     setLanguageState(lang);
     try {
       localStorage.setItem("tenvora_lang", lang);
@@ -313,16 +94,67 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = useCallback((key: string, fallback?: string): string => {
-    const dictionary = language === "vi" ? viTranslations : enTranslations;
-    if (key in dictionary) {
-      return dictionary[key];
+  const t = useCallback((
+    key: string,
+    paramsOrFallback?: Record<string, string | number> | string,
+    fallback?: string
+  ): string => {
+    let params: Record<string, string | number> | undefined;
+    let explicitFallback: string | undefined = fallback;
+
+    if (typeof paramsOrFallback === "string") {
+      explicitFallback = paramsOrFallback;
+    } else if (typeof paramsOrFallback === "object" && paramsOrFallback !== null) {
+      params = paramsOrFallback;
     }
-    // Fallback to Vietnamese dictionary or fallback string or key itself
-    if (language === "en" && key in viTranslations) {
-      return viTranslations[key];
+
+    const dict = translationsMap[language] || translationsMap.en;
+    if (key in dict) {
+      return interpolate(dict[key], params);
     }
-    return fallback ?? key;
+
+    // Fallback to canonical English dictionary
+    if (language !== "en" && key in translationsMap.en) {
+      return interpolate(translationsMap.en[key], params);
+    }
+
+    const raw = explicitFallback ?? key;
+    return interpolate(raw, params);
+  }, [language]);
+
+  const formatCurrency = useCallback((amount: number, currency = "VND"): string => {
+    const localeTag = resolveLocaleTag(language);
+    try {
+      if (currency === "VND") {
+        return `${Math.round(amount).toLocaleString(localeTag)} ₫`;
+      }
+      return new Intl.NumberFormat(localeTag, {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch {
+      return `${amount.toLocaleString(localeTag)} ${currency}`;
+    }
+  }, [language]);
+
+  const formatNumber = useCallback((value: number, decimals?: number): string => {
+    const localeTag = resolveLocaleTag(language);
+    return new Intl.NumberFormat(localeTag, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
+  }, [language]);
+
+  const formatDate = useCallback((date: Date | string, options?: Intl.DateTimeFormatOptions): string => {
+    const localeTag = resolveLocaleTag(language);
+    const d = typeof date === "string" ? new Date(date) : date;
+    const defaultOptions: Intl.DateTimeFormatOptions = options ?? {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    };
+    return new Intl.DateTimeFormat(localeTag, defaultOptions).format(d);
   }, [language]);
 
   const isVietnamese = language === "vi";
@@ -334,8 +166,11 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children, de
       setLanguage,
       isVietnamese,
       t,
+      formatCurrency,
+      formatNumber,
+      formatDate,
     }),
-    [language, isVietnamese, t, setLanguage, fixedLanguage]
+    [language, isVietnamese, t, setLanguage, fixedLanguage, formatCurrency, formatNumber, formatDate]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
@@ -346,9 +181,16 @@ const defaultLanguageContext: LanguageContextType = {
   canChangeLanguage: true,
   setLanguage: () => {},
   isVietnamese: false,
-  t: (key: string, fallback?: string) => enTranslations[key] ?? viTranslations[key] ?? fallback ?? key,
+  t: (key: string, paramsOrFallback?: Record<string, string | number> | string, fallback?: string) => {
+    const explicitFallback = typeof paramsOrFallback === "string" ? paramsOrFallback : fallback;
+    const params = typeof paramsOrFallback === "object" && paramsOrFallback !== null ? paramsOrFallback : undefined;
+    const raw = enTranslations[key] ?? explicitFallback ?? key;
+    return interpolate(raw, params);
+  },
+  formatCurrency: (amount: number, currency = "VND") => `${amount.toLocaleString("en-US")} ${currency}`,
+  formatNumber: (value: number) => value.toLocaleString("en-US"),
+  formatDate: (date: Date | string) => new Date(date).toLocaleDateString("en-US"),
 };
-
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);

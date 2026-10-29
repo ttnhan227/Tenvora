@@ -190,4 +190,75 @@ describe("InteractiveProposalCard", () => {
     expect(screen.getByText("Anh Minh")).toBeInTheDocument();
     expect(screen.getByText("0901234567")).toBeInTheDocument();
   });
+
+  it("renders a batch product proposal and confirms the entire batch on click", async () => {
+    const onDecision = vi.fn().mockResolvedValue(true);
+    render(
+      <InteractiveProposalCard
+        proposal={{
+          actionId: "action-batch-anime",
+          intent: "create_product",
+          status: "PendingConfirmation",
+          riskLevel: "Low",
+          requiresConfirmation: true,
+          summary: "Create 5 anime products?",
+          details: {
+            "Total products": "5",
+            "Product 1": "Naruto Uzumaki Action Figure (100,000 VND / item)",
+            "Product 2": "Sasuke Uchiha Chibi Figure (120,000 VND / item)",
+            "Product 3": "One Piece Luffy Straw Hat Replica (150,000 VND / item)",
+            "Product 4": "Attack on Titan Scout Cloak (200,000 VND / item)",
+            "Product 5": "Demon Slayer Tanjiro Hanafuda Earrings (50,000 VND / item)",
+          },
+        }}
+        busy={false}
+        isVietnamese={false}
+        currency="VND"
+        onDecision={onDecision}
+      />
+    );
+
+    expect(screen.getByText("Create 5 Products Batch")).toBeInTheDocument();
+    expect(screen.getByText("Create 5 anime products?")).toBeInTheDocument();
+    expect(screen.getByText("Product 1")).toBeInTheDocument();
+    expect(screen.getByText("Naruto Uzumaki Action Figure (100,000 VND / item)")).toBeInTheDocument();
+    expect(screen.getByText("Product 5")).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole("button", { name: /Confirm & Create 5 Products/i });
+    expect(confirmBtn).toBeInTheDocument();
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => expect(onDecision).toHaveBeenCalledTimes(1));
+    expect(onDecision).toHaveBeenCalledWith(true);
+  });
+
+  it("displays all items in a completed batch product proposal", () => {
+    render(
+      <InteractiveProposalCard
+        proposal={{
+          actionId: "executed-batch",
+          intent: "create_product",
+          status: "Executed",
+          riskLevel: "Low",
+          requiresConfirmation: false,
+          summary: "5 products created successfully.",
+          details: {
+            Result: "5 products created: Naruto Figure, Sasuke Figure, Luffy Straw Hat, Scout Cloak, Tanjiro Earrings.",
+            "Product 1": "Naruto Figure",
+            "Product 2": "Sasuke Figure",
+          },
+        }}
+        busy={false}
+        isVietnamese={false}
+        onDecision={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getByText("5 products created: Naruto Figure, Sasuke Figure, Luffy Straw Hat, Scout Cloak, Tanjiro Earrings.")).toBeInTheDocument();
+    expect(screen.getByText("Product 1")).toBeInTheDocument();
+    expect(screen.getByText("Naruto Figure")).toBeInTheDocument();
+    expect(screen.getByText("Product 2")).toBeInTheDocument();
+    expect(screen.getByText("Sasuke Figure")).toBeInTheDocument();
+  });
 });

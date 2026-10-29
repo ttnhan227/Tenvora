@@ -4,7 +4,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:allowBackup="false"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
         android:label="Tenvora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"

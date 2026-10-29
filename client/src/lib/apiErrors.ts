@@ -1,3 +1,5 @@
+import { translationsMap, type SupportedLanguage } from "@/locales";
+
 export interface ApiErrorInfo {
   message: string;
   status?: number;
@@ -16,59 +18,50 @@ interface ApiErrorShape {
   };
 }
 
-function prefersVietnamese(fallback: string, explicit?: boolean) {
-  if (explicit !== undefined) return explicit;
+function resolveLocale(explicitLangOrIsVietnamese?: string | boolean): SupportedLanguage {
+  if (typeof explicitLangOrIsVietnamese === "string" && explicitLangOrIsVietnamese in translationsMap) {
+    return explicitLangOrIsVietnamese as SupportedLanguage;
+  }
+  if (explicitLangOrIsVietnamese === true) return "vi";
+  if (explicitLangOrIsVietnamese === false) return "en";
   try {
     const saved = localStorage.getItem("tenvora_lang");
-    if (saved === "vi" || saved === "en") return saved === "vi";
+    if (saved && saved in translationsMap) return saved as SupportedLanguage;
   } catch {
     // Local storage can be unavailable in privacy-restricted contexts.
   }
-  return /[À-ỹ]/u.test(fallback);
+  return "en";
 }
 
-function statusMessage(status: number | undefined, isVietnamese: boolean, fallback: string) {
+function getTranslation(lang: SupportedLanguage, key: string, fallback: string): string {
+  const dict = translationsMap[lang] || translationsMap.en;
+  return dict[key] || translationsMap.en[key] || fallback;
+}
+
+function statusMessage(status: number | undefined, lang: SupportedLanguage, fallback: string): string {
   switch (status) {
     case 400:
     case 422:
-      return isVietnamese
-        ? "Một số thông tin chưa hợp lệ. Vui lòng kiểm tra lại các trường đã nhập."
-        : "Some information is invalid. Check the fields and try again.";
+      return getTranslation(lang, "error.status.400", "Some information is invalid. Check the fields and try again.");
     case 401:
-      return isVietnamese
-        ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-        : "Your session has expired. Please sign in again.";
+      return getTranslation(lang, "error.status.401", "Your session has expired. Please sign in again.");
     case 403:
-      return isVietnamese
-        ? "Bạn không có quyền thực hiện thao tác này."
-        : "You do not have permission to perform this action.";
+      return getTranslation(lang, "error.status.403", "You do not have permission to perform this action.");
     case 404:
-      return isVietnamese
-        ? "Không tìm thấy bản ghi này. Có thể bản ghi đã bị xoá hoặc thay đổi."
-        : "This record could not be found. It may have been removed or changed.";
+      return getTranslation(lang, "error.status.404", "This record could not be found. It may have been removed or changed.");
     case 409:
-      return isVietnamese
-        ? "Dữ liệu đã thay đổi hoặc bị trùng. Hãy làm mới trang và thử lại."
-        : "The data changed or conflicts with an existing record. Refresh and try again.";
+      return getTranslation(lang, "error.status.409", "The data changed or conflicts with an existing record. Refresh and try again.");
     case 413:
-      return isVietnamese
-        ? "Tệp hoặc yêu cầu quá lớn. Hãy chọn tệp nhỏ hơn rồi thử lại."
-        : "The file or request is too large. Choose a smaller file and try again.";
+      return getTranslation(lang, "error.status.413", "The file or request is too large. Choose a smaller file and try again.");
     case 429:
-      return isVietnamese
-        ? "Bạn đang thao tác quá nhanh. Vui lòng chờ một chút rồi thử lại."
-        : "Too many requests were sent. Wait a moment and try again.";
+      return getTranslation(lang, "error.status.429", "Too many requests were sent. Wait a moment and try again.");
     case 502:
     case 503:
     case 504:
-      return isVietnamese
-        ? "Dịch vụ đang tạm thời không khả dụng. Hãy kiểm tra bản ghi trước khi thử lại."
-        : "The service is temporarily unavailable. Check your records before retrying.";
+      return getTranslation(lang, "error.status.service_unavailable", "The service is temporarily unavailable. Check your records before retrying.");
     default:
       if (status && status >= 500) {
-        return isVietnamese
-          ? "Máy chủ không thể hoàn tất thao tác. Hãy kiểm tra bản ghi trước khi thử lại."
-          : "The server could not complete the operation. Check your records before retrying.";
+        return getTranslation(lang, "error.status.500", "The server could not complete the operation. Check your records before retrying.");
       }
       return fallback;
   }
@@ -97,11 +90,15 @@ function collectPayloadErrors(payload: unknown) {
   return { errors: [...new Set(errors)], fieldErrors };
 }
 
-export function getApiErrorInfo(error: unknown, fallback = "The operation could not be completed.", isVietnamese?: boolean): ApiErrorInfo {
+export function getApiErrorInfo(
+  error: unknown,
+  fallback = "The operation could not be completed.",
+  languageOrIsVietnamese?: string | boolean
+): ApiErrorInfo {
   const candidate = (error ?? {}) as ApiErrorShape;
   const status = candidate.response?.status;
   const payload = candidate.response?.data;
-  const languageIsVietnamese = prefersVietnamese(fallback, isVietnamese);
+  const lang = resolveLocale(languageOrIsVietnamese);
   const { errors, fieldErrors } = collectPayloadErrors(payload);
   const body = payload && typeof payload === "object"
     ? payload as { message?: unknown; title?: unknown; code?: unknown }
@@ -114,16 +111,12 @@ export function getApiErrorInfo(error: unknown, fallback = "The operation could 
     : undefined;
   const networkFailure = !status && Boolean(candidate.message);
   const message = candidate.code === "write_uncertain"
-    ? (languageIsVietnamese
-      ? "Chưa thể xác nhận bản ghi đã được lưu. Kiểm tra bản ghi; thử lại cùng thông tin sẽ dùng mã yêu cầu ban đầu."
-      : "Could not confirm whether this was saved. Check your records; retrying the same details uses the original request ID.")
+    ? getTranslation(lang, "error.write_uncertain", "Could not confirm whether this was saved. Check your records; retrying the same details uses the original request ID.")
     : serverMessage
     || validationTitle
     || (networkFailure
-      ? (languageIsVietnamese
-        ? "Không thể kết nối tới máy chủ. Kiểm tra mạng hoặc trạng thái dịch vụ rồi thử lại."
-        : "Could not reach the server. Check your connection or service status and try again.")
-      : statusMessage(status, languageIsVietnamese, fallback));
+      ? getTranslation(lang, "error.network_reach", "Could not reach the server. Check your connection or service status and try again.")
+      : statusMessage(status, lang, fallback));
 
   return {
     message,
@@ -135,12 +128,12 @@ export function getApiErrorInfo(error: unknown, fallback = "The operation could 
   };
 }
 
-export function getApiErrorMessage(error: unknown, fallback: string, isVietnamese?: boolean) {
-  return getApiErrorInfo(error, fallback, isVietnamese).message;
+export function getApiErrorMessage(error: unknown, fallback: string, languageOrIsVietnamese?: string | boolean) {
+  return getApiErrorInfo(error, fallback, languageOrIsVietnamese).message;
 }
 
-export function toApiFailure(error: unknown, fallback: string, isVietnamese?: boolean) {
-  const info = getApiErrorInfo(error, fallback, isVietnamese);
+export function toApiFailure(error: unknown, fallback: string, languageOrIsVietnamese?: string | boolean) {
+  const info = getApiErrorInfo(error, fallback, languageOrIsVietnamese);
   return {
     success: false as const,
     status: info.status,
