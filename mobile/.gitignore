@@ -10,6 +10,7 @@ coverage/
 .idea/
 *.iml
 android/.gradle/
+android/.kotlin/
 android/local.properties
 android/key.properties
 android/*.jks
@@ -19,3 +20,11 @@ ios/.symlinks/
 ios/Flutter/ephemeral/
 ios/Flutter/Generated.xcconfig
 ios/Flutter/flutter_export_environment.sh
+
+# Secrets and environment files
+*.env
+.env*
+
+# Crash logs
+flutter_*.log
+*.log
