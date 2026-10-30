@@ -13,6 +13,7 @@ import {
   PackageOpen,
   Receipt,
   Store,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getProfileOrDefault, BusinessType } from "@/data/businessProfiles";
@@ -121,6 +122,32 @@ export function GettingStartedGuide({
           </button>
         </div>
       </div>
+
+      {!hasActivity && (
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3.5 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+              ⚡
+            </div>
+            <div>
+              <p className="font-bold text-foreground">
+                {t("onboarding.quickstart_title", undefined, "Get value in 2 minutes")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("onboarding.quickstart_desc", undefined, "Import your existing catalog via CSV with AI column mapping or scan your first invoice.")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
+            <Button asChild size="sm" variant="default" className="h-7 text-xs font-semibold gap-1.5 shadow-xs">
+              <Link to="/settings/import?type=products">
+                <Upload className="w-3.5 h-3.5" />
+                {t("onboarding.import_catalog", undefined, "Import CSV / Excel")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         {profile.starterSteps.map((step, index) => {

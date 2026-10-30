@@ -174,16 +174,17 @@ public record SaleSummaryDto(
 
 public record SupplierDto(Guid Id, string Name, string? Phone, string? Email, string? Address, string? Notes,
     string Status, string Currency, decimal TotalPurchases, decimal TotalPaid, decimal OutstandingBalance,
-    int PurchaseCount, DateTime CreatedAt);
+    int PurchaseCount, DateTime CreatedAt, int? PaymentTermsDays = null);
 
 public record SupplierDetailDto(SupplierDto Supplier, List<PurchaseDto> Purchases, List<PurchasePaymentDto> Payments);
 
-public record CreateSupplierRequest([Required, MaxLength(200)] string Name, [MaxLength(50)] string? Phone,
-    [EmailAddress, MaxLength(200)] string? Email, [MaxLength(300)] string? Address, [MaxLength(1000)] string? Notes);
+public record CreateSupplierRequest([Required, MaxLength(200)] string Name, [MaxLength(50)] string? Phone = null,
+    [EmailAddress, MaxLength(200)] string? Email = null, [MaxLength(300)] string? Address = null, [MaxLength(1000)] string? Notes = null,
+    int? PaymentTermsDays = null);
 
-public record UpdateSupplierRequest([Required, MaxLength(200)] string Name, [MaxLength(50)] string? Phone,
-    [EmailAddress, MaxLength(200)] string? Email, [MaxLength(300)] string? Address, [MaxLength(1000)] string? Notes,
-    [RegularExpression("Active|Archived")] string Status = "Active");
+public record UpdateSupplierRequest([Required, MaxLength(200)] string Name, [MaxLength(50)] string? Phone = null,
+    [EmailAddress, MaxLength(200)] string? Email = null, [MaxLength(300)] string? Address = null, [MaxLength(1000)] string? Notes = null,
+    [RegularExpression("Active|Archived")] string Status = "Active", int? PaymentTermsDays = null);
 
 public record CreatePurchaseItemRequest([MaxLength(200)] string Description, [MaxLength(40)] string Unit,
     decimal Quantity, decimal UnitCost, Guid? ProductId = null);
@@ -191,10 +192,47 @@ public record CreatePurchaseItemRequest([MaxLength(200)] string Description, [Ma
 public record CreatePurchaseRequest(Guid SupplierId, [MinLength(1)] List<CreatePurchaseItemRequest> Items,
     decimal PaymentAmount = 0m, [MaxLength(50)] string PaymentMethod = "Other",
     [MaxLength(1000)] string? Notes = null, DateTime? PurchasedAt = null,
-    string? InvoiceImageDataUrl = null);
+    string? InvoiceImageDataUrl = null, DateTime? DueDate = null);
 
 public record RecordPurchasePaymentRequest(decimal Amount, [MaxLength(50)] string Method = "Other",
     [MaxLength(200)] string? Reference = null, [MaxLength(1000)] string? Notes = null, DateTime? PaidAt = null);
+
+public record RecordSupplierAccountPaymentRequest(
+    decimal Amount,
+    [MaxLength(50)] string Method = "Other",
+    [MaxLength(200)] string? Reference = null,
+    [MaxLength(1000)] string? Notes = null,
+    DateTime? PaidAt = null
+);
+
+public record SupplierAccountPaymentResultDto(
+    decimal TotalAmountPaid,
+    decimal TotalAllocated,
+    decimal RemainingBalance,
+    List<PurchaseDto> AffectedPurchases
+);
+
+public record DashboardAttentionItemDto(
+    string Id,
+    string Type,
+    string Severity,
+    string Title,
+    string Subtitle,
+    int Count,
+    string ActionLabel,
+    string? ActionRoute = null,
+    string? ActionKey = null,
+    object? Metadata = null
+);
+
+public record DashboardInsightDto(
+    string Id,
+    string Type,
+    string Headline,
+    string Detail,
+    string? Trend = null,
+    decimal? MetricValue = null
+);
 
 public record PurchaseItemDto(Guid Id, Guid? ProductId, string Description, string Unit, decimal Quantity,
     decimal UnitCost, decimal LineTotal);
@@ -218,7 +256,7 @@ public record PurchasePaymentDto(
 public record PurchaseDto(Guid Id, string PurchaseNumber, Guid SupplierId, string SupplierName, string Currency,
     decimal TotalAmount, decimal PaidAmount, decimal OutstandingBalance, string PaymentStatus, string Status,
     string? Notes, DateTime PurchasedAt, DateTime CreatedAt, List<PurchaseItemDto> Items,
-    List<PurchasePaymentDto> Payments, string? InvoiceImageDataUrl = null);
+    List<PurchasePaymentDto> Payments, string? InvoiceImageDataUrl = null, DateTime? DueDate = null);
 
 public record CreateBusinessExpenseRequest([Required, MaxLength(50)] string Category, decimal Amount,
     DateTime? ExpenseDate = null, [MaxLength(1000)] string? Description = null,
@@ -320,3 +358,58 @@ public record CustomerStatementDto(
     decimal ClosingBalance,
     List<CustomerStatementEntryDto> Entries
 );
+
+public record RecurringExpenseTemplateDto(
+    Guid Id,
+    string Category,
+    decimal Amount,
+    string Currency,
+    string? Description,
+    string Frequency,
+    DateTime NextDueDate,
+    bool IsActive,
+    DateTime? LastGeneratedAt,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
+);
+
+public record CreateRecurringExpenseTemplateRequest(
+    string Category,
+    decimal Amount,
+    string Frequency,
+    DateTime NextDueDate,
+    string? Description = null,
+    string? Currency = null
+);
+
+public record UpdateRecurringExpenseTemplateRequest(
+    string? Category = null,
+    decimal? Amount = null,
+    string? Frequency = null,
+    DateTime? NextDueDate = null,
+    string? Description = null,
+    bool? IsActive = null
+);
+
+public record ProcessRecurringExpensesResultDto(
+    int ProcessedCount,
+    int DraftsCreatedCount,
+    List<Guid> CreatedActionIds
+);
+
+public record ProductSmartDefaultsDto(
+    Guid ProductId,
+    Guid? UsualSupplierId,
+    string? UsualSupplierName,
+    decimal? LastUnitCost,
+    decimal DefaultPrice,
+    string Unit
+);
+
+public record SupplierSmartDefaultsDto(
+    Guid SupplierId,
+    int? PaymentTermsDays,
+    string? UsualPaymentMethod,
+    DateTime DefaultDueDate
+);
+

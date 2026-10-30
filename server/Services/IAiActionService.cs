@@ -20,4 +20,11 @@ public interface IAiActionService
         string userRole = "TenantAdmin",
         CancellationToken ct = default,
         AiActionInputOverrides? input = null);
+
+    Task<ApiResult<AiActionExecutionResponse>> UndoAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid actionId,
+        string userRole = "TenantAdmin",
+        CancellationToken ct = default);
 }

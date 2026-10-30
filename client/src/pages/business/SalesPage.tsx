@@ -34,6 +34,7 @@ import { PaginationBar } from "@/components/business/PaginationBar";
 import { PaymentReversalModal } from "@/components/business/PaymentReversalModal";
 import { ReceiptModal } from "@/components/business/ReceiptModal";
 import { VoidDocumentModal } from "@/components/business/VoidDocumentModal";
+import { CreatableCombobox, ComboboxOption } from "@/components/business/CreatableCombobox";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -208,6 +209,30 @@ export default function SalesPage() {
     [customers, customerId],
   );
   const currency = products[0]?.currency || customers[0]?.currency || "USD";
+
+  const customerOptions: ComboboxOption[] = useMemo(
+    () =>
+      customers.map((c) => ({
+        id: c.id,
+        label: c.name,
+        sublabel: c.outstandingBalance > 0
+          ? `${t("owes")}: ${businessMoney(c.outstandingBalance, c.currency)}`
+          : undefined,
+        data: c,
+      })),
+    [customers, t],
+  );
+
+  const productOptions: ComboboxOption[] = useMemo(
+    () =>
+      products.map((p) => ({
+        id: p.id,
+        label: p.name,
+        sublabel: `/${p.unit} · ${p.trackInventory ? `${t("Stock")}: ${p.stockQuantity}` : t("Service")} · ${businessMoney(p.defaultPrice, p.currency)}`,
+        data: p,
+      })),
+    [products, t],
+  );
 
   const create = useMutation({
     mutationFn: () =>
@@ -445,8 +470,8 @@ export default function SalesPage() {
     toast.info(isVietnamese ? "Đã xoá đơn lưu tạm." : "Held order discarded.");
   };
 
-  function chooseProduct(index: number, productId: string) {
-    const product = products.find((p) => p.id === productId);
+  function chooseProduct(index: number, productId: string, prodData?: Product) {
+    const product = prodData ?? products.find((p) => p.id === productId);
     setItems(
       items.map((item, i) =>
         i === index

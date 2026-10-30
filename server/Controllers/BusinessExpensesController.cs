@@ -31,4 +31,24 @@ public sealed class BusinessExpensesController(IBusinessService service) : Contr
     [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
     public async Task<IActionResult> Delete(Guid id) =>
         (await service.DeleteBusinessExpenseAsync(User.GetTenantId(), id)).ToActionResult();
+
+    [HttpGet("recurring")]
+    public async Task<IActionResult> GetRecurring(CancellationToken ct) =>
+        (await service.GetRecurringExpenseTemplatesAsync(User.GetTenantId(), ct)).ToActionResult();
+
+    [HttpPost("recurring"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> CreateRecurring(CreateRecurringExpenseTemplateRequest request, CancellationToken ct) =>
+        (await service.CreateRecurringExpenseTemplateAsync(User.GetTenantId(), User.GetUserId(), request, ct)).ToActionResult();
+
+    [HttpPut("recurring/{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> UpdateRecurring(Guid id, UpdateRecurringExpenseTemplateRequest request, CancellationToken ct) =>
+        (await service.UpdateRecurringExpenseTemplateAsync(User.GetTenantId(), id, request, ct)).ToActionResult();
+
+    [HttpDelete("recurring/{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> DeleteRecurring(Guid id, CancellationToken ct) =>
+        (await service.DeleteRecurringExpenseTemplateAsync(User.GetTenantId(), id, ct)).ToActionResult();
+
+    [HttpPost("recurring/process-due"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> ProcessDueRecurring(CancellationToken ct) =>
+        (await service.ProcessDueRecurringExpensesAsync(User.GetTenantId(), User.GetUserId(), ct)).ToActionResult();
 }

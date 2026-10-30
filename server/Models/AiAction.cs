@@ -35,6 +35,7 @@ public static class AiActionStatuses
     public const string Executing = "Executing";
     public const string Executed = "Executed";
     public const string Cancelled = "Cancelled";
+    public const string Undone = "Undone";
     public const string Expired = "Expired";
     public const string Failed = "Failed";
 }

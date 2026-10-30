@@ -27,4 +27,11 @@ public sealed class SuppliersController(IBusinessService service) : ControllerBa
         (await service.UpdateSupplierAsync(User.GetTenantId(), id, request)).ToActionResult();
     [HttpDelete("{id:guid}"), Authorize(Roles = "TenantAdmin,OperationsManager")] public async Task<IActionResult> Delete(Guid id) =>
         (await service.DeleteSupplierAsync(User.GetTenantId(), id)).ToActionResult();
+    [HttpPost("{id:guid}/payments"), Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> RecordAccountPayment(Guid id, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, RecordSupplierAccountPaymentRequest request) =>
+        (await service.RecordSupplierAccountPaymentAsync(User.GetTenantId(), id, idempotencyKey?.Trim() ?? string.Empty, request)).ToActionResult();
+
+    [HttpGet("{id:guid}/defaults")]
+    public async Task<IActionResult> GetDefaults(Guid id, CancellationToken ct = default) =>
+        (await service.GetSupplierSmartDefaultsAsync(User.GetTenantId(), id, ct)).ToActionResult();
 }

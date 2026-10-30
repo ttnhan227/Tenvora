@@ -1,5 +1,6 @@
 using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
+using Tenvora.Dtos;
 
 namespace Tenvora.Api.Services;
 
@@ -47,6 +48,10 @@ public interface IBusinessService
     Task<ApiResult<PurchaseDto>> RecordPurchasePaymentAsync(Guid tenantId, Guid purchaseId, string idempotencyKey, RecordPurchasePaymentRequest request);
     Task<ApiResult<PurchaseDto>> ReversePurchasePaymentAsync(Guid tenantId, Guid purchaseId, Guid paymentId, Guid? userId, ReversePaymentRequest request);
     Task<ApiResult<PurchaseDto>> VoidPurchaseAsync(Guid tenantId, Guid purchaseId, Guid? userId = null, VoidPurchaseRequest? request = null);
+    Task<ApiResult<SupplierAccountPaymentResultDto>> RecordSupplierAccountPaymentAsync(Guid tenantId, Guid supplierId, string idempotencyKey, RecordSupplierAccountPaymentRequest request);
+    Task<ApiResult<List<string>>> GetDistinctProductUnitsAsync(Guid tenantId);
+    Task<ApiResult<List<DashboardAttentionItemDto>>> GetDashboardAttentionItemsAsync(Guid tenantId);
+    Task<ApiResult<List<DashboardInsightDto>>> GetDashboardInsightsAsync(Guid tenantId);
 
     Task<ApiResult<List<BusinessExpenseDto>>> GetBusinessExpensesAsync(Guid tenantId, string? search, string? category, DateTime? from, DateTime? to);
     Task<ApiResult<PagedResult<BusinessExpenseDto>>> GetBusinessExpensesPagedAsync(Guid tenantId, string? search, string? category, DateTime? from, DateTime? to, int page, int pageSize);
@@ -54,4 +59,22 @@ public interface IBusinessService
     Task<ApiResult<BusinessExpenseDto>> UpdateBusinessExpenseAsync(Guid tenantId, Guid expenseId, UpdateBusinessExpenseRequest request);
     Task<ApiResult> DeleteBusinessExpenseAsync(Guid tenantId, Guid expenseId);
     Task<ApiResult<BusinessDashboardDto>> GetDashboardAsync(Guid tenantId, string? period = "today", DateTime? from = null, DateTime? to = null);
+
+    Task<ApiResult<List<RecurringExpenseTemplateDto>>> GetRecurringExpenseTemplatesAsync(Guid tenantId, CancellationToken ct = default);
+    Task<ApiResult<RecurringExpenseTemplateDto>> CreateRecurringExpenseTemplateAsync(Guid tenantId, Guid userId, CreateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
+    Task<ApiResult<RecurringExpenseTemplateDto>> UpdateRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, UpdateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
+    Task<ApiResult<bool>> DeleteRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, CancellationToken ct = default);
+    Task<ApiResult<ProcessRecurringExpensesResultDto>> ProcessDueRecurringExpensesAsync(Guid tenantId, Guid userId, CancellationToken ct = default);
+
+    Task<ApiResult<ProductSmartDefaultsDto>> GetProductSmartDefaultsAsync(Guid tenantId, Guid productId, Guid? supplierId = null, CancellationToken ct = default);
+    Task<ApiResult<SupplierSmartDefaultsDto>> GetSupplierSmartDefaultsAsync(Guid tenantId, Guid supplierId, CancellationToken ct = default);
+
+    Task<ApiResult<List<RecurringExpenseTemplateDto>>> GetRecurringExpenseTemplatesAsync(Guid tenantId, CancellationToken ct = default);
+    Task<ApiResult<RecurringExpenseTemplateDto>> CreateRecurringExpenseTemplateAsync(Guid tenantId, Guid userId, CreateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
+    Task<ApiResult<RecurringExpenseTemplateDto>> UpdateRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, UpdateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
+    Task<ApiResult<bool>> DeleteRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, CancellationToken ct = default);
+    Task<ApiResult<ProcessRecurringExpensesResultDto>> ProcessDueRecurringExpensesAsync(Guid tenantId, Guid userId, CancellationToken ct = default);
+
+    Task<ApiResult<ProductSmartDefaultsDto>> GetProductSmartDefaultsAsync(Guid tenantId, Guid productId, Guid? supplierId = null, CancellationToken ct = default);
+    Task<ApiResult<SupplierSmartDefaultsDto>> GetSupplierSmartDefaultsAsync(Guid tenantId, Guid supplierId, CancellationToken ct = default);
 }

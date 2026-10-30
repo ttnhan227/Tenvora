@@ -86,12 +86,20 @@ export interface AiActionProposalResponse {
 
 export interface AiActionExecutionResponse {
   actionId: string;
-  status: "Executed" | "Cancelled";
+  status: "Executed" | "Cancelled" | "Undone";
   message: string;
   recordType?: string | null;
   recordId?: string | null;
   previousBalance?: number | null;
   newBalance?: number | null;
+}
+
+export interface CreatePurchaseItemRequest {
+  description: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  productId?: string | null;
 }
 
 export interface AiActionInputOverrides {
@@ -104,6 +112,14 @@ export interface AiActionInputOverrides {
   category?: string | null;
   amount?: number | null;
   description?: string | null;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  paidAmount?: number | null;
+  paymentMethod?: string | null;
+  dueDate?: string | null;
+  purchasedAt?: string | null;
+  invoiceImageDataUrl?: string | null;
+  purchaseItems?: CreatePurchaseItemRequest[] | null;
 }
 
 export function applyActionExecutionToProposal(
@@ -268,6 +284,19 @@ export const aiAssistantService = {
       return response.data;
     } catch (error: unknown) {
       return toApiFailure(error, "Không thể hoàn tất thao tác.");
+    }
+  },
+
+  undoAction: async (
+    actionId: string,
+  ): Promise<ApiResponse<AiActionExecutionResponse>> => {
+    try {
+      const response = await apiClient.post<ApiResponse<AiActionExecutionResponse>>(
+        `/ai/assistant/actions/${actionId}/undo`
+      );
+      return response.data;
+    } catch (error: unknown) {
+      return toApiFailure(error, "Không thể hoàn tác thao tác.");
     }
   },
 

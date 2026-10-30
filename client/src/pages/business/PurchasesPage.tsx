@@ -78,10 +78,12 @@ export default function PurchasesPage() {
   const [open, setOpen] = useState(
     canManageRecords && (params.get("create") === "1" || !!params.get("supplier")),
   );
+  const [scanInvoiceOpen, setScanInvoiceOpen] = useState(false);
   const [supplierId, setSupplierId] = useState(params.get("supplier") ?? "");
   const [items, setItems] = useState<Line[]>([line()]);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [method, setMethod] = useState("Cash");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [invoiceImageDataUrl, setInvoiceImageDataUrl] = useState<string | undefined>();
   const [paying, setPaying] = useState<Purchase | null>(null);
@@ -139,6 +141,7 @@ export default function PurchasesPage() {
         items,
         paymentAmount,
         paymentMethod: method,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         notes: notes || undefined,
         invoiceImageDataUrl,
       }),
@@ -148,6 +151,7 @@ export default function PurchasesPage() {
       setSupplierId("");
       setItems([line()]);
       setPaymentAmount(0);
+      setDueDate("");
       setNotes("");
       setInvoiceImageDataUrl(undefined);
       toast.success(isVietnamese ? `Đã ghi ${p.purchaseNumber}` : `${p.purchaseNumber} recorded`);

@@ -100,7 +100,15 @@ public record AiActionInputOverrides(
     decimal? UnitPrice = null,
     string? Category = null,
     decimal? Amount = null,
-    string? Description = null
+    string? Description = null,
+    Guid? SupplierId = null,
+    string? SupplierName = null,
+    decimal? PaidAmount = null,
+    string? PaymentMethod = null,
+    DateTime? DueDate = null,
+    DateTime? PurchasedAt = null,
+    string? InvoiceImageDataUrl = null,
+    List<CreatePurchaseItemRequest>? PurchaseItems = null
 );
 
 public record AiConfirmActionRequest(

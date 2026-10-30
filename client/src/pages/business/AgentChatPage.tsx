@@ -37,6 +37,8 @@ import { InteractiveProposalCard } from "@/components/assistant/InteractivePropo
 import { ChatMessageContent } from "@/components/assistant/ChatMessageContent";
 import { getSyncedAiConversationId, publishAiConversationSync, setSyncedAiConversationId, subscribeToAiConversationSync } from "@/components/assistant/assistantSync";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { showToastWithUndo } from "@/lib/undoAction";
+import { telemetryService } from "@/services/telemetryService";
 
 export default function AgentChatPage() {
   const { isVietnamese, t } = useLanguage();
@@ -311,6 +313,7 @@ export default function AgentChatPage() {
         queryClient.invalidateQueries({ queryKey: ["purchases"] }),
         queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
         queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["review-queue"] }),
       ]);
       toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }

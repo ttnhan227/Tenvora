@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, Plus, MoreHorizontal, Shield, Sparkles, Settings } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Menu, X, LogOut, Plus, MoreHorizontal, Shield, Sparkles, Settings, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -13,6 +14,11 @@ import { AiChatDrawer } from "@/components/assistant/AiChatDrawer";
 import { ContextualAiBar } from "@/components/assistant/ContextualAiBar";
 import { getProfileOrDefault } from "@/data/businessProfiles";
 import { getWorkspaceRouteItem, workspaceNav } from "./WorkspaceNav";
+import { captureService } from "@/services/captureService";
+import { CommandPalette } from "@/components/business/CommandPalette";
+import { CaptureSheet } from "@/components/business/CaptureSheet";
+import { SupplierPaymentModal } from "@/components/business/SupplierPaymentModal";
+import { ActionableNotifications } from "@/components/business/ActionableNotifications";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
@@ -23,11 +29,18 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const [setupOpen, setSetupOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiDraftPrompt, setAiDraftPrompt] = useState<string | undefined>();
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureIntent, setCaptureIntent] = useState<"purchase" | "expense">("purchase");
+  const [supplierPaymentOpen, setSupplierPaymentOpen] = useState(false);
   const needsOnboarding = user?.role === "TenantAdmin" && user.onboardingCompleted === false;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
         setAiOpen((prev) => !prev);
       }
@@ -44,6 +57,17 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   const currentItem = getWorkspaceRouteItem(pathname);
   const currentTitle = currentItem ? t(currentItem.key, currentItem.label) : t("nav.home", "Trang chủ");
+
+  const queueQuery = useQuery({
+    queryKey: ["review-queue"],
+    queryFn: async () => {
+      const res = await captureService.getReviewQueue();
+      return res.success && res.data ? res.data : [];
+    },
+    staleTime: 15_000,
+    enabled: Boolean(user && user.role !== "Viewer"),
+  });
+  const pendingCount = queueQuery.data?.length ?? 0;
 
   const visibleNav = workspaceNav.filter((item) =>
     (!item.admin || user?.role === "TenantAdmin") && (!item.roles || item.roles.includes(user?.role ?? ""))
@@ -94,6 +118,11 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               <Link to={item.href} onClick={() => setOpen(false)} aria-current={isActive ? "page" : undefined} className={`friendly-focus my-0.5 flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-bold" : "text-sidebar-foreground/75 hover:bg-secondary hover:text-sidebar-foreground"}`}>
                 <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive ? "bg-card/70 text-primary" : "text-muted-foreground"}`}><item.icon size={18} /></span>
                 <span className="flex-1">{t(item.key, item.label)}</span>
+                {item.href === "/review" && pendingCount > 0 && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             </div>;
           })}
@@ -137,6 +166,29 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <div><p className="text-xs text-muted-foreground">{t("header.yourRecords", "Sổ ghi chép của bạn")}</p><p className="text-sm font-bold">{currentTitle}</p></div>
           </div>
           <div className="flex items-center gap-2">
+            {pendingCount > 0 && (
+              <Link
+                to="/review"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{pendingCount} {t("queue.pending_badge", undefined, "drafts")}</span>
+              </Link>
+            )}
+            {/* Command Palette Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setCommandOpen(true)}
+              aria-label={t("nav.search", undefined, "Search or jump to")}
+              className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">{t("nav.search_quick", undefined, "Search or jump to...")}</span>
+              <kbd className="hidden sm:inline-flex h-4 items-center rounded border bg-background px-1 font-mono text-[10px]">
+                Ctrl K
+              </kbd>
+            </button>
+
             <Button asChild size="sm" className="hidden sm:inline-flex">
               <Link to="/sales?create=1"><Plus />{t("header.newSale", "+ Bán hàng")}</Link>
             </Button>
@@ -170,6 +222,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               <Shield size={14} className="text-primary" />
               <span>{t("header.security", "Bảo mật")}</span>
             </Button>
+            <ActionableNotifications
+              onPaySupplier={() => setSupplierPaymentOpen(true)}
+            />
             <LanguageToggle />
             <ThemeToggle />
           </div>
@@ -198,6 +253,26 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         canMutate={["TenantAdmin", "OperationsManager"].includes(user?.role ?? "")}
         draftPrompt={aiDraftPrompt}
       />
+      <CommandPalette
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        onOpenAi={(prompt) => openAi(prompt)}
+        onScanInvoice={(type) => {
+          setCaptureIntent(type);
+          setCaptureOpen(true);
+        }}
+        onPaySupplier={() => setSupplierPaymentOpen(true)}
+      />
+      <CaptureSheet
+        open={captureOpen}
+        onOpenChange={setCaptureOpen}
+        documentTypeHint={captureIntent}
+      />
+      <SupplierPaymentModal
+        open={supplierPaymentOpen}
+        onOpenChange={setSupplierPaymentOpen}
+        currency={user?.preferredCurrency ?? "VND"}
+      />
 
       {/* Floating Agent Trigger Pill */}
       <button
@@ -209,7 +284,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
         <span>Tenvora Agent</span>
         <span className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] sm:inline">
-          Ctrl K
+          Ctrl J
         </span>
       </button>
     </div>

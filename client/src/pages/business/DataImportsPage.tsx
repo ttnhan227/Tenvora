@@ -15,6 +15,7 @@ import {
   ReceiptText,
   PackageOpen,
   ShieldAlert,
+  Sparkles,
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import {
+  ColumnMappingSuggestion,
   ImportKind,
   ParsedImportRow,
   downloadImportTemplate,
@@ -31,6 +33,7 @@ import {
   importDefinitions,
   importNumber,
   importString,
+  inspectImportHeaders,
   normalizeImportText,
   readImportFile,
 } from "@/lib/dataImport";
@@ -117,6 +120,12 @@ export default function DataImportsPage() {
   const [rowResults, setRowResults] = useState<Record<number, RowState>>({});
   const [runResult, setRunResult] = useState<ImportRunResult | null>(null);
 
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [availableHeaders, setAvailableHeaders] = useState<string[]>([]);
+  const [columnMappings, setColumnMappings] = useState<ColumnMappingSuggestion[]>([]);
+  const [customMapping, setCustomMapping] = useState<Record<string, number>>({});
+  const [isMappingOpen, setIsMappingOpen] = useState(false);
+
   const { data: customers = [] } = useQuery({ queryKey: ["customers", "import-all"], queryFn: () => businessService.getCustomers("", "Active"), enabled: canManageRecords });
   const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers", "import-all"], queryFn: () => businessService.getSuppliers("", "Active"), enabled: canManageRecords });
   const { data: products = [] } = useQuery({ queryKey: ["products", "import-all"], queryFn: () => businessService.getProducts("", true), enabled: canManageRecords });
@@ -133,6 +142,11 @@ export default function DataImportsPage() {
     setRowResults({});
     setRunResult(null);
     setProgress({ current: 0, total: 0 });
+    setCurrentFile(null);
+    setAvailableHeaders([]);
+    setColumnMappings([]);
+    setCustomMapping({});
+    setIsMappingOpen(false);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -286,12 +300,39 @@ export default function DataImportsPage() {
     setRowResults({});
     setRunResult(null);
     setFileName(file.name);
+    setCurrentFile(file);
     try {
-      const parsed = await readImportFile(file, definition);
+      const inspected = await inspectImportHeaders(file, definition);
+      setAvailableHeaders(inspected.headers);
+      setColumnMappings(inspected.suggestions);
+
+      const initialMap: Record<string, number> = {};
+      for (const s of inspected.suggestions) {
+        if (s.headerIndex >= 0) initialMap[s.fieldKey] = s.headerIndex;
+      }
+      setCustomMapping(initialMap);
+
+      const parsed = await readImportFile(file, definition, initialMap);
       setRows(parsed);
       if (parsed.length === 0) setFileError(copy("No data rows were found.", "Không tìm thấy dòng dữ liệu nào."));
     } catch (error) {
       setFileError(error instanceof Error ? error.message : copy("Could not read this file.", "Không thể đọc file này."));
+    } finally {
+      setIsReading(false);
+    }
+  };
+
+  const handleMappingChange = async (fieldKey: string, newHeaderIndex: number) => {
+    const nextMap = { ...customMapping, [fieldKey]: newHeaderIndex };
+    setCustomMapping(nextMap);
+    if (!currentFile) return;
+    setIsReading(true);
+    try {
+      const parsed = await readImportFile(currentFile, definition, nextMap);
+      setRows(parsed);
+      setRowResults({});
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error applying mapping");
     } finally {
       setIsReading(false);
     }
@@ -495,6 +536,69 @@ export default function DataImportsPage() {
           </div>
 
           {fileError && <div className="mt-4 flex gap-2 rounded-xl border border-destructive/30 bg-destructive/8 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 shrink-0" size={17} /><span>{fileError}</span></div>}
+
+          {availableHeaders.length > 0 && (
+            <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold">
+                    {copy("Smart Column Mapping (AI assisted)", "Khớp cột thông minh (Hỗ trợ bởi AI)")}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMappingOpen(!isMappingOpen)}
+                  className="text-xs text-primary h-7 px-2"
+                >
+                  {isMappingOpen ? copy("Hide mapping", "Ẩn khớp cột") : copy("Review / Edit mapping", "Xem / Sửa khớp cột")}
+                </Button>
+              </div>
+
+              {isMappingOpen && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {definition.fields.map((field) => {
+                    const mappedIndex = customMapping[field.key] ?? -1;
+                    const suggestion = columnMappings.find((s) => s.fieldKey === field.key);
+                    const confidence = suggestion?.headerIndex === mappedIndex ? suggestion.confidence : (mappedIndex >= 0 ? 1 : 0);
+
+                    return (
+                      <div key={field.key} className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-background text-xs">
+                        <div className="min-w-0">
+                          <span className="font-semibold">{field.label}</span>
+                          {field.required && <span className="text-destructive ml-1">*</span>}
+                          <div className="text-[10px] text-muted-foreground">
+                            {confidence === 1 ? (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ 100% {copy("Match", "Khớp")}</span>
+                            ) : confidence > 0.7 ? (
+                              <span className="text-amber-600 dark:text-amber-400 font-medium">⚡ 85% {copy("Heuristic match", "Khớp gần đúng")}</span>
+                            ) : (
+                              <span className="text-muted-foreground">{copy("Manual assignment", "Chọn thủ công")}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <select
+                          value={mappedIndex}
+                          onChange={(e) => handleMappingChange(field.key, Number(e.target.value))}
+                          className="h-8 rounded-md border border-input bg-background px-2 text-xs max-w-[160px] truncate"
+                        >
+                          <option value={-1}>{copy("— Select column —", "— Chọn cột —")}</option>
+                          {availableHeaders.map((header, idx) => (
+                            <option key={idx} value={idx}>
+                              {header || `Column ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {rows.length > 0 && (
             <div className="mt-6 space-y-4">

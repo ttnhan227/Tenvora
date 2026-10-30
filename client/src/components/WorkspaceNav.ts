@@ -12,6 +12,7 @@ import {
   Sparkles,
   FileUp,
   FileText,
+  Inbox,
 } from "lucide-react";
 
 export interface NavItem {
@@ -29,6 +30,7 @@ export interface NavItem {
 export const workspaceNav: NavItem[] = [
   { key: "nav.home", label: "Home", href: "/dashboard", icon: Home, section: "Today", sectionKey: "nav.today" },
   { key: "nav.agent", label: "AI Agent", href: "/agent", icon: Sparkles, section: "Today", sectionKey: "nav.today" },
+  { key: "nav.review_queue", label: "Review Queue", href: "/review", icon: Inbox, section: "Today", sectionKey: "nav.today", roles: ["TenantAdmin", "OperationsManager"] },
   { key: "nav.sales", label: "Sales", href: "/sales", icon: ReceiptText, section: "Record book", sectionKey: "nav.records" },
   { key: "nav.purchases", label: "Purchases", href: "/purchases", icon: PackageOpen, section: "Record book", sectionKey: "nav.records" },
   { key: "nav.expenses", label: "Expenses", href: "/expenses", icon: WalletCards, section: "Record book", sectionKey: "nav.records" },

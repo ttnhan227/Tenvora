@@ -188,7 +188,98 @@ function parseCsv(text: string): ImportCell[][] {
   return rows;
 }
 
-export async function readImportFile(file: File, definition: ImportDefinition): Promise<ParsedImportRow[]> {
+export interface ColumnMappingSuggestion {
+  fieldKey: string;
+  fieldLabel: string;
+  required?: boolean;
+  headerIndex: number;
+  headerName: string;
+  confidence: number;
+}
+
+export function suggestColumnMappings(
+  headers: string[],
+  definition: ImportDefinition,
+): ColumnMappingSuggestion[] {
+  const suggestions: ColumnMappingSuggestion[] = [];
+  const normalizedHeaders = headers.map((h, i) => ({
+    name: h,
+    normalized: normalizeImportText(h),
+    index: i,
+  }));
+
+  for (const field of definition.fields) {
+    const aliases = [field.label, ...field.aliases].map(normalizeImportText);
+
+    // 1. Exact alias match -> 1.0
+    let match = normalizedHeaders.find((h) => aliases.includes(h.normalized));
+    if (match) {
+      suggestions.push({
+        fieldKey: field.key,
+        fieldLabel: field.label,
+        required: field.required,
+        headerIndex: match.index,
+        headerName: match.name,
+        confidence: 1.0,
+      });
+      continue;
+    }
+
+    // 2. Substring / prefix match -> 0.85
+    match = normalizedHeaders.find((h) =>
+      aliases.some((alias) => h.normalized.includes(alias) || alias.includes(h.normalized)),
+    );
+    if (match) {
+      suggestions.push({
+        fieldKey: field.key,
+        fieldLabel: field.label,
+        required: field.required,
+        headerIndex: match.index,
+        headerName: match.name,
+        confidence: 0.85,
+      });
+      continue;
+    }
+
+    // 3. Fallback: unmapped
+    suggestions.push({
+      fieldKey: field.key,
+      fieldLabel: field.label,
+      required: field.required,
+      headerIndex: -1,
+      headerName: "",
+      confidence: 0.0,
+    });
+  }
+
+  return suggestions;
+}
+
+export async function inspectImportHeaders(
+  file: File,
+  definition: ImportDefinition,
+): Promise<{ headers: string[]; suggestions: ColumnMappingSuggestion[] }> {
+  let firstRow: ImportCell[] = [];
+  if (file.name.toLowerCase().endsWith(".xlsx")) {
+    const { default: readXlsxFile } = await import("read-excel-file");
+    const matrix = (await readXlsxFile(file)) as ImportCell[][];
+    if (matrix.length > 0) firstRow = matrix[0];
+  } else {
+    const text = (await file.text()).replace(/^\uFEFF/, "");
+    const parsed = parseCsv(text);
+    if (parsed.length > 0) firstRow = parsed[0];
+  }
+
+  const headers = firstRow.map((c) => String(c ?? "").trim());
+  const suggestions = suggestColumnMappings(headers, definition);
+  return { headers, suggestions };
+}
+
+export async function readImportFile(
+  file: File,
+  definition: ImportDefinition,
+  customMapping?: Record<string, number>,
+): Promise<ParsedImportRow[]> {
   let matrix: ImportCell[][];
   if (file.name.toLowerCase().endsWith(".xlsx")) {
     const { default: readXlsxFile } = await import("read-excel-file");
@@ -203,17 +294,26 @@ export async function readImportFile(file: File, definition: ImportDefinition): 
   const headerMap = new Map<string, number>();
   matrix[0].forEach((header, index) => headerMap.set(normalizeImportText(header), index));
   const fieldIndexes = new Map<string, number>();
-  for (const field of definition.fields) {
-    const aliases = [field.label, ...field.aliases].map(normalizeImportText);
-    const exact = aliases.find((alias) => headerMap.has(alias));
-    if (exact) {
-      fieldIndexes.set(field.key, headerMap.get(exact)!);
-      continue;
+
+  if (customMapping && Object.keys(customMapping).length > 0) {
+    for (const [key, idx] of Object.entries(customMapping)) {
+      if (idx >= 0 && idx < matrix[0].length) {
+        fieldIndexes.set(key, idx);
+      }
     }
-    const compatibleHeader = [...headerMap.keys()].find((header) =>
-      aliases.some((alias) => header.startsWith(`${alias} `)) || aliases.some((alias) => alias.startsWith(`${header} `)),
-    );
-    if (compatibleHeader) fieldIndexes.set(field.key, headerMap.get(compatibleHeader)!);
+  } else {
+    for (const field of definition.fields) {
+      const aliases = [field.label, ...field.aliases].map(normalizeImportText);
+      const exact = aliases.find((alias) => headerMap.has(alias));
+      if (exact) {
+        fieldIndexes.set(field.key, headerMap.get(exact)!);
+        continue;
+      }
+      const compatibleHeader = [...headerMap.keys()].find((header) =>
+        aliases.some((alias) => header.startsWith(`${alias} `)) || aliases.some((alias) => alias.startsWith(`${header} `)),
+      );
+      if (compatibleHeader) fieldIndexes.set(field.key, headerMap.get(compatibleHeader)!);
+    }
   }
 
   const missingHeaders = definition.fields.filter((field) => field.required && !fieldIndexes.has(field.key));

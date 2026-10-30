@@ -1,13 +1,14 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Download, FileUp, Filter, Pencil, Plus, Search, Trash2, Users, WalletCards } from "lucide-react";
+import { Archive, ArrowRight, CheckSquare, Download, FileUp, Filter, Pencil, Plus, Search, Square, Trash2, Users, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
+import { FloatingActionBar } from "@/components/business/FloatingActionBar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -80,6 +81,76 @@ export default function CustomersPage() {
   const totalCount = pagedData?.totalCount ?? 0;
 
   const filteredCustomers = rawCustomers;
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkArchiving, setBulkArchiving] = useState(false);
+
+  const allPageIds = useMemo(() => filteredCustomers.map((c) => c.id), [filteredCustomers]);
+  const isAllSelected = allPageIds.length > 0 && allPageIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allPageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allPageIds])));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async () => {
+      for (const id of selectedIds) {
+        const cust = filteredCustomers.find((c) => c.id === id);
+        if (cust) {
+          await businessService.updateCustomer(id, {
+            name: cust.name,
+            phone: cust.phone,
+            email: cust.email,
+            address: cust.address,
+            notes: cust.notes,
+            status: "Archived",
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
+      toast.success(
+        isVietnamese
+          ? `Đã lưu trữ ${selectedIds.length} khách hàng.`
+          : `Archived ${selectedIds.length} customers.`
+      );
+      setSelectedIds([]);
+      setBulkArchiving(false);
+    },
+    onError: (e) => toast.error(apiError(e, t("Could not archive selected customers."))),
+  });
+
+  const handleBulkExport = () => {
+    const selectedCustomers = filteredCustomers.filter((c) => selectedIds.includes(c.id));
+    if (selectedCustomers.length === 0) return;
+    exportToCsv(
+      `customers-selected-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: t("Customer Name"), accessor: (c) => c.name },
+        { header: t("Phone"), accessor: (c) => c.phone ?? "" },
+        { header: "Email", accessor: (c) => c.email ?? "" },
+        { header: t("Address"), accessor: (c) => c.address ?? "" },
+        { header: t("Total Sales"), accessor: (c) => c.totalSales },
+        { header: t("Total Paid"), accessor: (c) => c.totalPaid },
+        { header: t("Outstanding Balance"), accessor: (c) => c.outstandingBalance },
+        { header: t("Sales Count"), accessor: (c) => c.salesCount },
+        { header: t("Notes"), accessor: (c) => c.notes ?? "" },
+      ],
+      selectedCustomers,
+    );
+  };
 
   const totalOutstanding = rawCustomers.reduce((acc, curr) => acc + curr.outstandingBalance, 0);
   const currency = rawCustomers[0]?.currency ?? "USD";
@@ -314,7 +385,19 @@ export default function CustomersPage() {
           <div className="paper-card overflow-hidden">
             <div className="divide-y">
               {filteredCustomers.map((customer) => (
-                <div key={customer.id} className={`grid gap-4 p-5 sm:grid-cols-[1fr_auto_auto] sm:items-center hover:bg-muted/20 transition-colors ${customer.status === "Archived" ? "opacity-60" : ""}`}>
+                <div key={customer.id} className={`grid gap-4 p-5 sm:grid-cols-[auto_1fr_auto_auto] sm:items-center hover:bg-muted/20 transition-colors ${customer.status === "Archived" ? "opacity-60" : ""}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSelectOne(customer.id)}
+                    className={`flex h-5 w-5 items-center justify-center rounded border transition-all ${
+                      selectedIds.includes(customer.id)
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-muted-foreground/40 hover:border-primary text-transparent"
+                    }`}
+                    aria-label={`${t("Select")} ${customer.name}`}
+                  >
+                    <CheckSquare className={`h-3.5 w-3.5 ${selectedIds.includes(customer.id) ? "opacity-100" : "opacity-0"}`} />
+                  </button>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <Link to={`/customers/${customer.id}`} className="font-semibold text-foreground hover:text-primary">{customer.name}</Link>

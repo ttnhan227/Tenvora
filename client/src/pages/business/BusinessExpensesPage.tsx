@@ -36,6 +36,8 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
+import { CaptureSheet } from "@/components/business/CaptureSheet";
+import { Sparkles } from "lucide-react";
 
 const categories = [
   "Transportation",
@@ -70,6 +72,7 @@ export default function BusinessExpensesPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [open, setOpen] = useState(params.get("create") === "1");
+  const [scanReceiptOpen, setScanReceiptOpen] = useState(false);
   const [editing, setEditing] = useState<BusinessExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<BusinessExpense | null>(null);
 
@@ -158,6 +161,44 @@ export default function BusinessExpensesPage() {
     setOpen(true);
   };
 
+  const openDuplicate = (expense: BusinessExpense) => {
+    setEditing(null);
+    setForm({
+      category: expense.category,
+      amount: expense.amount,
+      expenseDate: new Date().toISOString().slice(0, 10),
+      description: expense.description ?? "",
+      receiptImageDataUrl: undefined,
+      removeReceiptImage: false,
+    });
+    setOpen(true);
+    toast.info(t("Pre-filled from existing expense"));
+  };
+
+  const openCreateTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateForm({
+      category: "Utilities",
+      amount: 0,
+      description: "",
+      frequency: "Monthly",
+      nextDueDate: new Date().toISOString().slice(0, 10),
+    });
+    setTemplateModalOpen(true);
+  };
+
+  const openEditTemplate = (tmpl: RecurringExpenseTemplate) => {
+    setEditingTemplate(tmpl);
+    setTemplateForm({
+      category: tmpl.category,
+      amount: tmpl.amount,
+      description: tmpl.description ?? "",
+      frequency: tmpl.frequency,
+      nextDueDate: tmpl.nextDueDate.slice(0, 10),
+    });
+    setTemplateModalOpen(true);
+  };
+
   const handleExportCsv = () => {
     const expenses = query.data ?? [];
     if (expenses.length === 0) return;
@@ -195,6 +236,16 @@ export default function BusinessExpensesPage() {
                 <Button variant="outline" onClick={handleExportCsv} className="gap-2">
                   <Download className="h-4 w-4" />
                   {isVietnamese ? "Xuất CSV" : "Export CSV"}
+                </Button>
+              )}
+              {canManageRecords && (
+                <Button
+                  variant="outline"
+                  onClick={() => setScanReceiptOpen(true)}
+                  className="gap-2 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {t("capture.scan_receipt", undefined, "Scan receipt")}
                 </Button>
               )}
               {canManageRecords && <Button onClick={openCreate} className="gap-2">

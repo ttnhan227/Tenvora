@@ -176,6 +176,7 @@ builder.Services.AddScoped<IBusinessService, BusinessService>();
 builder.Services.AddScoped<IAiAssistantService, AiAssistantService>();
 builder.Services.AddScoped<IAiActionService, AiActionService>();
 builder.Services.AddScoped<IAiAgentService, AiAgentService>();
+builder.Services.AddScoped<ICaptureService, CaptureService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -325,10 +326,8 @@ if (hasHttpsBinding)
     app.UseHttpsRedirection();
 }
 
-if (Directory.Exists(webRootPath))
-{
-    app.UseStaticFiles();
-}
+Directory.CreateDirectory(webRootPath);
+app.UseStaticFiles();
 
 var supportedCultures = AppLocalizer.SupportedCultures;
 var localizationOptions = new RequestLocalizationOptions()

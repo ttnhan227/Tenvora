@@ -161,7 +161,7 @@ export interface CreateStockAdjustmentInput {
 export interface Supplier {
   id: string; name: string; phone?: string; email?: string; address?: string; notes?: string;
   status: "Active" | "Archived"; currency: string; totalPurchases: number; totalPaid: number;
-  outstandingBalance: number; purchaseCount: number; createdAt: string;
+  outstandingBalance: number; purchaseCount: number; createdAt: string; paymentTermsDays?: number;
 }
 
 export interface PurchaseItem { id: string; productId?: string; description: string; unit: string; quantity: number; unitCost: number; lineTotal: number; }
@@ -180,9 +180,46 @@ export interface PurchasePayment {
   reversedAt?: string;
   reversalReason?: string;
 }
-export interface Purchase { id: string; purchaseNumber: string; supplierId: string; supplierName: string; currency: string; totalAmount: number; paidAmount: number; outstandingBalance: number; paymentStatus: "Paid" | "Partially paid" | "Unpaid"; status: "Posted" | "Voided"; notes?: string; invoiceImageDataUrl?: string; purchasedAt: string; createdAt: string; items: PurchaseItem[]; payments: PurchasePayment[]; }
+export interface Purchase { id: string; purchaseNumber: string; supplierId: string; supplierName: string; currency: string; totalAmount: number; paidAmount: number; outstandingBalance: number; paymentStatus: "Paid" | "Partially paid" | "Unpaid"; status: "Posted" | "Voided"; notes?: string; invoiceImageDataUrl?: string; dueDate?: string; purchasedAt: string; createdAt: string; items: PurchaseItem[]; payments: PurchasePayment[]; }
 export interface BusinessExpense { id: string; category: string; amount: number; currency: string; description?: string; receiptImageDataUrl?: string; expenseDate: string; createdAt: string; }
 export interface BusinessActivity { type: string; id: string; title: string; detail: string; amount: number; occurredAt: string; }
+
+export interface DashboardAttentionItem {
+  id: string;
+  type: "out_of_stock" | "low_stock" | "pending_ai_actions" | "supplier_bill_due" | "customer_overdue" | "unusual_activity" | "recurring_expense_due" | string;
+  severity: "info" | "warn" | "urgent";
+  title: string;
+  subtitle: string;
+  count: number;
+  actionLabel: string;
+  actionRoute?: string;
+  actionKey?: string;
+  metadata?: any;
+}
+
+export interface DashboardInsight {
+  id: string;
+  type: "sales_trend" | "top_mover" | "cash_flow" | string;
+  headline: string;
+  detail: string;
+  trend?: "up" | "down" | "neutral";
+  metricValue?: number;
+}
+
+export interface SupplierAccountPaymentInput {
+  amount: number;
+  method?: string;
+  reference?: string;
+  notes?: string;
+  paidAt?: string;
+}
+
+export interface SupplierAccountPaymentResult {
+  totalAmountPaid: number;
+  totalAllocated: number;
+  remainingBalance: number;
+  affectedPurchases: Purchase[];
+}
 export interface BusinessDashboard {
   currency: string;
   period: string;
@@ -236,6 +273,60 @@ export interface SaleInput {
   paymentMethod: string;
   notes?: string;
   soldAt?: string;
+}
+
+export interface RecurringExpenseTemplate {
+  id: string;
+  category: string;
+  amount: number;
+  currency: string;
+  description?: string;
+  frequency: "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+  nextDueDate: string;
+  isActive: boolean;
+  lastGeneratedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateRecurringExpenseTemplateInput {
+  category: string;
+  amount: number;
+  frequency: string;
+  nextDueDate: string;
+  description?: string;
+  currency?: string;
+}
+
+export interface UpdateRecurringExpenseTemplateInput {
+  category?: string;
+  amount?: number;
+  frequency?: string;
+  nextDueDate?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface ProcessRecurringExpensesResult {
+  processedCount: number;
+  draftsCreatedCount: number;
+  createdActionIds: string[];
+}
+
+export interface ProductSmartDefaults {
+  productId: string;
+  usualSupplierId?: string;
+  usualSupplierName?: string;
+  lastUnitCost?: number;
+  defaultPrice: number;
+  unit: string;
+}
+
+export interface SupplierSmartDefaults {
+  supplierId: string;
+  paymentTermsDays?: number;
+  usualPaymentMethod: string;
+  defaultDueDate: string;
 }
 
 
@@ -372,13 +463,23 @@ export const businessService = {
     return response.data.data;
   },
 
-  async createSupplier(input: { name: string; phone?: string; email?: string; address?: string; notes?: string }): Promise<Supplier> {
+  async createSupplier(input: { name: string; phone?: string; email?: string; address?: string; notes?: string; paymentTermsDays?: number }): Promise<Supplier> {
     const response = await apiClient.post("/suppliers", input);
     return response.data.data;
   },
 
-  async updateSupplier(id: string, input: { name: string; phone?: string; email?: string; address?: string; notes?: string; status?: string }): Promise<Supplier> {
+  async updateSupplier(id: string, input: { name: string; phone?: string; email?: string; address?: string; notes?: string; status?: string; paymentTermsDays?: number }): Promise<Supplier> {
     const response = await apiClient.put(`/suppliers/${id}`, { ...input, status: input.status ?? "Active" });
+    return response.data.data;
+  },
+
+  async recordSupplierAccountPayment(supplierId: string, input: SupplierAccountPaymentInput): Promise<SupplierAccountPaymentResult> {
+    const response = await financialWrite(`/suppliers/${supplierId}/payments`, input);
+    return response.data.data;
+  },
+
+  async getProductUnits(): Promise<string[]> {
+    const response = await apiClient.get("/products/units");
     return response.data.data;
   },
 
@@ -397,7 +498,7 @@ export const businessService = {
     return response.data.data;
   },
 
-  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string; invoiceImageDataUrl?: string }): Promise<Purchase> {
+  async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string; invoiceImageDataUrl?: string; dueDate?: string }): Promise<Purchase> {
     const response = await financialWrite("/purchases", input);
     return response.data.data;
   },
@@ -444,6 +545,52 @@ export const businessService = {
   async getDashboard(period?: string, from?: string, to?: string): Promise<BusinessDashboard> {
     const config = period || from || to ? { params: { period, from, to } } : undefined;
     const response = await (config ? apiClient.get("/business-dashboard", config) : apiClient.get("/business-dashboard"));
+    return response.data.data;
+  },
+
+  async getAttentionItems(): Promise<DashboardAttentionItem[]> {
+    const response = await apiClient.get("/dashboard/attention");
+    return response.data.data;
+  },
+
+  async getDashboardInsights(): Promise<DashboardInsight[]> {
+    const response = await apiClient.get("/dashboard/insight");
+    return response.data.data;
+  },
+
+  async getRecurringExpenseTemplates(): Promise<RecurringExpenseTemplate[]> {
+    const response = await apiClient.get("/business-expenses/recurring");
+    return response.data.data;
+  },
+
+  async createRecurringExpenseTemplate(input: CreateRecurringExpenseTemplateInput): Promise<RecurringExpenseTemplate> {
+    const response = await apiClient.post("/business-expenses/recurring", input);
+    return response.data.data;
+  },
+
+  async updateRecurringExpenseTemplate(id: string, input: UpdateRecurringExpenseTemplateInput): Promise<RecurringExpenseTemplate> {
+    const response = await apiClient.put(`/business-expenses/recurring/${id}`, input);
+    return response.data.data;
+  },
+
+  async deleteRecurringExpenseTemplate(id: string): Promise<boolean> {
+    const response = await apiClient.delete(`/business-expenses/recurring/${id}`);
+    return response.data.data;
+  },
+
+  async processDueRecurringExpenses(): Promise<ProcessRecurringExpensesResult> {
+    const response = await apiClient.post("/business-expenses/recurring/process-due");
+    return response.data.data;
+  },
+
+  async getProductSmartDefaults(productId: string, supplierId?: string): Promise<ProductSmartDefaults> {
+    const url = supplierId ? `/products/${productId}/defaults?supplierId=${supplierId}` : `/products/${productId}/defaults`;
+    const response = await apiClient.get(url);
+    return response.data.data;
+  },
+
+  async getSupplierSmartDefaults(supplierId: string): Promise<SupplierSmartDefaults> {
+    const response = await apiClient.get(`/suppliers/${supplierId}/defaults`);
     return response.data.data;
   },
 };

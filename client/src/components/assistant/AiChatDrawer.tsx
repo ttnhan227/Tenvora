@@ -11,6 +11,7 @@ import {
   HelpCircle,
   History,
   Loader2,
+  MapPin,
   Maximize2,
   Plus,
   Send,
@@ -37,7 +38,9 @@ import {
   AiConversationSummary,
 } from "@/services/aiService";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { contextFromPath } from "./assistantContext";
+import { showToastWithUndo } from "@/lib/undoAction";
+import { telemetryService } from "@/services/telemetryService";
+import { contextFromPath, getContextualPrompts } from "./assistantContext";
 import { getSyncedAiConversationId, publishAiConversationSync, setSyncedAiConversationId, subscribeToAiConversationSync } from "./assistantSync";
 
 interface AiChatDrawerProps {
@@ -223,6 +226,10 @@ export function AiChatDrawer({
       }
       publishAiConversationSync({ activeConversationId: data.conversationId, reason: "changed", source: syncSource });
 
+      if (data.proposal) {
+        queryClient.invalidateQueries({ queryKey: ["review-queue"] });
+      }
+
       const assistantMsg: AiConversationMessage = {
         id: data.messageId,
         role: "assistant",
@@ -316,6 +323,7 @@ export function AiChatDrawer({
         queryClient.invalidateQueries({ queryKey: ["purchases"] }),
         queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
         queryClient.invalidateQueries({ queryKey: ["business-dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["review-queue"] }),
       ]);
       toast.success(isVietnamese ? "Đã hoàn tất thao tác!" : "Action completed successfully!");
     }

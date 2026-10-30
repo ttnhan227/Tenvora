@@ -11,6 +11,7 @@ import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { RecordImageField } from "@/components/business/RecordImageField";
 import { StockAdjustmentModal } from "@/components/business/StockAdjustmentModal";
 import { StockAdjustmentHistoryModal } from "@/components/business/StockAdjustmentHistoryModal";
+import { UnitCombobox } from "@/components/business/UnitCombobox";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,78 @@ export default function ProductsPage() {
   const products = pagedResult?.items ?? [];
   const totalCount = pagedResult?.totalCount ?? 0;
   const totalPages = pagedResult?.totalPages ?? 1;
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkArchiving, setBulkArchiving] = useState(false);
+
+  const allPageIds = useMemo(() => products.map((p) => p.id), [products]);
+  const isAllSelected = allPageIds.length > 0 && allPageIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allPageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allPageIds])));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const bulkArchiveMutation = useMutation({
+    mutationFn: async () => {
+      for (const id of selectedIds) {
+        const prod = products.find((p) => p.id === id);
+        if (prod) {
+          await businessService.updateProduct(id, {
+            name: prod.name,
+            sku: prod.sku,
+            unit: prod.unit,
+            defaultPrice: prod.defaultPrice,
+            costPrice: prod.costPrice,
+            stockQuantity: prod.stockQuantity,
+            minStockLevel: prod.minStockLevel,
+            trackInventory: prod.trackInventory,
+            isActive: false,
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products-paged"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-kpi-summary"] });
+      toast.success(
+        isVietnamese
+          ? `Đã lưu trữ ${selectedIds.length} sản phẩm.`
+          : `Archived ${selectedIds.length} products.`
+      );
+      setSelectedIds([]);
+      setBulkArchiving(false);
+    },
+    onError: (e) => toast.error(apiError(e, t("Could not archive selected products."))),
+  });
+
+  const handleBulkExport = () => {
+    const selectedProducts = products.filter((p) => selectedIds.includes(p.id));
+    if (selectedProducts.length === 0) return;
+    exportToCsv(
+      `products-selected-${new Date().toISOString().split("T")[0]}`,
+      [
+        { header: t("Product Name"), accessor: (p) => p.name },
+        { header: "SKU", accessor: (p) => p.sku ?? "" },
+        { header: t("Unit"), accessor: (p) => p.unit },
+        { header: t("Selling Price"), accessor: (p) => p.defaultPrice },
+        { header: t("Cost Price"), accessor: (p) => p.costPrice ?? 0 },
+        { header: t("Stock Quantity"), accessor: (p) => p.stockQuantity ?? 0 },
+        { header: t("Status"), accessor: (p) => (p.isActive ? t("Active") : t("Archived")) },
+      ],
+      selectedProducts,
+    );
+  };
 
   const { data: allProducts } = useQuery({
     queryKey: ["products-kpi-summary"],
@@ -361,6 +434,28 @@ export default function ProductsPage() {
             ))}
           </div>
         </div>
+
+        {products.length > 0 && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors"
+            >
+              {isAllSelected ? (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              ) : (
+                <Square className="h-4 w-4 text-muted-foreground" />
+              )}
+              {isAllSelected ? t("Deselect all on this page") : t("Select all on this page")}
+            </button>
+            {selectedIds.length > 0 && (
+              <span className="font-medium">
+                {selectedIds.length} {t("selected")}
+              </span>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <LoadingState label={isVietnamese ? "Đang mở danh sách hàng hoá…" : "Opening your product list…"} />

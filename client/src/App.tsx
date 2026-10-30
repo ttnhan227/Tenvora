@@ -30,6 +30,7 @@ const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
 const AuditLogView = lazy(() => import("./pages/audit/AuditLogView"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
 const AgentChatPage = lazy(() => import("./pages/business/AgentChatPage"));
+const ReviewQueuePage = lazy(() => import("./pages/business/ReviewQueuePage"));
 const DataImportsPage = lazy(() => import("./pages/business/DataImportsPage"));
 const MobileLandingPage = lazy(() => import("./pages/MobileLandingPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<ProtectedRoute><BusinessHome /></ProtectedRoute>} />
         <Route path="/agent" element={<ProtectedRoute><AgentChatPage /></ProtectedRoute>} />
+        <Route path="/review" element={<ProtectedRoute requiredRole={["TenantAdmin", "OperationsManager"]}><ReviewQueuePage /></ProtectedRoute>} />
         <Route path="/imports" element={<ProtectedRoute requiredRole={["TenantAdmin", "OperationsManager"]}><DataImportsPage /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
         <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetailPage /></ProtectedRoute>} />

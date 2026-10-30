@@ -36,9 +36,17 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
     public async Task<IActionResult> Delete(Guid id) =>
         (await service.DeleteProductAsync(User.GetTenantId(), id)).ToActionResult();
 
+    [HttpGet("units")]
+    public async Task<IActionResult> GetUnits() =>
+        (await service.GetDistinctProductUnitsAsync(User.GetTenantId())).ToActionResult();
+
     [HttpGet("adjustments")]
     public async Task<IActionResult> GetAdjustments([FromQuery] Guid? productId) =>
         (await service.GetStockAdjustmentsAsync(User.GetTenantId(), productId)).ToActionResult();
+
+    [HttpGet("{id:guid}/defaults")]
+    public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
+        (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
 
     [HttpPost("adjustments"), Authorize(Roles = "TenantAdmin,OperationsManager")]
     public async Task<IActionResult> CreateAdjustment(CreateStockAdjustmentRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
@@ -46,4 +54,12 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
         var userId = User.GetUserId();
         return (await service.CreateStockAdjustmentAsync(User.GetTenantId(), userId == Guid.Empty ? null : userId, request, idempotencyKey)).ToActionResult();
     }
+
+    [HttpGet("{id:guid}/defaults")]
+    public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
+        (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
+
+    [HttpGet("{id:guid}/defaults")]
+    public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
+        (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
 }

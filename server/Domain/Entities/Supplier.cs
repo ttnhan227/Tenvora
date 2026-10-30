@@ -13,6 +13,7 @@ public sealed class Supplier
     [MaxLength(300)] public string? Address { get; set; }
     [MaxLength(1000)] public string? Notes { get; set; }
     [MaxLength(20)] public string Status { get; set; } = "Active";
+    public int? PaymentTermsDays { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

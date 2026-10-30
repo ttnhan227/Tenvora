@@ -225,6 +225,125 @@ public sealed class AiActionService(
         return ApiResult<AiActionExecutionResponse>.Ok(completed);
     }
 
+    public async Task<ApiResult<AiActionExecutionResponse>> UndoAsync(
+        Guid tenantId,
+        Guid userId,
+        Guid actionId,
+        string userRole = "TenantAdmin",
+        CancellationToken ct = default)
+    {
+        if (string.Equals(userRole, "Viewer", StringComparison.OrdinalIgnoreCase))
+        {
+            return ApiResult<AiActionExecutionResponse>.Fail(
+                _localizer.GetString("error.unauthorized_execute"), "UNAUTHORIZED_EXECUTE");
+        }
+
+        using var write = actionWriteLock != null ? await actionWriteLock.WaitAsync(tenantId, ct) : null;
+
+        var action = await db.AiActions.FirstOrDefaultAsync(
+            a => a.Id == actionId && a.TenantId == tenantId, ct);
+
+        if (action == null)
+            return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.action_not_found"));
+
+        if (action.Status == AiActionStatuses.Undone)
+            return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.action_already_undone"));
+
+        if (action.Status != AiActionStatuses.Executed)
+            return ApiResult<AiActionExecutionResponse>.Fail($"Cannot undo an action in '{action.Status}' status.");
+
+        // Check 15-minute rollback window
+        var executedTime = action.ExecutedAt ?? action.ConfirmedAt;
+        if (executedTime.HasValue && DateTime.UtcNow - executedTime.Value > TimeSpan.FromMinutes(15))
+        {
+            return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.undo_window_expired"));
+        }
+
+        string entityType = action.AffectedEntityType ?? string.Empty;
+        Guid? entityId = action.AffectedEntityId;
+
+        if (entityId.HasValue)
+        {
+            SetAiAuditContext(action.Id, userId);
+
+            switch (entityType.ToLowerInvariant())
+            {
+                case "sale":
+                    var voidSaleRes = await business.VoidSaleAsync(tenantId, entityId.Value, userId, new VoidSaleRequest(true, "AI Action Undo"));
+                    if (!voidSaleRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(voidSaleRes.Message ?? "Failed to void sale.");
+                    }
+                    break;
+
+                case "purchase":
+                    var voidPurchRes = await business.VoidPurchaseAsync(tenantId, entityId.Value, userId, new VoidPurchaseRequest(true, "AI Action Undo"));
+                    if (!voidPurchRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(voidPurchRes.Message ?? "Failed to void purchase.");
+                    }
+                    break;
+
+                case "expense":
+                case "businessexpense":
+                    var delExpRes = await business.DeleteBusinessExpenseAsync(tenantId, entityId.Value);
+                    if (!delExpRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(delExpRes.Message ?? "Failed to delete expense.");
+                    }
+                    break;
+
+                case "customer":
+                    var delCustRes = await business.DeleteCustomerAsync(tenantId, entityId.Value);
+                    if (!delCustRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(delCustRes.Message ?? "Failed to delete customer.");
+                    }
+                    break;
+
+                case "product":
+                    var delProdRes = await business.DeleteProductAsync(tenantId, entityId.Value);
+                    if (!delProdRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(delProdRes.Message ?? "Failed to delete product.");
+                    }
+                    break;
+
+                case "supplier":
+                    var delSuppRes = await business.DeleteSupplierAsync(tenantId, entityId.Value);
+                    if (!delSuppRes.Success)
+                    {
+                        if (write != null) await write.CommitAsync(ct);
+                        return ApiResult<AiActionExecutionResponse>.Fail(delSuppRes.Message ?? "Failed to delete supplier.");
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        action.Status = AiActionStatuses.Undone;
+        var undoneMessage = _localizer.GetString("agent.action_undone");
+        var response = new AiActionExecutionResponse(
+            action.Id,
+            AiActionStatuses.Undone,
+            undoneMessage,
+            action.AffectedEntityType,
+            action.AffectedEntityId);
+
+        action.ResultJson = JsonSerializer.Serialize(response, JsonOptions);
+        await db.SaveChangesAsync(ct);
+        if (write != null) await write.CommitAsync(ct);
+
+        return ApiResult<AiActionExecutionResponse>.Ok(response);
+    }
+
     private async Task<ApiResult<AiActionProposalResponse>> ProposeExpense(
         Guid tenantId, Guid userId, string source, AiUiContext? uiContext,
         AiInterpretedAction parsed, string currency, CancellationToken ct)

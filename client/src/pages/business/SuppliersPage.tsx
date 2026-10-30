@@ -1,13 +1,14 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileUp, Pencil, Plus, Search, Trash2, Truck } from "lucide-react";
+import { Download, FileUp, Pencil, Plus, Search, Trash2, Truck, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { PaginationBar } from "@/components/business/PaginationBar";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
+import { SupplierPaymentModal } from "@/components/business/SupplierPaymentModal";
 import { Button } from "@/components/ui/button";
 import { exportToCsv } from "@/lib/csvExport";
 import {
@@ -37,6 +38,7 @@ const empty = {
   address: "",
   notes: "",
   status: "Active",
+  paymentTermsDays: undefined as number | undefined,
 };
 
 export default function SuppliersPage() {
@@ -54,6 +56,7 @@ export default function SuppliersPage() {
   const [open, setOpen] = useState(params.get("create") === "1");
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
+  const [payingSupplier, setPayingSupplier] = useState<Supplier | null>(null);
   const [form, setForm] = useState(empty);
 
   const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -107,6 +110,7 @@ export default function SuppliersPage() {
       address: s.address ?? "",
       notes: s.notes ?? "",
       status: s.status,
+      paymentTermsDays: s.paymentTermsDays,
     });
     setOpen(true);
   };

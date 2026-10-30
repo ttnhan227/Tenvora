@@ -22,6 +22,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<PurchasePayment> PurchasePayments => Set<PurchasePayment>();
     public DbSet<BusinessExpense> BusinessExpenses => Set<BusinessExpense>();
+    public DbSet<RecurringExpenseTemplate> RecurringExpenseTemplates => Set<RecurringExpenseTemplate>();
+    public DbSet<AiTelemetryEvent> AiTelemetryEvents => Set<AiTelemetryEvent>();
     public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
     public DbSet<AiAction> AiActions => Set<AiAction>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
@@ -50,6 +52,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasMany(e => e.Purchases).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.PurchasePayments).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.BusinessExpenses).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany<RecurringExpenseTemplate>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => e.ApiKey).IsUnique();
         });
 
@@ -326,6 +329,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(e => new { e.TenantId, e.ExpenseDate });
             entity.HasIndex(e => new { e.TenantId, e.Category });
             entity.ToTable(t => t.HasCheckConstraint("CK_BusinessExpenses_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        modelBuilder.Entity<RecurringExpenseTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
+            entity.Property(e => e.Category).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Amount).HasColumnType("numeric(18,4)").IsRequired();
+            entity.Property(e => e.Currency).HasMaxLength(3).HasDefaultValue("USD").IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Frequency).HasMaxLength(20).HasDefaultValue("monthly").IsRequired();
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasIndex(e => new { e.TenantId, e.IsActive, e.NextDueDate });
+            entity.ToTable(t => t.HasCheckConstraint("CK_RecurringExpenseTemplates_Amount_Positive", "\"Amount\" > 0"));
+        });
+
+        modelBuilder.Entity<AiTelemetryEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Intent).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(500);
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
         });
 
         modelBuilder.Entity<AiConversation>(entity =>
