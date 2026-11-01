@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Boxes, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, TrendingUp, Upload } from "lucide-react";
+import { AlertTriangle, Boxes, CheckSquare, Download, History, Package, Pencil, Plus, Search, SlidersHorizontal, Square, Trash2, TrendingUp, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { QueryErrorState } from "@/components/business/QueryErrorState";
 import { DashboardLayout } from "@/components/DashboardLayout";

@@ -175,29 +175,6 @@ export default function BusinessExpensesPage() {
     toast.info(t("Pre-filled from existing expense"));
   };
 
-  const openCreateTemplate = () => {
-    setEditingTemplate(null);
-    setTemplateForm({
-      category: "Utilities",
-      amount: 0,
-      description: "",
-      frequency: "Monthly",
-      nextDueDate: new Date().toISOString().slice(0, 10),
-    });
-    setTemplateModalOpen(true);
-  };
-
-  const openEditTemplate = (tmpl: RecurringExpenseTemplate) => {
-    setEditingTemplate(tmpl);
-    setTemplateForm({
-      category: tmpl.category,
-      amount: tmpl.amount,
-      description: tmpl.description ?? "",
-      frequency: tmpl.frequency,
-      nextDueDate: tmpl.nextDueDate.slice(0, 10),
-    });
-    setTemplateModalOpen(true);
-  };
 
   const handleExportCsv = () => {
     const expenses = query.data ?? [];
@@ -492,6 +469,7 @@ export default function BusinessExpensesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <CaptureSheet open={scanReceiptOpen} onOpenChange={setScanReceiptOpen} documentTypeHint="expense" />
       <SafeDeleteDialog
         open={!!deletingExpense}
         onOpenChange={(open) => !open && setDeletingExpense(null)}

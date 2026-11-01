@@ -39,7 +39,7 @@ export function GettingStartedGuide({
   businessType,
   hasActivity,
 }: GettingStartedGuideProps) {
-  const { isVietnamese } = useLanguage();
+  const { isVietnamese, t } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
   const profile = getProfileOrDefault(businessType as BusinessType);
   const localized = viProfileCopy[profile.type];
