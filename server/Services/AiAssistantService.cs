@@ -211,11 +211,9 @@ Answer politely and clearly in the language of the user's question, including En
         var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct);
         var currency = tenant?.BaseCurrency ?? "VND";
 
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
+        var provider = AiProviderConfig.Resolve(_config);
 
-        if (!string.IsNullOrWhiteSpace(apiKey))
+        if (provider.HasApiKey)
         {
             try
             {
@@ -248,50 +246,95 @@ Output JSON only.";
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(10);
 
-                var requestBody = new
+                string? rawJson = null;
+
+                if (provider.IsGemini)
                 {
-                    safetySettings = AiProviderSafety.GeminiSettings,
-                    contents = new[]
+                    var requestBody = new
                     {
-                        new { parts = new[] { new { text = prompt } } }
-                    },
-                    generationConfig = new
-                    {
-                        responseMimeType = "application/json",
-                        temperature = 0.1
-                    }
-                };
-
-                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent";
-                using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
-                providerRequest.Headers.Add("x-goog-api-key", apiKey);
-                providerRequest.Content = JsonContent.Create(requestBody);
-                using var response = await client.SendAsync(providerRequest, ct);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
-                    if (responseJson.TryGetProperty("candidates", out var candidates) &&
-                        candidates.GetArrayLength() > 0 &&
-                        candidates[0].TryGetProperty("content", out var content) &&
-                        content.TryGetProperty("parts", out var parts))
-                    {
-                        var rawJson = ReadAnswerParts(parts);
-
-                        if (!string.IsNullOrWhiteSpace(rawJson))
+                        safetySettings = AiProviderSafety.GeminiSettings,
+                        contents = new[]
                         {
-                            var parsed = ParseGeminiJsonResult(rawJson, currency);
-                            if (parsed != null)
+                            new { parts = new[] { new { text = prompt } } }
+                        },
+                        generationConfig = new
+                        {
+                            responseMimeType = "application/json",
+                            temperature = 0.1
+                        }
+                    };
+
+                    var url = $"{provider.Endpoint.TrimEnd('/')}/{provider.Model}:generateContent";
+                    using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
+                    providerRequest.Headers.Add("x-goog-api-key", provider.ApiKey);
+                    providerRequest.Content = JsonContent.Create(requestBody);
+                    using var response = await client.SendAsync(providerRequest, ct);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+                        if (responseJson.TryGetProperty("candidates", out var candidates) &&
+                            candidates.GetArrayLength() > 0 &&
+                            candidates[0].TryGetProperty("content", out var content) &&
+                            content.TryGetProperty("parts", out var parts))
+                        {
+                            rawJson = ReadAnswerParts(parts);
+                        }
+                    }
+                }
+                else if (provider.IsOpenAiCompatible)
+                {
+                    var requestUrl = provider.Endpoint.TrimEnd('/');
+                    if (!requestUrl.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+                    {
+                        requestUrl += "/chat/completions";
+                    }
+
+                    using var providerRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+                    if (!string.IsNullOrWhiteSpace(provider.ApiKey))
+                    {
+                        providerRequest.Headers.Add("Authorization", $"Bearer {provider.ApiKey}");
+                    }
+                    providerRequest.Content = JsonContent.Create(new
+                    {
+                        model = provider.Model,
+                        messages = new object[]
+                        {
+                            new { role = "user", content = prompt }
+                        },
+                        temperature = 0.1
+                    });
+                    using var response = await client.SendAsync(providerRequest, ct);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+                        if (responseJson.TryGetProperty("choices", out var choices) &&
+                            choices.GetArrayLength() > 0 &&
+                            choices[0].TryGetProperty("message", out var msgEl) &&
+                            msgEl.TryGetProperty("content", out var contentEl))
+                        {
+                            rawJson = contentEl.GetString()?.Trim();
+                            if (!string.IsNullOrWhiteSpace(rawJson))
                             {
-                                return ApiResult<AiParseRecordResponse>.Ok(parsed);
+                                rawJson = System.Text.RegularExpressions.Regex.Replace(rawJson, @"^```(?:json)?\s*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                                rawJson = System.Text.RegularExpressions.Regex.Replace(rawJson, @"\s*```$", "");
                             }
                         }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(rawJson))
+                {
+                    var parsed = ParseGeminiJsonResult(rawJson, currency, provider.DisplayName, provider.Model);
+                    if (parsed != null)
+                    {
+                        return ApiResult<AiParseRecordResponse>.Ok(parsed);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Gemini record parsing failed; falling back to local regex/rule parser.");
+                _logger.LogWarning(ex, "AI record parsing failed; falling back to local regex/rule parser.");
             }
         }
 
@@ -843,7 +886,7 @@ Output JSON only.";
             : 1m;
     }
 
-    private static AiParseRecordResponse? ParseGeminiJsonResult(string json, string currency)
+    private static AiParseRecordResponse? ParseGeminiJsonResult(string json, string currency, string providerName = "Google Gemini", string modelName = "gemini-1.5-flash")
     {
         try
         {
@@ -878,7 +921,7 @@ Output JSON only.";
                 debtPayment = new AiPaymentExtraction(customerName ?? "Khách hàng", totalAmount, desc);
             }
 
-            return new AiParseRecordResponse(intent, 0.95m, summary, sale, expense, debtPayment, "Google Gemini", "gemini-3.8-flash", false);
+            return new AiParseRecordResponse(intent, 0.95m, summary, sale, expense, debtPayment, providerName, modelName, false);
         }
         catch
         {

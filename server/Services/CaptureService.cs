@@ -627,6 +627,62 @@ Do NOT output any markdown backticks, explanations, or extra text. Output raw JS
                 }
             }
         }
+        else if (provider.IsOpenAiCompatible)
+        {
+            var baseEndpoint = provider.Endpoint.TrimEnd('/');
+            var url = baseEndpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase)
+                ? baseEndpoint
+                : $"{baseEndpoint}/chat/completions";
+
+            object userContent;
+            if (!string.IsNullOrWhiteSpace(dataUrl) && dataUrl.StartsWith("data:image/"))
+            {
+                userContent = new object[]
+                {
+                    new { type = "text", text = $"{prompt}\n\nDocument text / invoice content:\n{text}" },
+                    new { type = "image_url", image_url = new { url = dataUrl } }
+                };
+            }
+            else
+            {
+                userContent = $"{prompt}\n\nDocument text / invoice content:\n{text}";
+            }
+
+            var requestBody = new
+            {
+                model = provider.Model,
+                messages = new[]
+                {
+                    new { role = "user", content = userContent }
+                },
+                temperature = 0.1
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            if (!string.IsNullOrWhiteSpace(provider.ApiKey))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.ApiKey);
+            }
+            request.Content = JsonContent.Create(requestBody);
+
+            using var response = await client.SendAsync(request, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+                if (json.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0 &&
+                    choices[0].TryGetProperty("message", out var msg) &&
+                    msg.TryGetProperty("content", out var contentEl))
+                {
+                    var rawOutput = contentEl.GetString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(rawOutput))
+                    {
+                        rawOutput = Regex.Replace(rawOutput, @"^```(?:json)?\s*", "", RegexOptions.IgnoreCase);
+                        rawOutput = Regex.Replace(rawOutput, @"\s*```$", "");
+                        return JsonSerializer.Deserialize<RawExtractionResult>(rawOutput, JsonOptions);
+                    }
+                }
+            }
+        }
 
         return null;
     }

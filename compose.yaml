@@ -37,12 +37,11 @@ services:
       JwtSettings__Audience: ${JwtSettings__Audience:-Tenvora}
       CLIENT_ORIGINS: ${CLIENT_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost:3000,http://client}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-Google Gemini}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      AI_PROVIDER_NAME: ${AI_PROVIDER_NAME:-}
       AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:-}
-      AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/models}
-      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-gemini-3.5-flash-lite}
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      MISTRAL_MODEL: ${MISTRAL_MODEL:-ministral-8b-latest}
+      AI_PROVIDER_ENDPOINT: ${AI_PROVIDER_ENDPOINT:-}
+      AI_CHAT_MODEL: ${AI_CHAT_MODEL:-}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Example Business}
       SEED_TENANT_API_KEY: ${SEED_TENANT_API_KEY:?Set SEED_TENANT_API_KEY in .env}

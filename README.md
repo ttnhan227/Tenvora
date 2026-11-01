@@ -45,7 +45,7 @@ The screenshots show the current English Android application with demonstration 
 * **👥 Debt & Receivables Ledger:** Track customer and supplier debts, partial payments, credit ceilings, and complete transaction histories.
 * **🧾 Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
-* **🤖 Google Gemini AI Copilot:** Grounded business analysis using `gemini-3.5-flash` with guarded, server-validated action proposals.
+* **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
 * **🔒 Tenant Scoping & RLS:** Global query filters on EF Core combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
 * **🌐 Bilingual Support:** Native English and Vietnamese interface with `₫` VND currency and localized phone formats.
 
@@ -59,7 +59,7 @@ The screenshots show the current English Android application with demonstration 
 | **Backend API** | ASP.NET Core (.NET 10), Entity Framework Core, Npgsql | Ledger engine, atomic writes, advisory write locks, JWT auth. |
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
-| **AI Integration** | Google Gemini API (`gemini-3.5-flash`) | Contextual chat, natural-language ledger queries, typed proposals. |
+| **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
 | **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (218+ tests), Docker images, verified APK builds. |
 
 ---

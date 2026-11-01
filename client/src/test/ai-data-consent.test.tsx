@@ -20,7 +20,7 @@ describe("AI data disclosure", () => {
       request = aiAssistantService.agentChat({ message: "Check customer balances" });
     });
     expect(await screen.findByRole("heading", { name: "Before using AI" })).toBeInTheDocument();
-    expect(screen.getByText(/Google Gemini.*Mistral AI.*to answer/)).toBeInTheDocument();
+    expect(screen.getByText(/configured AI provider.*Google Gemini, OpenAI, Mistral, or a local model/)).toBeInTheDocument();
     expect(apiClient.post).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
     expect((await request).success).toBe(false);

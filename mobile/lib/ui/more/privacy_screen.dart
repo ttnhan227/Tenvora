@@ -26,8 +26,8 @@ class PrivacyScreen extends StatelessWidget {
           Text(
             tr(
               context,
-              'Camera and photo access are used only when you choose a receipt or product image. Only the selected image is uploaded. Google sign-in sends a Google identity token to the Tenvora server. AI requests send your question and relevant business context to Google Gemini. Avoid including sensitive information you do not want processed by the AI provider.',
-              'Máy ảnh và thư viện ảnh chỉ dùng khi bạn chọn ảnh hóa đơn hoặc sản phẩm. Chỉ ảnh được chọn mới được tải lên. Đăng nhập Google gửi mã định danh tới máy chủ Tenvora. Câu hỏi và ngữ cảnh kinh doanh liên quan được gửi tới Google Gemini. Tránh đưa thông tin nhạy cảm không cần thiết vào câu hỏi AI.',
+              'Camera and photo access are used only when you choose a receipt or product image. Only the selected image is uploaded. Google sign-in sends a Google identity token to the Tenvora server. AI requests send your question and relevant business context to the configured AI provider (such as Google Gemini, OpenAI, Mistral, or a local model). Avoid including sensitive information you do not want processed by the AI provider.',
+              'Máy ảnh và thư viện ảnh chỉ dùng khi bạn chọn ảnh hóa đơn hoặc sản phẩm. Chỉ ảnh được chọn mới được tải lên. Đăng nhập Google gửi mã định danh tới máy chủ Tenvora. Câu hỏi và ngữ cảnh kinh doanh liên quan được gửi tới nhà cung cấp AI đã cấu hình (như Google Gemini, OpenAI, Mistral hoặc mô hình cục bộ). Tránh đưa thông tin nhạy cảm không cần thiết vào câu hỏi AI.',
             ),
           ),
           const SizedBox(height: 16),

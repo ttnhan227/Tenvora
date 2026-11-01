@@ -72,6 +72,6 @@ describe("release readiness", () => {
   it("privacy page explains AI processing and links to web deletion", () => {
     render(<BrowserRouter><LanguageProvider defaultLanguage="en"><PrivacyPage /></LanguageProvider></BrowserRouter>);
     expect(screen.getByRole("link",{name:"Delete your account"})).toHaveAttribute("href","/delete-account");
-    expect(screen.getByText(/your question and relevant business context are sent to Google Gemini/)).toBeInTheDocument();
+    expect(screen.getByText(/your question and relevant business context are sent to the configured AI provider/)).toBeInTheDocument();
   });
 });
