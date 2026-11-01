@@ -14,21 +14,18 @@ public sealed class ObjectStorageService : IObjectStorageService
 {
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
-    private readonly ICloudinaryService? _cloudinary;
     private readonly ILogger<ObjectStorageService> _logger;
     private readonly string _webRootPath;
 
-    public bool IsCloudStorage => _cloudinary != null && _cloudinary.IsConfigured;
+    public bool IsCloudStorage => false;
 
     public ObjectStorageService(
         IWebHostEnvironment env,
         IConfiguration config,
-        ICloudinaryService? cloudinary,
         ILogger<ObjectStorageService> logger)
     {
         _env = env;
         _config = config;
-        _cloudinary = cloudinary;
         _logger = logger;
 
         _webRootPath = !string.IsNullOrWhiteSpace(_env.WebRootPath)
@@ -93,27 +90,7 @@ public sealed class ObjectStorageService : IObjectStorageService
         if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "document";
         var uniqueFileName = $"{fileHash[..12]}_{cleanName}.{ext}";
 
-        // 1. If Cloudinary is configured, use cloud storage
-        if (IsCloudStorage && _cloudinary != null)
-        {
-            try
-            {
-                using var uploadStream = new MemoryStream(bytes);
-                var cloudUrl = await _cloudinary.UploadStreamAsync(uploadStream, uniqueFileName, safeFolderName, ct);
-                if (!string.IsNullOrWhiteSpace(cloudUrl))
-                {
-                    var thumbnailUrl = cloudUrl.Contains("/upload/")
-                        ? cloudUrl.Replace("/upload/", "/upload/c_fill,w_300,h_300,q_auto,f_auto/")
-                        : cloudUrl;
 
-                    return new StorageUploadResult(cloudUrl, thumbnailUrl, fileHash, contentType, bytes.Length);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Cloudinary upload failed. Falling back to local disk storage.");
-            }
-        }
 
         // 2. Local disk storage fallback
         var targetDir = Path.Combine(_webRootPath, "uploads", safeFolderName.Replace('/', Path.DirectorySeparatorChar));

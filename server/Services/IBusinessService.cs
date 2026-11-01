@@ -69,12 +69,6 @@ public interface IBusinessService
     Task<ApiResult<ProductSmartDefaultsDto>> GetProductSmartDefaultsAsync(Guid tenantId, Guid productId, Guid? supplierId = null, CancellationToken ct = default);
     Task<ApiResult<SupplierSmartDefaultsDto>> GetSupplierSmartDefaultsAsync(Guid tenantId, Guid supplierId, CancellationToken ct = default);
 
-    Task<ApiResult<List<RecurringExpenseTemplateDto>>> GetRecurringExpenseTemplatesAsync(Guid tenantId, CancellationToken ct = default);
-    Task<ApiResult<RecurringExpenseTemplateDto>> CreateRecurringExpenseTemplateAsync(Guid tenantId, Guid userId, CreateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
-    Task<ApiResult<RecurringExpenseTemplateDto>> UpdateRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, UpdateRecurringExpenseTemplateRequest request, CancellationToken ct = default);
-    Task<ApiResult<bool>> DeleteRecurringExpenseTemplateAsync(Guid tenantId, Guid templateId, CancellationToken ct = default);
-    Task<ApiResult<ProcessRecurringExpensesResultDto>> ProcessDueRecurringExpensesAsync(Guid tenantId, Guid userId, CancellationToken ct = default);
 
-    Task<ApiResult<ProductSmartDefaultsDto>> GetProductSmartDefaultsAsync(Guid tenantId, Guid productId, Guid? supplierId = null, CancellationToken ct = default);
-    Task<ApiResult<SupplierSmartDefaultsDto>> GetSupplierSmartDefaultsAsync(Guid tenantId, Guid supplierId, CancellationToken ct = default);
+    Task<ApiResult<SearchResultDto>> OmniSearchAsync(Guid tenantId, string? query, int limitPerCategory = 6, CancellationToken ct = default);
 }

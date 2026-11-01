@@ -22,7 +22,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
     public DbSet<PurchasePayment> PurchasePayments => Set<PurchasePayment>();
     public DbSet<BusinessExpense> BusinessExpenses => Set<BusinessExpense>();
-    public DbSet<RecurringExpenseTemplate> RecurringExpenseTemplates => Set<RecurringExpenseTemplate>();
+    public DbSet<RecurringExpenseTemplate> RecurringExpenseTemplates => Set<RecurringExpenseTemplate>();
+    public DbSet<TenantExtractionRule> TenantExtractionRules => Set<TenantExtractionRule>();
     public DbSet<AiTelemetryEvent> AiTelemetryEvents => Set<AiTelemetryEvent>();
     public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
     public DbSet<AiAction> AiActions => Set<AiAction>();
@@ -52,7 +53,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasMany(e => e.Purchases).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.PurchasePayments).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.BusinessExpenses).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasMany<RecurringExpenseTemplate>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany<RecurringExpenseTemplate>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany<TenantExtractionRule>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => e.ApiKey).IsUnique();
         });
 
@@ -251,7 +253,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.TotalAmount).HasPrecision(18, 4);
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(1000);
-            entity.Property(e => e.InvoiceImageDataUrl).HasColumnType("text");
+            entity.Property(e => e.InvoiceImageDataUrl).HasColumnType("text");
+            entity.Property(e => e.DocumentHash).HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.DocumentHash });
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
             entity.HasOne(e => e.Supplier).WithMany(s => s.Purchases).HasPrincipalKey(s => new { s.TenantId, s.Id })
@@ -322,7 +326,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Amount).HasPrecision(18, 4);
             entity.Property(e => e.Currency).HasMaxLength(3).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.ReceiptImageDataUrl).HasColumnType("text");
+            entity.Property(e => e.ReceiptImageDataUrl).HasColumnType("text");
+            entity.Property(e => e.DocumentHash).HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.DocumentHash });
             entity.Property(e => e.IdempotencyKey).HasMaxLength(100).IsRequired();
             entity.Property(e => e.RequestHash).HasMaxLength(128).IsRequired();
             entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
@@ -354,6 +360,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
         });
 
+        
+        modelBuilder.Entity<TenantExtractionRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
+            entity.Property(e => e.RuleType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RawPattern).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.NormalizedPattern).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.TargetName).HasMaxLength(200).IsRequired();
+            entity.HasIndex(e => new { e.TenantId, e.RuleType, e.NormalizedPattern });
+        });
+
         modelBuilder.Entity<AiConversation>(entity =>
         {
             entity.HasKey(e => e.Id);

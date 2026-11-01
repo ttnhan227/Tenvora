@@ -238,7 +238,7 @@ public sealed class AiActionService(
                 _localizer.GetString("error.unauthorized_execute"), "UNAUTHORIZED_EXECUTE");
         }
 
-        using var write = actionWriteLock != null ? await actionWriteLock.WaitAsync(tenantId, ct) : null;
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
 
         var action = await db.AiActions.FirstOrDefaultAsync(
             a => a.Id == actionId && a.TenantId == tenantId, ct);
@@ -1318,12 +1318,48 @@ public sealed class AiActionService(
 
     private async Task<ApiResult<AiActionExecutionResponse>> ExecutePurchase(AiAction action, ActionPayload payload)
     {
-        if (!payload.SupplierId.HasValue || string.IsNullOrWhiteSpace(payload.ProductName))
+        if (!payload.SupplierId.HasValue && string.IsNullOrWhiteSpace(payload.SupplierName))
             return ApiResult<AiActionExecutionResponse>.Fail("Purchase supplier or item is missing.");
+
+        var supplierId = payload.SupplierId;
+        if (!supplierId.HasValue)
+        {
+            var sup = await db.Suppliers.FirstOrDefaultAsync(s => s.TenantId == action.TenantId && s.Name.ToLower() == payload.SupplierName!.ToLower());
+            if (sup != null) supplierId = sup.Id;
+            else
+            {
+                var createdSup = await business.CreateSupplierAsync(action.TenantId, new CreateSupplierRequest(payload.SupplierName!));
+                if (!createdSup.Success || createdSup.Data == null)
+                    return ApiResult<AiActionExecutionResponse>.Fail(createdSup.Message);
+                supplierId = createdSup.Data.Id;
+            }
+        }
+
+        List<CreatePurchaseItemRequest> items;
+        if (payload.PurchaseItems != null && payload.PurchaseItems.Count > 0)
+        {
+            items = payload.PurchaseItems;
+        }
+        else if (!string.IsNullOrWhiteSpace(payload.ProductName))
+        {
+            items = [new CreatePurchaseItemRequest(payload.ProductName, payload.Unit ?? "item", payload.Quantity, payload.UnitPrice, payload.ProductId)];
+        }
+        else
+        {
+            return ApiResult<AiActionExecutionResponse>.Fail("Purchase supplier or item is missing.");
+        }
+
         var result = await business.CreatePurchaseAsync(action.TenantId, action.IdempotencyKey,
-            new CreatePurchaseRequest(payload.SupplierId.Value,
-                [new CreatePurchaseItemRequest(payload.ProductName, payload.Unit ?? "item", payload.Quantity, payload.UnitPrice, payload.ProductId)],
-                payload.PaidAmount, "Cash", payload.Notes, DateTime.UtcNow));
+            new CreatePurchaseRequest(
+                supplierId.Value,
+                items,
+                payload.PaidAmount,
+                payload.PaymentMethod ?? "Cash",
+                payload.Notes,
+                payload.PurchasedAt ?? DateTime.UtcNow,
+                payload.InvoiceImageDataUrl,
+                payload.DueDate));
+
         return result.Success && result.Data != null
             ? ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status,
                 _localizer.GetExecutionMessage("purchase", FormatAmount(result.Data.TotalAmount, result.Data.Currency), FormatAmount(result.Data.OutstandingBalance, result.Data.Currency)),
@@ -1555,6 +1591,19 @@ public sealed class AiActionService(
                     : throw new InvalidOperationException("Expense amount must be greater than zero."),
                 Description = Optional(input.Description)
             },
+            "purchase" => payload with
+            {
+                SupplierId = input.SupplierId ?? payload.SupplierId,
+                SupplierName = input.SupplierName ?? payload.SupplierName,
+                Amount = input.Amount is > 0 ? input.Amount.Value : payload.Amount,
+                PaidAmount = input.PaidAmount ?? payload.PaidAmount,
+                PaymentMethod = input.PaymentMethod ?? payload.PaymentMethod ?? "Cash",
+                DueDate = input.DueDate ?? payload.DueDate,
+                PurchasedAt = input.PurchasedAt ?? payload.PurchasedAt,
+                InvoiceImageDataUrl = input.InvoiceImageDataUrl ?? payload.InvoiceImageDataUrl,
+                PurchaseItems = input.PurchaseItems ?? payload.PurchaseItems,
+                Notes = Optional(input.Description) ?? payload.Notes
+            },
             _ => throw new InvalidOperationException("Editable input is not supported for this action type.")
         };
     }
@@ -1563,7 +1612,7 @@ public sealed class AiActionService(
         "create_customer" or "update_customer" or
         "create_product" or "update_product" or
         "create_supplier" or "update_supplier" or
-        "expense";
+        "expense" or "purchase";
 
     private static string? NormalizeDraftName(string? value)
     {
@@ -1597,7 +1646,7 @@ public sealed class AiActionService(
 
     public sealed record ProductItemPayload(string Name, string Unit = "item", decimal UnitPrice = 0m, string? Notes = null);
 
-    private sealed record ActionPayload(
+    public sealed record ActionPayload(
         Guid? CustomerId = null,
         string? CustomerName = null,
         Guid? SupplierId = null,
@@ -1621,7 +1670,13 @@ public sealed class AiActionService(
         string? Status = null,
         string? Description = null,
         string? Notes = null,
-        List<ProductItemPayload>? Products = null);
+        List<ProductItemPayload>? Products = null,
+        List<CreatePurchaseItemRequest>? PurchaseItems = null,
+        string? InvoiceImageDataUrl = null,
+        DateTime? DueDate = null,
+        DateTime? PurchasedAt = null,
+        string? PaymentMethod = null,
+        CaptureProvenanceDto? Provenance = null);
 
     private sealed record CustomerChoice(Guid Id, string Name);
     private sealed record ProductChoice(Guid Id, string Name, string Unit, decimal DefaultPrice);

@@ -47,19 +47,4 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
     [HttpGet("{id:guid}/defaults")]
     public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
         (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
-
-    [HttpPost("adjustments"), Authorize(Roles = "TenantAdmin,OperationsManager")]
-    public async Task<IActionResult> CreateAdjustment(CreateStockAdjustmentRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null)
-    {
-        var userId = User.GetUserId();
-        return (await service.CreateStockAdjustmentAsync(User.GetTenantId(), userId == Guid.Empty ? null : userId, request, idempotencyKey)).ToActionResult();
-    }
-
-    [HttpGet("{id:guid}/defaults")]
-    public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
-        (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
-
-    [HttpGet("{id:guid}/defaults")]
-    public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
-        (await service.GetProductSmartDefaultsAsync(User.GetTenantId(), id, supplierId, ct)).ToActionResult();
 }

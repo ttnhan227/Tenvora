@@ -107,6 +107,9 @@ public class AppLocalizer : IAppLocalizer
             ["agent.query_completed"] = "Data query completed.",
             ["agent.confirmed_and_executed"] = "Confirmed and executed: {0}",
             ["agent.action_cancelled"] = "Action cancelled.",
+            ["agent.action_undone"] = "Action has been undone and changes reverted.",
+            ["error.action_already_undone"] = "This action has already been undone.",
+            ["error.undo_window_expired"] = "The 15-minute undo window has expired for this action.",
             ["agent.action_failed"] = "Could not perform action: {0}",
             ["agent.prepared_action"] = "I've prepared this action: **{0}**.\n\nPlease review the details in the card below, then confirm to complete it.",
             ["agent.need_info"] = "{0}\n\nPlease provide the missing details (e.g. name, price, or unit) in the card or chat so I can prepare the action for you."
@@ -209,6 +212,9 @@ public class AppLocalizer : IAppLocalizer
             ["agent.query_completed"] = "Đã hoàn tất truy vấn dữ liệu.",
             ["agent.confirmed_and_executed"] = "Đã xác nhận và thực hiện: {0}",
             ["agent.action_cancelled"] = "Đã hủy thao tác.",
+            ["agent.action_undone"] = "Thao tác đã được hoàn tác và dữ liệu đã được phục hồi.",
+            ["error.action_already_undone"] = "Thao tác này đã được hoàn tác trước đó.",
+            ["error.undo_window_expired"] = "Đã hết thời hạn hoàn tác 15 phút cho thao tác này.",
             ["agent.action_failed"] = "Không thể thực hiện: {0}",
             ["agent.prepared_action"] = "Tôi đã chuẩn bị thao tác: **{0}**.\n\nVui lòng kiểm tra chi tiết trên thẻ bên dưới rồi xác nhận để hoàn tất.",
             ["agent.need_info"] = "{0}\n\nBạn vui lòng cho biết thêm thông tin (ví dụ: tên, giá bán, hoặc đơn vị tính) bằng cách nhập trực tiếp vào thẻ hoặc gửi tin nhắn để tôi chuẩn bị thao tác."

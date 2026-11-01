@@ -177,6 +177,7 @@ builder.Services.AddScoped<IAiAssistantService, AiAssistantService>();
 builder.Services.AddScoped<IAiActionService, AiActionService>();
 builder.Services.AddScoped<IAiAgentService, AiAgentService>();
 builder.Services.AddScoped<ICaptureService, CaptureService>();
+builder.Services.AddScoped<IObjectStorageService, ObjectStorageService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")

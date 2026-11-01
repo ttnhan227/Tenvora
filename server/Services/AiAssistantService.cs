@@ -64,11 +64,9 @@ public class AiAssistantService : IAiAssistantService
         if (deterministicRead != null)
             return ApiResult<AiChatResponse>.Ok(new AiChatResponse(deterministicRead, "Tenvora", "application-tools", true));
 
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
+        var provider = AiProviderConfig.Resolve(_config);
 
-        if (!string.IsNullOrWhiteSpace(apiKey))
+        if (provider.HasApiKey)
         {
             try
             {
@@ -99,55 +97,102 @@ Answer politely and clearly in the language of the user's question, including En
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(10);
 
-                var requestBody = new
+                if (provider.IsGemini)
                 {
-                    safetySettings = AiProviderSafety.GeminiSettings,
-                    contents = new[]
+                    var requestBody = new
                     {
-                        new
+                        safetySettings = AiProviderSafety.GeminiSettings,
+                        contents = new[]
                         {
-                            parts = new[]
+                            new
                             {
-                                new { text = $"{systemPrompt}\n\nUser: {message}" }
+                                parts = new[]
+                                {
+                                    new { text = $"{systemPrompt}\n\nUser: {message}" }
+                                }
+                            }
+                        },
+                        generationConfig = new
+                        {
+                            temperature = 0.2
+                        }
+                    };
+
+                    var url = $"{provider.Endpoint.TrimEnd('/')}/{provider.Model}:generateContent";
+                    using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
+                    providerRequest.Headers.Add("x-goog-api-key", provider.ApiKey);
+                    providerRequest.Content = JsonContent.Create(requestBody);
+                    using var response = await client.SendAsync(providerRequest, ct);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+                        if (responseJson.TryGetProperty("candidates", out var candidates) &&
+                            candidates.GetArrayLength() > 0 &&
+                            candidates[0].TryGetProperty("content", out var content) &&
+                            content.TryGetProperty("parts", out var parts))
+                        {
+                            var replyText = ReadAnswerParts(parts);
+
+                            if (!string.IsNullOrWhiteSpace(replyText))
+                            {
+                                return ApiResult<AiChatResponse>.Ok(new AiChatResponse(replyText.Trim(), provider.DisplayName, provider.Model, false));
                             }
                         }
-                    },
-                    generationConfig = new
-                    {
-                        temperature = 0.2
                     }
-                };
-
-                var url = $"{endpoint.TrimEnd('/')}/{model}:generateContent";
-                using var providerRequest = new HttpRequestMessage(HttpMethod.Post, url);
-                providerRequest.Headers.Add("x-goog-api-key", apiKey);
-                providerRequest.Content = JsonContent.Create(requestBody);
-                using var response = await client.SendAsync(providerRequest, ct);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
-                    if (responseJson.TryGetProperty("candidates", out var candidates) &&
-                        candidates.GetArrayLength() > 0 &&
-                        candidates[0].TryGetProperty("content", out var content) &&
-                        content.TryGetProperty("parts", out var parts))
+                    else
                     {
-                        var replyText = ReadAnswerParts(parts);
-
-                        if (!string.IsNullOrWhiteSpace(replyText))
-                        {
-                            return ApiResult<AiChatResponse>.Ok(new AiChatResponse(replyText.Trim(), "Google Gemini", model, false));
-                        }
+                        _logger.LogWarning("Gemini API call failed with status code {StatusCode}", response.StatusCode);
                     }
                 }
-                else
+                else if (provider.IsOpenAiCompatible)
                 {
-                    _logger.LogWarning("Gemini API call failed with status code {StatusCode}", response.StatusCode);
+                    var requestUrl = provider.Endpoint.TrimEnd('/');
+                    if (!requestUrl.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+                    {
+                        requestUrl += "/chat/completions";
+                    }
+
+                    using var providerRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+                    if (!string.IsNullOrWhiteSpace(provider.ApiKey))
+                    {
+                        providerRequest.Headers.Add("Authorization", $"Bearer {provider.ApiKey}");
+                    }
+                    providerRequest.Content = JsonContent.Create(new
+                    {
+                        model = provider.Model,
+                        messages = new object[]
+                        {
+                            new { role = "system", content = systemPrompt },
+                            new { role = "user", content = message }
+                        },
+                        temperature = 0.2
+                    });
+                    using var response = await client.SendAsync(providerRequest, ct);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+                        if (responseJson.TryGetProperty("choices", out var choices) &&
+                            choices.GetArrayLength() > 0 &&
+                            choices[0].TryGetProperty("message", out var msgEl) &&
+                            msgEl.TryGetProperty("content", out var contentEl))
+                        {
+                            var replyText = contentEl.GetString();
+                            if (!string.IsNullOrWhiteSpace(replyText))
+                            {
+                                return ApiResult<AiChatResponse>.Ok(new AiChatResponse(replyText.Trim(), provider.DisplayName, provider.Model, false));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("AI provider API call failed with status code {StatusCode}", response.StatusCode);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Gemini API call threw exception; falling back to local business responder.");
+                _logger.LogWarning(ex, "AI provider API call threw exception; falling back to local business responder.");
             }
         }
 

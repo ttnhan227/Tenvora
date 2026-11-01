@@ -64,9 +64,9 @@ public sealed class Phase3CaptureServiceTests
         envMock.Setup(e => e.ContentRootPath).Returns(tempWebRoot);
 
         var configMock = new Mock<IConfiguration>();
-        var storage = new ObjectStorageService(envMock.Object, configMock.Object, null, NullLogger<ObjectStorageService>.Instance);
+        var storage = new ObjectStorageService(envMock.Object, configMock.Object, NullLogger<ObjectStorageService>.Instance);
         var localizer = new AppLocalizer();
-        var businessService = new BusinessService(db, null, storage);
+        var businessService = new BusinessService(db);
         var assistantServiceMock = new Mock<IAiAssistantService>();
 
         var httpAccessorMock = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();

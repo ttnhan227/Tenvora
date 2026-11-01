@@ -164,15 +164,13 @@ public sealed class AiAgentService : IAiAgentService
         // turn the supplied product description into an inline catalog draft.
         var clarificationRecovery = TryRecoverMissingProductClarification(history, rawText, currency);
 
-        // 5. Run Agent: Gemini first, Mistral as fallback, Local Agent as safety/offline net
-        var apiKey = _config["AI_PROVIDER_API_KEY"] ?? _config["AiProvider:ApiKey"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_API_KEY") ?? Environment.GetEnvironmentVariable("AiProvider__ApiKey");
-        var endpoint = _config["AI_PROVIDER_ENDPOINT"] ?? _config["AiProvider:Endpoint"] ?? Environment.GetEnvironmentVariable("AI_PROVIDER_ENDPOINT") ?? Environment.GetEnvironmentVariable("AiProvider__Endpoint") ?? "https://generativelanguage.googleapis.com/v1beta/models";
-        var model = _config["AI_CHAT_MODEL"] ?? _config["AiProvider:ChatModel"] ?? Environment.GetEnvironmentVariable("AI_CHAT_MODEL") ?? Environment.GetEnvironmentVariable("AiProvider__ChatModel") ?? "gemini-flash-latest";
-
+        // 5. Run Agent: Execute configured AI provider (Gemini, OpenAI, Mistral, Ollama, Custom), or Local Agent when unconfigured
+        var provider = AiProviderConfig.Resolve(_config);
         string reply;
         AiActionProposalResponse? proposal = null;
         List<AiAgentToolCallInfo> toolCalls = new();
-        string providerName = "Google Gemini";
+        string providerName = provider.DisplayName;
+        string model = provider.Model;
         bool isFallback = false;
 
         if (clarificationRecovery != null)
@@ -187,37 +185,19 @@ public sealed class AiAgentService : IAiAgentService
         {
             AgentTurnResult? agentResult = null;
 
-            if (!string.IsNullOrWhiteSpace(apiKey))
+            if (provider.HasApiKey)
             {
-                try
+                if (provider.IsGemini)
                 {
                     agentResult = await RunGeminiAgentLoopAsync(
                         tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
-                        apiKey, endpoint, model, ct);
-                    providerName = "Google Gemini";
+                        provider.ApiKey!, provider.Endpoint, provider.Model, ct);
                 }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
+                else if (provider.IsOpenAiCompatible)
                 {
-                    _logger.LogWarning(ex, "Gemini agent failed; trying Mistral fallback.");
-                }
-            }
-
-            var mistralKey = _config["MISTRAL_API_KEY"] ?? Environment.GetEnvironmentVariable("MISTRAL_API_KEY");
-            if (agentResult == null && !string.IsNullOrWhiteSpace(mistralKey))
-            {
-                var mistralModel = _config["MISTRAL_MODEL"] ?? Environment.GetEnvironmentVariable("MISTRAL_MODEL") ?? "ministral-8b-latest";
-                var mistralEndpoint = _config["MISTRAL_ENDPOINT"] ?? Environment.GetEnvironmentVariable("MISTRAL_ENDPOINT") ?? "https://api.mistral.ai/v1/chat/completions";
-                try
-                {
-                    agentResult = await RunMistralAgentLoopAsync(
+                    agentResult = await RunOpenAiCompatibleAgentLoopAsync(
                         tenantId, userId, userRole, tenant, currency, history, rawText, request.UiContext,
-                        mistralKey, mistralEndpoint, mistralModel, ct);
-                    providerName = "Mistral AI";
-                    model = mistralModel;
-                }
-                catch (Exception ex) when (!ct.IsCancellationRequested)
-                {
-                    _logger.LogWarning(ex, "Mistral fallback agent failed.");
+                        provider.ApiKey ?? "", provider.Endpoint, provider.Model, ct);
                 }
             }
 
@@ -900,7 +880,7 @@ RULES:
 
     #endregion
 
-    #region Mistral Tool-Calling Agent Loop (fallback provider)
+    #region OpenAI-Compatible Tool-Calling Agent Loop (OpenAI, Mistral, Ollama, Custom)
 
     private static string BuildSystemInstruction(Tenant tenant, string currency, string userRole) =>
         $@"You are Tenvora Agent, an autonomous, highly reliable AI Business Manager for small local businesses.
@@ -918,8 +898,8 @@ RULES:
 6. Stay within shop recordkeeping and factual business summaries. Do not provide personalized investment, lending, insurance, tax or legal advice. Explain that such requests require a qualified professional.
 7. Do not generate hateful, sexually exploitative, violent, fraudulent or otherwise harmful content. Refuse requests for those purposes and redirect to legitimate business recordkeeping.";
 
-    /// <summary>Converts the Gemini function declarations (upper-case schema types) to Mistral/OpenAI tool format.</summary>
-    private static object[] GetMistralTools()
+    /// <summary>Converts the Gemini function declarations (upper-case schema types) to OpenAI/Mistral tool format.</summary>
+    private static object[] GetOpenAiTools()
     {
         static void LowerTypes(System.Text.Json.Nodes.JsonNode? node)
         {
@@ -949,7 +929,7 @@ RULES:
         return tools.ToArray();
     }
 
-    private async Task<AgentTurnResult> RunMistralAgentLoopAsync(
+    private async Task<AgentTurnResult> RunOpenAiCompatibleAgentLoopAsync(
         Guid tenantId,
         Guid userId,
         string userRole,
@@ -966,7 +946,7 @@ RULES:
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(25);
 
-        var tools = GetMistralTools();
+        var tools = GetOpenAiTools();
         var messages = new List<object>
         {
             new { role = "system", content = BuildSystemInstruction(tenant, currency, userRole) }
@@ -992,21 +972,29 @@ RULES:
                 temperature = 0.2
             };
 
-            using var providerRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            providerRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
+            var requestUrl = endpoint.TrimEnd('/');
+            if (!requestUrl.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                requestUrl += "/chat/completions";
+            }
+            using var providerRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl);
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                providerRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
+            }
             providerRequest.Content = JsonContent.Create(requestBody);
             using var response = await client.SendAsync(providerRequest, ct);
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogWarning("Mistral API call failed: {StatusCode} {Body}", response.StatusCode, Truncate(errorBody, 500));
-                throw new InvalidOperationException($"Mistral API returned {response.StatusCode}");
+                _logger.LogWarning("AI provider API call failed: {StatusCode} {Body}", response.StatusCode, Truncate(errorBody, 500));
+                throw new InvalidOperationException($"AI provider API returned {response.StatusCode}");
             }
 
             var resJson = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
             if (!resJson.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                throw new InvalidOperationException("Mistral returned empty choices.");
+                throw new InvalidOperationException("AI provider returned empty choices.");
 
             var message = choices[0].GetProperty("message");
 
@@ -1071,7 +1059,7 @@ RULES:
             }
 
             answer = answer.Trim();
-            if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException("Mistral returned no answer text.");
+            if (string.IsNullOrWhiteSpace(answer)) throw new InvalidOperationException("AI provider returned no answer text.");
             return new AgentTurnResult(answer, capturedProposal, executedTools);
         }
 
