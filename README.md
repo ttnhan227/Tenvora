@@ -25,17 +25,21 @@
 
 The architecture enforces strict mathematical invariants on the server: atomic transactions, advisory write locks for financial consistency, idempotency keys, non-negative inventory check constraints, immutable before/after audit snapshots, and defense-in-depth PostgreSQL Row-Level Security (RLS).
 
+<p align="center">
+  <img src="docs/tenvora-demo.gif" alt="Tenvora in Action - Interactive Business Ledger and AI Copilot" width="850" />
+</p>
+
 ---
 
 ## Inside the app
 
 Tenvora keeps sales, customer balances, inventory, expenses, and reports in one workspace. The Android app uses the same business data, so a counter sale or camera receipt is available on the web without copying it manually.
 
-| Business overview | AI assistant |
-| :---: | :---: |
-| ![Tenvora Android business overview](release/google-play/screenshots/en-US/01-overview.png) | ![Tenvora Android AI assistant](release/google-play/screenshots/en-US/06-assistant.png) |
+| Native Android Business Overview | Native Android Sale Entry | Native Android AI Assistant |
+| :---: | :---: | :---: |
+| ![Tenvora Android business overview](release/google-play/screenshots/en-US/01-overview.png) | ![Tenvora Android sale](release/google-play/screenshots/en-US/02-sale.png) | ![Tenvora Android AI assistant](release/google-play/screenshots/en-US/06-assistant.png) |
 
-The screenshots show the current English Android application with demonstration business data.
+The screenshots show the current English Android application running in the Docker containerized toolchain with demonstration business data.
 
 ---
 

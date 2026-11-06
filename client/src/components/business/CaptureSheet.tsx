@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -336,11 +337,11 @@ export function CaptureSheet({
                   ? t("capture.review_title", undefined, "Review Extracted Record")
                   : t("capture.scan_title", undefined, "Scan Invoice / Receipt")}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
+              <DialogDescription className="text-sm text-muted-foreground">
                 {step === "review"
                   ? t("capture.review_subtitle", undefined, "AI drafted this record. Verify the fields before confirming.")
                   : t("capture.scan_subtitle", undefined, "Capture a photo, upload an invoice PDF, or paste text to create a draft.")}
-              </p>
+              </DialogDescription>
             </div>
           </div>
 

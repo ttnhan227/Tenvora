@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -127,9 +128,9 @@ export function ReviewQueueModal({
                 <DialogTitle className="text-xl font-bold">
                   {t("queue.title", undefined, "Review Queue")}
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <DialogDescription className="text-sm text-muted-foreground">
                   {t("queue.subtitle", undefined, "Pending AI proposals awaiting your confirmation.")}
-                </p>
+                </DialogDescription>
               </div>
             </div>
 

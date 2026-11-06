@@ -300,6 +300,7 @@ class CompactPager extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton.outlined(
+          tooltip: tr(context, 'Previous page', 'Trang trước'),
           onPressed: page > 1 ? () => onChanged(page - 1) : null,
           icon: const Icon(Icons.chevron_left),
         ),
@@ -311,6 +312,7 @@ class CompactPager extends StatelessWidget {
           ),
         ),
         IconButton.outlined(
+          tooltip: tr(context, 'Next page', 'Trang sau'),
           onPressed: page < totalPages ? () => onChanged(page + 1) : null,
           icon: const Icon(Icons.chevron_right),
         ),

@@ -77,7 +77,7 @@ export default function CustomersPage() {
     },
   });
 
-  const rawCustomers = pagedData?.items ?? [];
+  const rawCustomers = useMemo(() => pagedData?.items ?? [], [pagedData?.items]);
   const totalCount = pagedData?.totalCount ?? 0;
 
   const filteredCustomers = rawCustomers;

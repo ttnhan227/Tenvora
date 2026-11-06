@@ -350,6 +350,7 @@ class _SaleFormScreenState extends State<SaleFormScreen> with ActionGuard {
           (c) => StatefulBuilder(
             builder:
                 (c, setLocal) => AlertDialog(
+                  scrollable: true,
                   title: Text(tr(context, 'Add product', 'Thêm sản phẩm')),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -724,6 +725,7 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> with ActionGuard {
           (c) => StatefulBuilder(
             builder:
                 (c, setLocal) => AlertDialog(
+                  scrollable: true,
                   title: Text(
                     tr(context, 'Record payment', 'Ghi nhận thanh toán'),
                   ),

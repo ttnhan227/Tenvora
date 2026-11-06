@@ -356,6 +356,7 @@ class _CustomerFormState extends State<_CustomerForm> with ActionGuard {
           (c) => StatefulBuilder(
             builder:
                 (c, setLocal) => AlertDialog(
+                  scrollable: true,
                   title: Text(
                     tr(context, 'Customer payment', 'Thanh toán khách hàng'),
                   ),

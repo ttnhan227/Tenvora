@@ -755,6 +755,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen>
           (c) => StatefulBuilder(
             builder:
                 (c, setLocal) => AlertDialog(
+                  scrollable: true,
                   title: Text(
                     tr(context, 'Supplier payment', 'Thanh toán nhà cung cấp'),
                   ),

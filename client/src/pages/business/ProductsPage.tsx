@@ -64,7 +64,7 @@ export default function ProductsPage() {
     queryFn: () => businessService.getProductsPaged(search, activeParam, page, 20),
   });
 
-  const products = pagedResult?.items ?? [];
+  const products = useMemo(() => pagedResult?.items ?? [], [pagedResult?.items]);
   const totalCount = pagedResult?.totalCount ?? 0;
   const totalPages = pagedResult?.totalPages ?? 1;
 

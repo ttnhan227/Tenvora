@@ -561,6 +561,7 @@ class _AgentScreenState extends State<AgentScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
+                  tooltip: tr(context, 'Send message', 'Gửi tin nhắn'),
                   onPressed: _busy ? null : _send,
                   icon: const Icon(Icons.arrow_upward),
                 ),

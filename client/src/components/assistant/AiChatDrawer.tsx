@@ -58,7 +58,7 @@ export function AiChatDrawer({
   canMutate = true,
   draftPrompt,
 }: AiChatDrawerProps) {
-  const { isVietnamese } = useLanguage();
+  const { isVietnamese, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -352,19 +352,22 @@ export function AiChatDrawer({
     navigate(queryString ? `/agent?${queryString}` : "/agent");
   };
 
-  const quickPrompts = isVietnamese
-    ? [
-        "Hôm nay bán được bao nhiêu?",
-        "Mặt hàng nào sắp hết kho?",
-        "Ai đang nợ tiền cửa hàng?",
-        "Chi 350k tiền điện hôm nay",
-      ]
-    : [
-        "How much did we sell today?",
-        "Which products are low on stock?",
-        "Who owes us money?",
-        "Record 350k for electricity",
-      ];
+  const uiContext = contextFromPath(location.pathname, location.search);
+  const contextualPrompts = getContextualPrompts(uiContext, isVietnamese, t);
+
+  const getContextBannerText = () => {
+    const route = location.pathname;
+    if (route.startsWith("/products")) return isVietnamese ? "Kho hàng & danh mục sản phẩm" : "Products & stock catalog";
+    if (route.startsWith("/customers")) return isVietnamese ? "Khách hàng & công nợ" : "Customers & balances";
+    if (route.startsWith("/sales")) return isVietnamese ? "Đơn bán & doanh thu" : "Sales orders & ledger";
+    if (route.startsWith("/purchases")) return isVietnamese ? "Đơn nhập & hàng về" : "Purchases & inventory receipts";
+    if (route.startsWith("/suppliers")) return isVietnamese ? "Nhà cung cấp & công nợ" : "Suppliers & payables";
+    if (route.startsWith("/expenses")) return isVietnamese ? "Chi phí hoạt động" : "Operating expenses";
+    if (route.startsWith("/reports")) return isVietnamese ? "Báo cáo tài chính" : "Financial reports";
+    if (route.startsWith("/review")) return isVietnamese ? "Hàng đợi duyệt" : "Review queue";
+    return isVietnamese ? "Tổng quan kinh doanh" : "Business overview";
+  };
+  const contextBanner = getContextBannerText();
 
   if (!open) return null;
 
@@ -439,6 +442,17 @@ export function AiChatDrawer({
             </Button>
           </div>
         </header>
+
+        {/* Active Context Banner */}
+        <div className="flex items-center justify-between border-b bg-muted/40 px-4 py-2 text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 text-primary" />
+            <span className="font-medium text-foreground">{contextBanner}</span>
+          </div>
+          <span className="rounded bg-secondary/80 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            Ctrl + J
+          </span>
+        </div>
 
         {/* Conversation History Dropdown / Panel */}
         {showHistory && (
@@ -553,15 +567,15 @@ export function AiChatDrawer({
           {/* Quick Prompts */}
           {messages.length <= 2 && (
             <div className="mb-3 flex flex-wrap gap-1.5">
-              {quickPrompts.map((q) => (
+              {contextualPrompts.map((cp) => (
                 <button
-                  key={q}
+                  key={cp.id}
                   type="button"
                   disabled={isBusy}
-                  onClick={() => handleSend(q)}
+                  onClick={() => handleSend(cp.prompt)}
                   className="rounded-full border bg-secondary/60 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
                 >
-                  {q}
+                  {cp.label}
                 </button>
               ))}
             </div>

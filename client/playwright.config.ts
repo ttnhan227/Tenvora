@@ -11,7 +11,7 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
     url: localUrl,
-    reuseExistingServer: true,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "true",
   },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? localUrl,

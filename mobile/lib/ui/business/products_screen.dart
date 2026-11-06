@@ -409,6 +409,7 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
       context: context,
       builder:
           (c) => AlertDialog(
+            scrollable: true,
             title: Text(tr(context, 'Adjust stock', 'Điều chỉnh kho')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -775,6 +776,11 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                     ),
                     const SizedBox(width: 8),
                     IconButton.outlined(
+                      tooltip: tr(
+                        context,
+                        'Stock adjustment history',
+                        'Lịch sử điều chỉnh kho',
+                      ),
                       onPressed: _history,
                       icon: const Icon(Icons.history),
                     ),

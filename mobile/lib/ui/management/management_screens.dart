@@ -666,6 +666,7 @@ class _TeamScreenState extends State<TeamScreen> with ActionGuard {
           (c) => StatefulBuilder(
             builder:
                 (c, setLocal) => AlertDialog(
+                  scrollable: true,
                   title: Text(
                     tr(context, 'Add team member', 'Thêm thành viên'),
                   ),
