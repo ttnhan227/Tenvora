@@ -311,6 +311,7 @@ class _ExpenseFormState extends State<_ExpenseForm> with ActionGuard {
                     ),
                   ),
                   IconButton(
+                    tooltip: tr(context, 'Close', 'Đóng'),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),

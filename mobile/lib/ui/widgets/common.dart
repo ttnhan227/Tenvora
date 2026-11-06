@@ -28,7 +28,13 @@ class PagePadding extends StatelessWidget {
     top: false,
     child: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: child,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: child,
+        ),
+      ),
     ),
   );
 }
@@ -135,15 +141,22 @@ class StatusPill extends StatelessWidget {
   final bool? positive;
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isPositive =
         positive ??
         const ['Paid', 'Posted', 'Active', 'Completed'].contains(label);
+    final isDanger = label == 'Voided' || label == 'Archived';
     final color =
         isPositive
             ? Theme.of(context).colorScheme.primary
-            : (label == 'Voided' || label == 'Archived'
-                ? TenvoraColors.danger
-                : TenvoraColors.amber);
+            : (isDanger ? TenvoraColors.danger : TenvoraColors.amber);
+    final textColor = switch ((isPositive, isDanger, isDark)) {
+      (true, _, _) => color,
+      (false, true, true) => TenvoraColors.dangerInkDark,
+      (false, true, false) => TenvoraColors.dangerInk,
+      (false, false, true) => color,
+      (false, false, false) => TenvoraColors.amberInk,
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
@@ -153,7 +166,7 @@ class StatusPill extends StatelessWidget {
       child: Text(
         tr(context, label, label),
         style: TextStyle(
-          color: color,
+          color: textColor,
           fontSize: 11,
           fontWeight: FontWeight.w800,
         ),

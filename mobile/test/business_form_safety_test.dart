@@ -63,7 +63,7 @@ void main() {
     testWidgets(
       '${isSupplier ? 'supplier' : 'product'} edit preserves web fields and blocks duplicate saves',
       (tester) async {
-        tester.view.physicalSize = const Size(430, 900);
+        tester.view.physicalSize = const Size(320, 800);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
@@ -81,6 +81,13 @@ void main() {
           AppScope(
             controller: app,
             child: MaterialApp(
+              builder: (context, child) {
+                final media = MediaQuery.of(context);
+                return MediaQuery(
+                  data: media.copyWith(textScaler: TextScaler.linear(1.5)),
+                  child: child!,
+                );
+              },
               home:
                   isSupplier ? const SuppliersScreen() : const ProductsScreen(),
             ),

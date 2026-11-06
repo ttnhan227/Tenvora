@@ -23,6 +23,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
 
+# The API creates wwwroot at startup; /app is root-owned for the non-root user
+RUN mkdir -p /app/wwwroot && chown app:app /app/wwwroot
+
 # Copy published artifacts from build stage
 COPY --from=build --chown=app:app /app/publish .
 

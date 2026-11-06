@@ -84,6 +84,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               hintText: tr(context, 'Search name or SKU', 'Tìm tên hoặc SKU'),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: IconButton(
+                tooltip: tr(context, 'Search', 'Tìm kiếm'),
                 onPressed: () {
                   _page = 1;
                   _reload();
@@ -480,6 +481,7 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                         ),
                       ),
                       IconButton(
+                        tooltip: tr(context, 'Close', 'Đóng'),
                         onPressed: () => Navigator.pop(c),
                         icon: const Icon(Icons.close),
                       ),
@@ -581,6 +583,7 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                     ),
                   ),
                   IconButton(
+                    tooltip: tr(context, 'Close', 'Đóng'),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),
@@ -719,6 +722,11 @@ class _ProductFormState extends State<_ProductForm> with ActionGuard {
                   if ((_imageData ?? widget.product?.imageDataUrl) != null &&
                       !_removeImage)
                     IconButton(
+                      tooltip: tr(
+                        context,
+                        'Remove product photo',
+                        'Xóa ảnh sản phẩm',
+                      ),
                       onPressed:
                           () => setState(() {
                             _imageData = null;

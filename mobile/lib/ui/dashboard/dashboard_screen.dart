@@ -87,34 +87,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final data = snapshot.data!;
           return ListView(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tr(
-                            context,
-                            'Good day, {name}',
-                            'Chào, {name}',
-                          ).replaceAll(
-                            '{name}',
-                            AppScope.of(context).user!.displayName,
-                          ),
-                          style: Theme.of(context).textTheme.headlineSmall,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final greeting = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tr(
+                          context,
+                          'Good day, {name}',
+                          'Chào, {name}',
+                        ).replaceAll(
+                          '{name}',
+                          AppScope.of(context).user!.displayName,
                         ),
-                        Text(
-                          AppScope.of(context).user!.companyName,
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      Text(
+                        AppScope.of(context).user!.companyName,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                      ],
-                    ),
-                  ),
-                  DropdownButton<String>(
+                      ),
+                    ],
+                  );
+                  final period = DropdownButton<String>(
                     value: _period,
                     underline: const SizedBox(),
                     items: [
@@ -136,43 +133,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _period = value!;
                           _load();
                         }),
-                  ),
-                ],
+                  );
+                  if (constraints.maxWidth < 440) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        greeting,
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: period,
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(children: [Expanded(child: greeting), period]);
+                },
               ),
               const SizedBox(height: 18),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.35,
-                children: [
-                  MetricCard(
-                    label: tr(context, 'Sales', 'Doanh thu'),
-                    value: money(data.periodSales, data.currency),
-                    icon: Icons.trending_up,
-                  ),
-                  MetricCard(
-                    label: tr(context, 'Net profit', 'Lợi nhuận ròng'),
-                    value: money(data.periodNetProfit, data.currency),
-                    icon: Icons.insights_outlined,
-                    accent:
-                        data.periodNetProfit < 0 ? TenvoraColors.danger : null,
-                  ),
-                  MetricCard(
-                    label: tr(context, 'Customer debt', 'Khách còn nợ'),
-                    value: money(data.outstandingCustomers, data.currency),
-                    icon: Icons.account_balance_wallet_outlined,
-                    accent: TenvoraColors.amber,
-                  ),
-                  MetricCard(
-                    label: tr(context, 'Supplier debt', 'Nợ nhà cung cấp'),
-                    value: money(data.outstandingSuppliers, data.currency),
-                    icon: Icons.inventory_2_outlined,
-                    accent: TenvoraColors.amber,
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const spacing = 10.0;
+                  const minCardWidth = 136.0;
+                  final columns =
+                      ((constraints.maxWidth + spacing) /
+                              (minCardWidth + spacing))
+                          .floor()
+                          .clamp(1, 4)
+                          .toInt();
+                  final cardWidth =
+                      (constraints.maxWidth - spacing * (columns - 1)) /
+                      columns;
+                  final metrics = [
+                    MetricCard(
+                      label: tr(context, 'Sales', 'Doanh thu'),
+                      value: money(data.periodSales, data.currency),
+                      icon: Icons.trending_up,
+                    ),
+                    MetricCard(
+                      label: tr(context, 'Net profit', 'Lợi nhuận ròng'),
+                      value: money(data.periodNetProfit, data.currency),
+                      icon: Icons.insights_outlined,
+                      accent:
+                          data.periodNetProfit < 0
+                              ? TenvoraColors.danger
+                              : null,
+                    ),
+                    MetricCard(
+                      label: tr(context, 'Customer debt', 'Khách còn nợ'),
+                      value: money(data.outstandingCustomers, data.currency),
+                      icon: Icons.account_balance_wallet_outlined,
+                      accent: TenvoraColors.amber,
+                    ),
+                    MetricCard(
+                      label: tr(context, 'Supplier debt', 'Nợ nhà cung cấp'),
+                      value: money(data.outstandingSuppliers, data.currency),
+                      icon: Icons.inventory_2_outlined,
+                      accent: TenvoraColors.amber,
+                    ),
+                  ];
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: [
+                      for (final metric in metrics)
+                        SizedBox(width: cardWidth, child: metric),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 22),
               Text(

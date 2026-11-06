@@ -191,6 +191,18 @@ class _AuthScreenState extends State<AuthScreen> {
                             labelText: tr(context, 'Password', 'Mật khẩu'),
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
+                              tooltip:
+                                  _obscure
+                                      ? tr(
+                                        context,
+                                        'Show password',
+                                        'Hiện mật khẩu',
+                                      )
+                                      : tr(
+                                        context,
+                                        'Hide password',
+                                        'Ẩn mật khẩu',
+                                      ),
                               onPressed:
                                   () => setState(() => _obscure = !_obscure),
                               icon: Icon(

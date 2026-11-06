@@ -81,6 +81,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
               hintText: tr(context, 'Search customers', 'Tìm khách hàng'),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: IconButton(
+                tooltip: tr(context, 'Search', 'Tìm kiếm'),
                 onPressed: () {
                   _page = 1;
                   _reload();
@@ -440,6 +441,7 @@ class _CustomerFormState extends State<_CustomerForm> with ActionGuard {
                     ),
                   ),
                   IconButton(
+                    tooltip: tr(context, 'Close', 'Đóng'),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                   ),

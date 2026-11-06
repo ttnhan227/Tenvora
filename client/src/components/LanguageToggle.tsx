@@ -7,6 +7,7 @@ interface LanguageToggleProps {
   variant?: "ghost" | "outline" | "default";
   size?: "default" | "sm" | "lg" | "icon";
   showLabel?: boolean;
+  compactBelowDesktop?: boolean;
 }
 
 export function LanguageToggle({
@@ -14,6 +15,7 @@ export function LanguageToggle({
   variant = "ghost",
   size = "sm",
   showLabel = true,
+  compactBelowDesktop = false,
 }: LanguageToggleProps) {
   const { language, setLanguage, isVietnamese, canChangeLanguage } = useLanguage();
 
@@ -33,6 +35,7 @@ export function LanguageToggle({
       aria-label={isVietnamese ? "Switch to English" : "Chuyển sang Tiếng Việt"}
       className={cn(
         "friendly-focus items-center gap-1.5 font-bold rounded-xl transition-all",
+      compactBelowDesktop && "min-h-11 min-w-11",
         className
       )}
     >
@@ -40,7 +43,7 @@ export function LanguageToggle({
         {isVietnamese ? "🇻🇳" : "🇬🇧"}
       </span>
       {showLabel && (
-        <span className="text-xs uppercase tracking-wide">
+        <span className={cn("text-xs uppercase tracking-wide", compactBelowDesktop && "hidden xl:inline")}>
           {isVietnamese ? "VI" : "EN"}
         </span>
       )}

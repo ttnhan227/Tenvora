@@ -57,6 +57,10 @@ void main() {
     testWidgets(
       '${sale ? 'sale' : 'purchase'} retries failed selectors and returns from setup to the transaction',
       (tester) async {
+        tester.view.physicalSize = const Size(320, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
         final store = SessionStore();
         final repository = SetupRepository(store);
         final app =
@@ -71,6 +75,13 @@ void main() {
           AppScope(
             controller: app,
             child: MaterialApp(
+              builder: (context, child) {
+                final media = MediaQuery.of(context);
+                return MediaQuery(
+                  data: media.copyWith(textScaler: TextScaler.linear(1.5)),
+                  child: child!,
+                );
+              },
               home: sale ? const SaleFormScreen() : const PurchaseFormScreen(),
             ),
           ),

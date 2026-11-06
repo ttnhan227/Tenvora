@@ -160,12 +160,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="md:pl-68">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/92 px-4 backdrop-blur-xl sm:px-6 md:px-8">
-          <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/92 px-3 backdrop-blur-xl sm:px-6 md:px-8">
+          <div className="flex min-w-0 items-center gap-2">
             <Button variant="ghost" size="icon" aria-label="Open navigation" className="md:hidden" onClick={() => setOpen(true)}><Menu size={20} /></Button>
-            <div><p className="text-xs text-muted-foreground">{t("header.yourRecords", "Sổ ghi chép của bạn")}</p><p className="text-sm font-bold">{currentTitle}</p></div>
+            <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{t("header.yourRecords", "Sổ ghi chép của bạn")}</p><p className="truncate text-sm font-bold">{currentTitle}</p></div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-0.5">
             {pendingCount > 0 && (
               <Link
                 to="/review"
@@ -180,16 +180,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setCommandOpen(true)}
               aria-label={t("nav.search", undefined, "Search or jump to")}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+              className="friendly-focus inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/40 p-0 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground xl:h-9 xl:w-auto xl:justify-start xl:px-2.5 xl:py-1.5"
             >
               <Search className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">{t("nav.search_quick", undefined, "Search or jump to...")}</span>
-              <kbd className="hidden sm:inline-flex h-4 items-center rounded border bg-background px-1 font-mono text-[10px]">
+              <span className="hidden xl:inline">{t("nav.search_quick", undefined, "Search or jump to...")}</span>
+              <kbd className="hidden xl:inline-flex h-4 items-center rounded border bg-background px-1 font-mono text-[10px]">
                 Ctrl K
               </kbd>
             </button>
 
-            <Button asChild size="sm" className="hidden sm:inline-flex">
+            <Button asChild size="sm" className="hidden xl:inline-flex">
               <Link to="/sales?create=1"><Plus />{t("header.newSale", "+ Bán hàng")}</Link>
             </Button>
             <Button
@@ -197,16 +197,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               size="sm"
               onClick={() => openAi()}
               aria-label={t("header.aiAssistant", "Trợ lý AI")}
-              className="inline-flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-bold"
+              className="inline-flex h-11 min-w-11 items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-bold"
             >
               <Sparkles size={14} className="text-primary" />
-              <span className="hidden sm:inline">{t("header.aiAssistant", "Trợ lý AI")}</span>
+              <span className="hidden xl:inline">{t("header.aiAssistant", "Trợ lý AI")}</span>
             </Button>
             <Button
               asChild
               variant="outline"
               size="sm"
-              className="hidden lg:inline-flex items-center gap-1.5"
+              className="hidden xl:inline-flex items-center gap-1.5"
             >
               <Link to="/settings" title={t("settings.pageTitle", "Cài đặt toàn bộ ứng dụng")}>
                 <Settings size={14} className="text-primary" />
@@ -217,7 +217,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               variant="outline"
               size="sm"
               onClick={() => setSecurityOpen(true)}
-              className="hidden xl:inline-flex items-center gap-1.5"
+              className="hidden 2xl:inline-flex items-center gap-1.5"
             >
               <Shield size={14} className="text-primary" />
               <span>{t("header.security", "Bảo mật")}</span>
@@ -225,8 +225,10 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <ActionableNotifications
               onPaySupplier={() => setSupplierPaymentOpen(true)}
             />
-            <LanguageToggle />
-            <ThemeToggle />
+            <div className="hidden min-[340px]:flex items-center gap-0.5">
+              <LanguageToggle compactBelowDesktop />
+              <ThemeToggle className="hidden min-[390px]:inline-flex" />
+            </div>
           </div>
         </header>
 

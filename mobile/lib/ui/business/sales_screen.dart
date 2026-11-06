@@ -104,6 +104,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: IconButton(
+                tooltip: tr(context, 'Search', 'Tìm kiếm'),
                 onPressed: () {
                   _page = 1;
                   _reload();
@@ -589,6 +590,11 @@ class _SaleFormScreenState extends State<SaleFormScreen> with ActionGuard {
                                   ),
                                 ),
                                 IconButton(
+                                  tooltip: tr(
+                                    context,
+                                    'Remove sale item',
+                                    'Xóa mặt hàng bán',
+                                  ),
                                   onPressed:
                                       () => setState(
                                         () => _lines.removeAt(entry.key),
@@ -638,6 +644,7 @@ class _SaleFormScreenState extends State<SaleFormScreen> with ActionGuard {
                         const SizedBox(width: 10),
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: _method,
                             decoration: InputDecoration(
                               labelText: tr(context, 'Method', 'Phương thức'),
@@ -986,6 +993,11 @@ class _SaleDetailScreenState extends State<SaleDetailScreen> with ActionGuard {
                                 s.status != 'Voided' &&
                                 AppScope.of(context).user!.canManage)
                               IconButton(
+                                tooltip: tr(
+                                  context,
+                                  'Reverse customer payment',
+                                  'Đảo khoản thanh toán khách hàng',
+                                ),
                                 onPressed: () => _reverse(s, payment),
                                 icon: const Icon(Icons.undo),
                               ),

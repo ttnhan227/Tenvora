@@ -16,7 +16,7 @@ function product(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function businessFixture(page: Page) {
+async function businessFixture(page: Page, role = "OperationsManager") {
   let customers = [customer()];
   let products = [product()];
   let sales: any[] = [];
@@ -24,17 +24,17 @@ async function businessFixture(page: Page) {
   const purchases: any[] = [];
   const expenses: any[] = [];
 
-  await page.addInitScript(() => {
+  await page.addInitScript((userRole) => {
     // API calls are mocked, but the real auth guard still checks token expiry.
     const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
     localStorage.setItem("accessToken", `test.${payload}.test-signature`);
     localStorage.setItem("user", JSON.stringify({
-      id: "operator", tenantId: "tenant-1", role: "OperationsManager",
+      id: "operator", tenantId: "tenant-1", role: userRole,
       email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true,
     }));
     localStorage.setItem("theme", "light");
     localStorage.setItem("tenvora_lang", "en");
-  });
+  }, role);
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -42,7 +42,7 @@ async function businessFixture(page: Page) {
     const method = request.method();
 
     if (path.endsWith("/auth/me")) {
-      await route.fulfill({ json: { success: true, data: { id: "operator", tenantId: "tenant-1", role: "OperationsManager", email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true } } });
+      await route.fulfill({ json: { success: true, data: { id: "operator", tenantId: "tenant-1", role, email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true } } });
       return;
     }
     if (path.endsWith("/business-dashboard")) {
@@ -121,6 +121,39 @@ async function businessFixture(page: Page) {
 }
 
 test.describe("Tenvora 2.0 golden workflow", () => {
+  test("authorized workspace routes render without runtime errors", async ({ page }) => {
+    await businessFixture(page, "TenantAdmin");
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    const routes = [
+      "/dashboard",
+      "/agent",
+      "/review",
+      "/imports",
+      "/customers",
+      "/customers/customer-1",
+      "/products",
+      "/sales",
+      "/suppliers",
+      "/purchases",
+      "/expenses",
+      "/reports",
+      "/settings",
+      "/team",
+      "/audit",
+      "/admin/users",
+    ];
+
+    for (const route of routes) {
+      await page.goto(route);
+      await expect(page.locator("main h1").first(), `${route} should render a page heading`).toBeVisible();
+    }
+
+    await expect(page).toHaveURL(/\/team$/);
+    expect(pageErrors).toEqual([]);
+  });
+
   test("keeps the Agent page and assistant drawer on the same live conversation", async ({ page }) => {
     await businessFixture(page);
     const conversationId = "11111111-1111-1111-1111-111111111111";
@@ -261,6 +294,28 @@ test.describe("Tenvora 2.0 golden workflow", () => {
           .map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.trim().slice(0, 60) }));
       });
       expect(overflow, `${route} should not overflow`).toEqual([]);
+    }
+
+    await page.setViewportSize({ width: 320, height: 780 });
+    await page.goto("/customers");
+    await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(321);
+    for (const name of ["Search or jump to", "AI Assistant", "Notifications"]) {
+      const bounds = await page.getByRole("button", { name, exact: true }).first().boundingBox();
+      expect(bounds?.width, `${name} should have a 44px touch target`).toBeGreaterThanOrEqual(44);
+      expect(bounds?.height, `${name} should have a 44px touch target`).toBeGreaterThanOrEqual(44);
+    }
+
+    for (const width of [810, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/customers");
+      await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
+      const headerBounds = await page.locator("header.sticky > div").first().evaluate((container) => {
+        const [left, right] = Array.from(container.children).map((child) => child.getBoundingClientRect());
+        return { left: left.right, right: right.left };
+      });
+      expect(headerBounds.left, `workspace header should not overlap at ${width}px`).toBeLessThanOrEqual(headerBounds.right);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth), `workspace should not overflow at ${width}px`).toBeLessThanOrEqual(width + 1);
     }
   });
 

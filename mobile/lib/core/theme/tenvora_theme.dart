@@ -7,10 +7,13 @@ abstract final class TenvoraColors {
   static const forestDark = Color(0xFF245242);
   static const sage = Color(0xFF7CBC9F);
   static const amber = Color(0xFFEDA934);
+  static const amberInk = Color(0xFF795000);
   static const paper = Color(0xFFF7F3E8);
   static const card = Color(0xFFFFFDF8);
   static const rule = Color(0xFFD8CEB8);
   static const danger = Color(0xFFB8483D);
+  static const dangerInk = Color(0xFF8F2B22);
+  static const dangerInkDark = Color(0xFFFF8E82);
   static const night = Color(0xFF16201C);
   static const nightCard = Color(0xFF202C27);
 }

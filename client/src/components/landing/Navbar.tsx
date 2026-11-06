@@ -32,7 +32,7 @@ export default function Navbar() {
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-6 text-sm font-medium">
           {navLinks.map((item) => (
             <a
               key={item.label}
@@ -87,9 +87,12 @@ export default function Navbar() {
 
           {/* Mobile Menu Hamburger */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-card/60 text-foreground hover:bg-accent/60 transition-colors"
-            aria-label="Toggle Navigation Menu"
+            className="friendly-focus lg:hidden inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border/80 bg-card/60 text-foreground hover:bg-accent/60 transition-colors"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="public-mobile-navigation"
           >
             {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
@@ -98,8 +101,8 @@ export default function Navbar() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border/80 bg-background/95 px-5 py-4 backdrop-blur-xl animate-fade-in shadow-lg">
-          <nav className="flex flex-col gap-3 text-sm font-medium">
+        <div id="public-mobile-navigation" className="lg:hidden border-b border-border/80 bg-background px-5 py-4 animate-fade-in shadow-lg">
+          <nav aria-label="Mobile navigation" className="flex flex-col gap-3 text-sm font-medium">
             {navLinks.map((item) => (
               <a
                 key={item.label}

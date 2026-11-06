@@ -31,6 +31,28 @@ class _AppShellState extends State<AppShell> {
       tr(context, 'Tenvora Agent', 'Trợ lý Tenvora'),
       tr(context, 'Workspace', 'Không gian'),
     ];
+    final destinations = [
+      NavigationDestination(
+        icon: const Icon(Icons.space_dashboard_outlined),
+        selectedIcon: const Icon(Icons.space_dashboard),
+        label: tr(context, 'Home', 'Trang chủ'),
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.receipt_long_outlined),
+        selectedIcon: const Icon(Icons.receipt_long),
+        label: tr(context, 'Sales', 'Bán hàng'),
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.auto_awesome_outlined),
+        selectedIcon: const Icon(Icons.auto_awesome),
+        label: tr(context, 'Agent', 'Trợ lý'),
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.grid_view_outlined),
+        selectedIcon: const Icon(Icons.grid_view),
+        label: tr(context, 'More', 'Thêm'),
+      ),
+    ];
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -44,33 +66,47 @@ class _AppShellState extends State<AppShell> {
         ),
         actions: [const LanguageButton(), const SizedBox(width: 4)],
       ),
-      body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.space_dashboard_outlined),
-            selectedIcon: const Icon(Icons.space_dashboard),
-            label: tr(context, 'Home', 'Trang chủ'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: const Icon(Icons.receipt_long),
-            label: tr(context, 'Sales', 'Bán hàng'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            selectedIcon: const Icon(Icons.auto_awesome),
-            label: tr(context, 'Agent', 'Trợ lý'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.grid_view_outlined),
-            selectedIcon: const Icon(Icons.grid_view),
-            label: tr(context, 'More', 'Thêm'),
-          ),
-        ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            return IndexedStack(index: _index, children: _screens);
+          }
+          return Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _index,
+                labelType:
+                    constraints.maxWidth >= 840
+                        ? NavigationRailLabelType.all
+                        : NavigationRailLabelType.selected,
+                onDestinationSelected:
+                    (value) => setState(() => _index = value),
+                destinations:
+                    destinations
+                        .map(
+                          (destination) => NavigationRailDestination(
+                            icon: destination.icon,
+                            selectedIcon: destination.selectedIcon,
+                            label: Text(destination.label),
+                          ),
+                        )
+                        .toList(),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: IndexedStack(index: _index, children: _screens)),
+            ],
+          );
+        },
       ),
+      bottomNavigationBar:
+          MediaQuery.sizeOf(context).width < 600
+              ? NavigationBar(
+                selectedIndex: _index,
+                onDestinationSelected:
+                    (value) => setState(() => _index = value),
+                destinations: destinations,
+              )
+              : null,
     );
   }
 }

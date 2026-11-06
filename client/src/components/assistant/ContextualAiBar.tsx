@@ -100,8 +100,7 @@ export function ContextualAiBar({
   if (!content) return null;
 
   return (
-    <section className="relative mb-6 overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-r from-primary/10 via-card to-[hsl(var(--warning)/.10)] p-4 shadow-sm sm:p-5">
-      <div aria-hidden className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+    <section className="relative mb-6 overflow-hidden rounded-2xl border border-primary/20 bg-accent/45 p-4 shadow-sm sm:p-5">
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">

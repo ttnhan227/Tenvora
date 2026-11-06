@@ -22,6 +22,54 @@ namespace Tenvora.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.AiTelemetryEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AcceptedWithoutEdits")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("FieldsCorrectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Intent")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("IsError")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("AiTelemetryEvents");
+                });
+
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.BusinessExpense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -49,6 +97,10 @@ namespace Tenvora.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("DocumentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<DateTime>("ExpenseDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -71,6 +123,8 @@ namespace Tenvora.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId", "Category");
+
+                    b.HasIndex("TenantId", "DocumentHash");
 
                     b.HasIndex("TenantId", "ExpenseDate");
 
@@ -331,6 +385,13 @@ namespace Tenvora.Api.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<string>("DocumentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -375,6 +436,8 @@ namespace Tenvora.Api.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "DocumentHash");
 
                     b.HasIndex("TenantId", "IdempotencyKey")
                         .IsUnique();
@@ -525,6 +588,70 @@ namespace Tenvora.Api.Migrations
                     b.ToTable("PurchasePayments", t =>
                         {
                             t.HasCheckConstraint("CK_PurchasePayments_Amount_Positive", "\"Amount\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.RecurringExpenseTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("USD");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("monthly");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("LastGeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("NextDueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "IsActive", "NextDueDate");
+
+                    b.ToTable("RecurringExpenseTemplates", t =>
+                        {
+                            t.HasCheckConstraint("CK_RecurringExpenseTemplates_Amount_Positive", "\"Amount\" > 0");
                         });
                 });
 
@@ -735,6 +862,9 @@ namespace Tenvora.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<int?>("PaymentTermsDays")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -760,6 +890,53 @@ namespace Tenvora.Api.Migrations
                         {
                             t.HasCheckConstraint("CK_Suppliers_Status", "\"Status\" IN ('Active','Archived')");
                         });
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.TenantExtractionRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedPattern")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RawPattern")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RuleType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("TargetEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("TenantId", "Id");
+
+                    b.HasIndex("TenantId", "RuleType", "NormalizedPattern");
+
+                    b.ToTable("TenantExtractionRules");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Models.AiAction", b =>
@@ -1279,6 +1456,15 @@ namespace Tenvora.Api.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.RecurringExpenseTemplate", b =>
+                {
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Tenvora.Api.Domain.Entities.Sale", b =>
                 {
                     b.HasOne("Tenvora.Api.Models.Tenant", null)
@@ -1334,6 +1520,15 @@ namespace Tenvora.Api.Migrations
                 {
                     b.HasOne("Tenvora.Api.Models.Tenant", null)
                         .WithMany("Suppliers")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.TenantExtractionRule", b =>
+                {
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

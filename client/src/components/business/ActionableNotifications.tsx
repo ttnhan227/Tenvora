@@ -103,7 +103,7 @@ export function ActionableNotifications({
         size="icon"
         onClick={() => setIsOpen(true)}
         aria-label={t("notifications.title", undefined, "Notifications")}
-        className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
+        className="relative h-11 w-11 text-muted-foreground hover:text-foreground"
       >
         <Bell className="h-4 w-4" />
         {count > 0 && (

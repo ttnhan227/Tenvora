@@ -204,6 +204,7 @@ class _AgentScreenState extends State<AgentScreen> {
                         ),
                       ),
                       IconButton(
+                        tooltip: tr(context, 'Close', 'Đóng'),
                         onPressed: () => Navigator.pop(sheetContext),
                         icon: const Icon(Icons.close),
                       ),
@@ -238,6 +239,11 @@ class _AgentScreenState extends State<AgentScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   trailing: IconButton(
+                                    tooltip: tr(
+                                      context,
+                                      'Delete conversation',
+                                      'Xóa cuộc trò chuyện',
+                                    ),
                                     onPressed:
                                         () => _deleteConversation(
                                           sheetContext,

@@ -92,6 +92,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
               ),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: IconButton(
+                tooltip: tr(context, 'Search', 'Tìm kiếm'),
                 onPressed: () {
                   _page = 1;
                   _reload();
@@ -335,6 +336,7 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
                               ),
                             ),
                             IconButton(
+                              tooltip: tr(c, 'Close', 'Đóng'),
                               onPressed: () => Navigator.pop(c, false),
                               icon: const Icon(Icons.close),
                             ),
@@ -614,6 +616,11 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
                                 ),
                               ),
                               IconButton(
+                                tooltip: tr(
+                                  context,
+                                  'Remove purchase item',
+                                  'Xóa mặt hàng',
+                                ),
                                 onPressed:
                                     () => setState(
                                       () => _lines.removeAt(entry.key),
@@ -662,6 +669,7 @@ class _PurchaseFormScreenState extends State<PurchaseFormScreen>
                         const SizedBox(width: 10),
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: _method,
                             decoration: InputDecoration(
                               labelText: tr(context, 'Method', 'Phương thức'),
@@ -981,6 +989,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen>
                               p.status != 'Voided' &&
                               AppScope.of(context).user!.canManage)
                             IconButton(
+                              tooltip: tr(
+                                context,
+                                'Reverse supplier payment',
+                                'Đảo khoản thanh toán nhà cung cấp',
+                              ),
                               onPressed: () => _reverse(p, payment),
                               icon: const Icon(Icons.undo),
                             ),
