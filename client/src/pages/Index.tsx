@@ -303,7 +303,7 @@ export default function Index() {
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
                         <p className="micro-label text-primary">{isVietnamese ? "Doanh số hôm nay" : "Today's Sales"}</p>
-                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums">₫18,450,000</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums">{isVietnamese ? "₫18,450,000" : "$18,450.00"}</p>
                         <div className="mt-2 flex items-center gap-1 text-xs text-[hsl(var(--success))] font-semibold">
                           <TrendingUp className="h-3.5 w-3.5" />
                           <span>{isVietnamese ? "+14.2% so với tuần trước" : "+14.2% vs last week"}</span>
@@ -312,15 +312,13 @@ export default function Index() {
 
                       <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
                         <p className="micro-label text-primary">{isVietnamese ? "Tiền mặt thực thu" : "Cash Realized"}</p>
-                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums">₫14,250,000</p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums">{isVietnamese ? "₫14,250,000" : "$14,250.00"}</p>
                         <p className="mt-2 text-xs text-muted-foreground">{isVietnamese ? "77.2% đã thu tiền mặt / chuyển khoản" : "77.2% collected in cash / transfer"}</p>
                       </div>
 
                       <div className="rounded-xl border border-border/70 bg-card p-4 shadow-2xs">
                         <p className="micro-label text-amber-700 dark:text-amber-400">{isVietnamese ? "Nợ khách hàng" : "Customer Debt"}</p>
-                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
-                          ₫4,200,000
-                        </p>
+                        <p className="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{isVietnamese ? "₫4,200,000" : "$4,200.00"}</p>
                         <p className="mt-2 text-xs text-muted-foreground">{isVietnamese ? "3 khách hàng đến hạn thu nợ" : "3 accounts due for collection"}</p>
                       </div>
 
@@ -353,9 +351,9 @@ export default function Index() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold tabular-nums">₫5,500,000</p>
+                            <p className="font-bold tabular-nums">{isVietnamese ? "₫5,500,000" : "$5,500.00"}</p>
                             <span className="inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
-                              {isVietnamese ? "Còn nợ ₫2,000,000" : "Owes ₫2,000,000"}
+                              {isVietnamese ? "Còn nợ ₫2,000,000" : "Owes $2,000.00"}
                             </span>
                           </div>
                         </div>
@@ -371,7 +369,7 @@ export default function Index() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold tabular-nums">₫2,200,000</p>
+                            <p className="font-bold tabular-nums">{isVietnamese ? "₫2,200,000" : "$2,200.00"}</p>
                             <span className="inline-block rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                               {isVietnamese ? "Đã thu đủ" : "Paid in Full"}
                             </span>
@@ -389,7 +387,7 @@ export default function Index() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold tabular-nums text-muted-foreground">-₫8,400,000</p>
+                            <p className="font-bold tabular-nums text-muted-foreground">{isVietnamese ? "-₫8,400,000" : "-$8,400.00"}</p>
                             <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                               {isVietnamese ? "Nhập hàng từ NCC" : "Supplier Restock"}
                             </span>
@@ -412,7 +410,7 @@ export default function Index() {
                           </p>
                         </div>
                         <span className="self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                          {isVietnamese ? "Tổng nợ chưa thu: ₫4,200,000" : "Total Uncollected: ₫4,200,000"}
+                          {isVietnamese ? "Tổng nợ chưa thu: ₫4,200,000" : "Total Uncollected: $4,200.00"}
                         </span>
                       </div>
 
@@ -423,9 +421,7 @@ export default function Index() {
                             <p className="text-xs text-muted-foreground">{isVietnamese ? "Mua gần nhất: Hôm nay · SĐT: 0903 124 882" : "Last purchase: Today · Phone: 0903 124 882"}</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">
-                              ₫2,000,000
-                            </p>
+                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">{isVietnamese ? "₫2,000,000" : "$2,000.00"}</p>
                             <Button size="sm" variant="outline" className="text-xs font-semibold h-8 hidden sm:inline-flex">
                               {isVietnamese ? "Phiếu nợ PDF" : "Statement PDF"}
                             </Button>
@@ -438,9 +434,7 @@ export default function Index() {
                             <p className="text-xs text-muted-foreground">{isVietnamese ? "Mua gần nhất: 2 ngày trước · SĐT: 0988 231 991" : "Last purchase: 2 days ago · Phone: 0988 231 991"}</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">
-                              ₫1,500,000
-                            </p>
+                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">{isVietnamese ? "₫1,500,000" : "$1,500.00"}</p>
                             <Button size="sm" variant="outline" className="text-xs font-semibold h-8 hidden sm:inline-flex">
                               {isVietnamese ? "Phiếu nợ PDF" : "Statement PDF"}
                             </Button>
@@ -453,9 +447,7 @@ export default function Index() {
                             <p className="text-xs text-muted-foreground">{isVietnamese ? "Mua gần nhất: 5 ngày trước · SĐT: 0912 774 220" : "Last purchase: 5 days ago · Phone: 0912 774 220"}</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">
-                              ₫700,000
-                            </p>
+                            <p className="font-bold text-amber-700 dark:text-amber-400 tabular-nums text-right">{isVietnamese ? "₫700,000" : "$700.00"}</p>
                             <Button size="sm" variant="outline" className="text-xs font-semibold h-8 hidden sm:inline-flex">
                               {isVietnamese ? "Phiếu nợ PDF" : "Statement PDF"}
                             </Button>
@@ -505,13 +497,13 @@ export default function Index() {
                               {isVietnamese ? (
                                 <>Tiệm bánh Nam Bakery hiện còn nợ <strong>₫2,000,000</strong> cho 1 đơn hàng chưa thanh toán.</>
                               ) : (
-                                <>Nam Bakery currently owes <strong>₫2,000,000</strong> across 1 unpaid order.</>
+                                <>Nam Bakery currently owes <strong>$2,000.00</strong> across 1 unpaid order.</>
                               )}
                             </p>
                             <p className="text-muted-foreground text-[11px]">
                               {isVietnamese
                                 ? "Lần thanh toán gần nhất là ₫3,500,000 vào đơn hàng #SL-1094 sáng nay. Bạn có muốn tôi chuẩn bị phiếu nhắc nợ để gửi không?"
-                                : "Their last payment was ₫3,500,000 on Order #SL-1094 earlier today. Would you like me to prepare a payment reminder receipt?"}
+                                : "Their last payment was $3,500.00 on Order #SL-1094 earlier today. Would you like me to prepare a payment reminder receipt?"}
                             </p>
                           </div>
                         </div>

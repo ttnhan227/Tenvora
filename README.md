@@ -39,7 +39,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
 * **🔒 Tenant Scoping & RLS:** Global query filters on EF Core combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
-* **🌐 Multilingual Support:** Comprehensive web workspace in English and Vietnamese; native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
+* **🌐 Multilingual & Multi-Currency Support:** Comprehensive web workspace with USD ($) primary currency and international localization (English and Vietnamese); native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
 
 ---
 
@@ -82,11 +82,11 @@ cp .env.example .env
 Configure your connection string and API keys in `.env`.
 
 ### 2. Fast Evaluation / Reviewer Walkthrough (Demo Mode)
-To explore the system with a fully seeded retail store (*"An Nam Specialty Foods"* / *"Tenvora Demo Retail"*), set:
+To explore the system with a fully seeded store (*"Apex Provisions Wholesale"* / *"Tenvora Demo Retail"*), set:
 ```bash
 SEED_DEMO_DATA=true
 ```
-When started, the seeder automatically populates products, low-stock inventory alerts, customer receivables, supplier payables, posted sales, and operating expenses.
+When started, the seeder automatically populates products, low-stock inventory alerts, customer receivables ($420.50), supplier payables ($350.00), posted sales ($1,845.50), and operating expenses ($210.00).
 * **Demo Admin Email:** `owner@tenvora.internal`
 * **Demo Admin Password:** `DemoPassword123!` (or value set in `SEED_ADMIN_PASSWORD`)
 
