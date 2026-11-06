@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  Play,
   BookOpenCheck,
   Check,
   PackageOpen,
@@ -42,7 +43,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Index() {
   const { isVietnamese } = useLanguage();
-  const [activeTab, setActiveTab] = useState<"overview" | "debt" | "ai">("overview");
+  const [activeTab, setActiveTab] = useState<"demo" | "overview" | "debt" | "ai">("demo");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const capabilities = [
@@ -224,6 +225,17 @@ export default function Index() {
                   {/* Interactive Tab Switcher */}
                   <div className="flex items-center gap-1 rounded-xl border border-border/80 bg-muted/40 p-1 text-xs font-semibold">
                     <button
+                      onClick={() => setActiveTab("demo")}
+                      className={`rounded-lg px-2.5 py-1 transition-all flex items-center gap-1.5 ${
+                        activeTab === "demo"
+                          ? "bg-card text-primary shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Play className="h-3 w-3 fill-current text-primary" />
+                      <span>{isVietnamese ? "Video trải nghiệm" : "Live Walkthrough"}</span>
+                    </button>
+                    <button
                       onClick={() => setActiveTab("overview")}
                       className={`rounded-lg px-2.5 py-1 transition-all ${
                         activeTab === "overview"
@@ -256,6 +268,33 @@ export default function Index() {
                     </button>
                   </div>
                 </div>
+
+                {/* Tab 0: Live Walkthrough Video / Demo */}
+                {activeTab === "demo" && (
+                  <div className="mt-4 space-y-3 animate-fade-in p-1 sm:p-2">
+                    <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-inner">
+                      <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-3 py-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="font-semibold text-foreground">
+                            {isVietnamese ? "Ghi chép bán hàng · Sổ nợ đối chiếu · Trợ lý AI thực tế" : "Real-time Sales Stream · Receivables Ledger · AI Copilot"}
+                          </span>
+                        </div>
+                        <span className="hidden sm:inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
+                          {isVietnamese ? "Bản ghi trực tiếp trên web & di động" : "Desktop & Mobile Workspace"}
+                        </span>
+                      </div>
+                      <div className="relative flex justify-center bg-black/5 dark:bg-black/30 p-2 sm:p-4">
+                        <img
+                          src="/tenvora-demo.gif"
+                          alt={isVietnamese ? "Trải nghiệm Tenvora trực tiếp" : "Tenvora Live Walkthrough"}
+                          className="w-full max-w-4xl rounded-xl border border-border/70 shadow-lg object-contain"
+                          loading="eager"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tab 1: Executive KPI Overview */}
                 {activeTab === "overview" && (
