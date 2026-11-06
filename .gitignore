@@ -115,3 +115,15 @@ client/public/downloads/*.apk
 
 # Short-lived GitHub GCP authentication files
 gha-creds-*.json
+
+
+# =========================
+# AI / Agent instructions & local tooling
+# =========================
+AGENTS.md
+UI_AUDIT.md
+skills-lock.json
+.agents/
+.github/agents/
+.github/skills/
+.github/hooks/
