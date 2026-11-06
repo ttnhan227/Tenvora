@@ -10,7 +10,7 @@ These files are prepared for the owner to upload in Play Console. They do not pu
 - `screenshots/en-US/`: actual Android release captures, with fictional reviewer-shop records. The owner requested English-only screenshots; the same images can accompany translated listing text.
 - `question-for-google.txt`: draft for Google support about personal-account financial-feature eligibility; not sent.
 
-Use `docs/PLAY_SUBMISSION_PACKET.md` for Data safety guidance and reviewer navigation. Reviewer credentials are in the ignored local `.audit/play-reviewer-credentials.json`; never upload that file as a public asset. Recheck the reviewer login before each submission.
+Use `docs/google-play.md` for Data safety guidance and reviewer navigation. Reviewer credentials are in the ignored local `.audit/play-reviewer-credentials.json`; never upload that file as a public asset. Recheck the reviewer login before each submission.
 
 The signed bundle is retained at `mobile/build/play-release-ci/tenvora-1.0.0.aab`, with checksum and verification receipt in the same directory. Version name stays 1.0.0. Use version code 1 only if it has not already been uploaded.
 

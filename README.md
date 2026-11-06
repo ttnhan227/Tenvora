@@ -47,7 +47,7 @@ The screenshots show the current English Android application with demonstration 
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
 * **🔒 Tenant Scoping & RLS:** Global query filters on EF Core combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
-* **🌐 Bilingual Support:** Native English and Vietnamese interface with `₫` VND currency and localized phone formats.
+* **🌐 Multilingual Support:** Comprehensive web workspace in English and Vietnamese; native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
 
 ---
 
@@ -60,7 +60,7 @@ The screenshots show the current English Android application with demonstration 
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (218+ tests), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (270+ tests), Docker images, verified APK builds. |
 
 ---
 
@@ -130,7 +130,7 @@ pwsh scripts/verify-all.ps1        # Windows PowerShell
 bash scripts/verify-all.sh         # Linux / macOS
 
 # Or run individual test suites:
-# Backend Tests (127 xUnit tests verifying ledger math, concurrency, and RLS)
+# Backend Tests (187 xUnit tests verifying ledger math, concurrency, and RLS)
 dotnet test server.Tests
 
 # Frontend Unit & Integration Tests (91 Vitest tests across 23 test suites)
@@ -158,10 +158,13 @@ Tenvora/
 │   ├── Data/               # AppDbContext, migrations, audit interceptors
 │   ├── Domain/Entities/    # Tenant-scoped domain models
 │   └── Services/           # Ledger calculations, business rules, AI services
-├── server.Tests/           # 127 xUnit unit, integration, and security regression tests
+├── server.Tests/           # 187 xUnit unit, integration, and security regression tests
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration
+├── docs/                   # Production operations and Play Store compliance
+│   ├── operations.md       # Deployment runbooks, database recovery, and health checks
+│   └── google-play.md      # Store listing metadata, Data Safety, and compliance
 └── .github/workflows/      # Automated CI/CD & Mobile release pipelines
     ├── ci.yml              # Tests and Docker images
     ├── verify-product.yml  # PostgreSQL, recovery, backend and browser checks
