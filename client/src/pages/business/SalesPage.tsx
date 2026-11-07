@@ -62,6 +62,7 @@ import {
   Sale,
 } from "@/services/businessService";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
 
@@ -119,6 +120,8 @@ function playCashierSound(type: "scan" | "success" | "park" = "scan") {
 
 export default function SalesPage() {
   const { isVietnamese, t } = useLanguage();
+  const auth = useOptionalAuth();
+  const user = auth?.user;
   const { canManageRecords } = useBusinessPermissions();
   const methodLabel = (method: string) => isVietnamese ? ({ Cash: "Tiền mặt", "Bank transfer": "Chuyển khoản", Card: "Thẻ", Other: "Khác" }[method] ?? method) : method;
   const queryClient = useQueryClient();
@@ -255,11 +258,14 @@ export default function SalesPage() {
       setCreateOpen(false);
       resetForm();
       playCashierSound("success");
-      setReceiptSale(sale);
       toast.success(isVietnamese ? "Đã ghi đơn bán thành công!" : "Sale recorded successfully!", {
         description: sale.outstandingBalance > 0
           ? (isVietnamese ? `${sale.customerName} còn nợ ${businessMoney(sale.outstandingBalance, sale.currency)}.` : `${sale.customerName} now owes ${businessMoney(sale.outstandingBalance, sale.currency)}.`)
           : (isVietnamese ? `${sale.customerName} đã thanh toán đủ.` : `${sale.customerName} paid in full.`),
+        action: {
+          label: isVietnamese ? "In phiếu" : "Receipt",
+          onClick: () => setReceiptSale(sale),
+        },
       });
     },
     onError: (error) =>
@@ -1242,6 +1248,7 @@ export default function SalesPage() {
         open={!!receiptSale}
         onOpenChange={(open) => !open && setReceiptSale(null)}
         sale={receiptSale}
+        companyName={user?.companyName}
       />
       {reversingPayment && (
         <PaymentReversalModal

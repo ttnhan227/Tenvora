@@ -44,6 +44,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export default function Index() {
   const { isVietnamese } = useLanguage();
   const [activeTab, setActiveTab] = useState<"demo" | "overview" | "debt" | "ai">("demo");
+  const [demoView, setDemoView] = useState<"desktop" | "mobile">("desktop");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const capabilities = [
@@ -273,24 +274,61 @@ export default function Index() {
                 {activeTab === "demo" && (
                   <div className="mt-4 space-y-3 animate-fade-in p-1 sm:p-2">
                     <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-background/95 shadow-inner">
-                      <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-3 py-2 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-3 py-2 text-xs">
                         <div className="flex items-center gap-2">
                           <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                           <span className="font-semibold text-foreground">
-                            {isVietnamese ? "Ghi chép bán hàng · Sổ nợ đối chiếu · Trợ lý AI thực tế" : "Real-time Sales Stream · Receivables Ledger · AI Copilot"}
+                            {demoView === "desktop"
+                              ? (isVietnamese ? "Ghi chép bán hàng · Sổ nợ đối chiếu · Trợ lý AI thực tế" : "Real-time Sales Stream · Receivables Ledger · AI Copilot")
+                              : (isVietnamese ? "Thu ngân 5 giây · Sổ nợ di động · Trợ lý Copilot trên Android" : "5-Second Checkout · Mobile Receivables · Android AI Copilot")}
                           </span>
                         </div>
-                        <span className="hidden sm:inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold text-primary">
-                          {isVietnamese ? "Bản ghi trực tiếp trên web & di động" : "Desktop & Mobile Workspace"}
-                        </span>
+                        <div className="flex items-center gap-1 rounded-lg bg-card/80 p-0.5 border border-border/70">
+                          <button
+                            type="button"
+                            onClick={() => setDemoView("desktop")}
+                            className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all ${
+                              demoView === "desktop"
+                                ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <Laptop className="h-3 w-3" />
+                            <span>Web Workspace</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDemoView("mobile")}
+                            className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all ${
+                              demoView === "mobile"
+                                ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <Smartphone className="h-3 w-3" />
+                            <span>Mobile App</span>
+                          </button>
+                        </div>
                       </div>
                       <div className="relative flex justify-center bg-black/5 dark:bg-black/30 p-2 sm:p-4">
-                        <img
-                          src="/tenvora-demo.gif"
-                          alt={isVietnamese ? "Trải nghiệm Tenvora trực tiếp" : "Tenvora Live Walkthrough"}
-                          className="w-full max-w-4xl rounded-xl border border-border/70 shadow-lg object-contain"
-                          loading="eager"
-                        />
+                        {demoView === "desktop" ? (
+                          <img
+                            src="/tenvora-demo.gif"
+                            alt={isVietnamese ? "Trải nghiệm Tenvora trực tiếp trên Web" : "Tenvora Web Live Walkthrough"}
+                            className="w-full max-w-4xl rounded-xl border border-border/70 shadow-lg object-contain"
+                            loading="eager"
+                          />
+                        ) : (
+                          <div className="relative mx-auto my-1 max-w-[320px] rounded-[2rem] border-4 border-foreground/15 bg-background p-2 shadow-2xl">
+                            <div className="mx-auto mb-2 h-3 w-16 rounded-full bg-foreground/20" />
+                            <img
+                              src="/tenvora-mobile-demo.gif"
+                              alt={isVietnamese ? "Trải nghiệm Tenvora Di Động" : "Tenvora Mobile Companion Walkthrough"}
+                              className="w-full rounded-2xl object-contain shadow-inner"
+                              loading="eager"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -764,20 +802,21 @@ export default function Index() {
                 </div>
 
                 <div className="flex justify-center">
-                  <div className="paper-card w-full max-w-sm p-6 text-center space-y-4 shadow-xl border border-border/80">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Smartphone className="h-7 w-7" />
-                    </div>
-                    <h3 className="text-lg font-bold">{isVietnamese ? "Tenvora Phiên bản Android" : "Tenvora Android Edition"}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {isVietnamese
-                        ? "Nhanh chóng, gọn nhẹ và đồng bộ thời gian thực với không gian làm việc trên máy tính."
-                        : "Fast, lightweight, and synced with your web workspace in real time."}
-                    </p>
-                    <div className="pt-2">
-                      <Button asChild className="w-full font-bold">
-                        <Link to="/mobile">{isVietnamese ? "Trải nghiệm trên di động" : "Explore Mobile Experience"}</Link>
-                      </Button>
+                  <div className="relative w-full max-w-[280px] sm:max-w-[310px] rounded-[2.5rem] border-4 border-foreground/15 bg-card/90 p-2.5 shadow-2xl">
+                    <div className="mx-auto mb-2.5 h-3.5 w-20 rounded-full bg-foreground/20" />
+                    <img
+                      src="/tenvora-mobile-demo.gif"
+                      alt={isVietnamese ? "Ứng dụng di động Tenvora trực tiếp" : "Tenvora Mobile Companion in Action"}
+                      className="w-full rounded-[1.75rem] border border-border/60 object-contain shadow-md"
+                      loading="lazy"
+                    />
+                    <div className="mt-3 text-center px-2 pb-1 space-y-1">
+                      <p className="text-xs font-bold text-foreground">
+                        {isVietnamese ? "Thu ngân 5 giây & Sổ nợ di động" : "5-Second Counter Sales & Receivables"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isVietnamese ? "Đồng bộ tức thì với phiên bản máy tính" : "Live real-time sync with Web workspace"}
+                      </p>
                     </div>
                   </div>
                 </div>

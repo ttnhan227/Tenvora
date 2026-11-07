@@ -60,6 +60,10 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 
 Pushes verify the backend, web workflows, PostgreSQL payments/recovery, and mobile tests, then build an APK as a GitHub Actions artifact. They do not publish an APK. When ready, run **Build & Release Mobile APK** manually with **publish** enabled; publication requires production signing secrets, an HTTPS backend URL, and the Google server client ID.
 
+<p align="center">
+  <img src="docs/tenvora-mobile-demo.gif" alt="Tenvora Mobile Companion in Action - Fast Counter Checkout, Receivables & AI Copilot" width="380" />
+</p>
+
 * **Direct Download:** [Latest Android APK (`tenvora-mobile.apk`)](https://github.com/ttnhan227/Tenvora/releases/download/mobile-latest/tenvora-mobile.apk)
 * **Release Channel:** [GitHub Releases (`mobile-latest`)](https://github.com/ttnhan227/Tenvora/releases/tag/mobile-latest)
 * **In-App QR Install:** Navigate to `/mobile` on the web client to scan the QR code and download directly to any Android phone.
