@@ -13,6 +13,7 @@ public sealed class MediaController(IObjectStorageService storage) : ControllerB
 {
     public sealed record UploadMediaRequest(string? DataUrl, string? Folder, string? FileName);
 
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadForm([FromForm] IFormFile file, [FromForm] string? folder)

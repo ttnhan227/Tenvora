@@ -78,4 +78,17 @@ public class LocalizationArchitectureTests
         var enNotFound = ApiResult.Fail("Customer not found.");
         Assert.IsType<NotFoundObjectResult>(enNotFound.ToActionResult());
     }
+
+    [Theory]
+    [InlineData("en", "error.stock_negative", "Stock quantity cannot drop below zero. Please verify your inventory count.")]
+    [InlineData("vi", "error.stock_negative", "Số lượng tồn kho không thể âm. Vui lòng kiểm tra lại tồn kho.")]
+    [InlineData("en", "error.duplicate_sku", "A product with this SKU already exists. Please choose a different code.")]
+    [InlineData("vi", "error.duplicate_sku", "Mã SKU này đã tồn tại cho một sản phẩm khác. Vui lòng chọn mã khác.")]
+    [InlineData("en", "error.payment_positive", "Payment amount must be greater than zero.")]
+    [InlineData("vi", "error.payment_positive", "Số tiền thanh toán phải lớn hơn 0.")]
+    public void LaymanErrorMessagesAreAccuratelyLocalized(string culture, string key, string expected)
+    {
+        var result = _localizer.GetStringForCulture(culture, key);
+        Assert.Equal(expected, result);
+    }
 }

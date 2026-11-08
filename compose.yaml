@@ -30,7 +30,7 @@ services:
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:5000}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      DATABASE_URL: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-tenvora_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};SSL Mode=Disable;Trust Server Certificate=true"
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-tenvora_db};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env};SSL Mode=Disable;Trust Server Certificate=true"
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env (at least 32 bytes)}
       JwtSettings__Issuer: ${JwtSettings__Issuer:-Tenvora}

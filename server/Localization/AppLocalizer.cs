@@ -101,6 +101,16 @@ public class AppLocalizer : IAppLocalizer
             ["error.unexpected"] = "We couldn't complete this request. Please try again.",
             ["error.missing_product_name"] = "Product name is missing.",
             ["error.price_negative"] = "Product price cannot be negative.",
+            ["error.stock_negative"] = "Stock quantity cannot drop below zero. Please verify your inventory count.",
+            ["error.total_positive"] = "Transaction total amount must be greater than zero.",
+            ["error.quantity_positive"] = "Item quantity must be greater than zero.",
+            ["error.payment_positive"] = "Payment amount must be greater than zero.",
+            ["error.expense_positive"] = "Expense amount must be greater than zero.",
+            ["error.duplicate_sku"] = "A product with this SKU already exists. Please choose a different code.",
+            ["error.duplicate_sale_number"] = "An invoice with this receipt number already exists.",
+            ["error.duplicate_purchase_number"] = "A purchase order with this number already exists.",
+            ["error.duplicate_email"] = "This email address is already registered.",
+            ["error.duplicate_transaction"] = "This transaction has already been submitted. Please refresh to view the updated record.",
 
             // Agent chat responses
             ["agent.new_conversation"] = "New conversation",
@@ -206,6 +216,16 @@ public class AppLocalizer : IAppLocalizer
             ["error.unexpected"] = "Không thể hoàn tất yêu cầu lúc này. Vui lòng thử lại sau.",
             ["error.missing_product_name"] = "Thiếu tên sản phẩm.",
             ["error.price_negative"] = "Giá sản phẩm không được là số âm.",
+            ["error.stock_negative"] = "Số lượng tồn kho không thể âm. Vui lòng kiểm tra lại tồn kho.",
+            ["error.total_positive"] = "Tổng tiền giao dịch phải lớn hơn 0.",
+            ["error.quantity_positive"] = "Số lượng mặt hàng phải lớn hơn 0.",
+            ["error.payment_positive"] = "Số tiền thanh toán phải lớn hơn 0.",
+            ["error.expense_positive"] = "Số tiền chi phí phải lớn hơn 0.",
+            ["error.duplicate_sku"] = "Mã SKU này đã tồn tại cho một sản phẩm khác. Vui lòng chọn mã khác.",
+            ["error.duplicate_sale_number"] = "Số hóa đơn này đã tồn tại trong hệ thống.",
+            ["error.duplicate_purchase_number"] = "Mã đơn nhập hàng này đã tồn tại.",
+            ["error.duplicate_email"] = "Địa chỉ email này đã được sử dụng.",
+            ["error.duplicate_transaction"] = "Giao dịch này đã được ghi nhận trước đó. Vui lòng làm mới trang.",
 
             // Agent chat responses
             ["agent.new_conversation"] = "Cuộc trò chuyện mới",

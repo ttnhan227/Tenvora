@@ -34,7 +34,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 ## ✨ Key Features
 
 * **📊 Practical Financial Dashboard:** Real-time visibility into today's sales, cash collections, categorized operating expenses, and net profit.
-* **👥 Debt & Receivables Ledger:** Track customer and supplier debts, partial payments, credit ceilings, and complete transaction histories.
+* **👥 Debt & Receivables Ledger:** Track customer and supplier debts, 1-click FIFO debt collection directly from customer lists, credit ceilings, and complete repayment histories.
 * **🧾 Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
@@ -52,7 +52,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (270+ tests), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (314 tests: 187 .NET + 127 Vitest), Docker images, verified APK builds. |
 
 ---
 
@@ -129,7 +129,7 @@ bash scripts/verify-all.sh         # Linux / macOS
 # Backend Tests (187 xUnit tests verifying ledger math, concurrency, and RLS)
 dotnet test server.Tests
 
-# Frontend Unit & Integration Tests (91 Vitest tests across 23 test suites)
+# Frontend Unit & Integration Tests (127 Vitest tests across 29 test suites)
 npm --prefix client run test:run
 
 # Frontend Linter & Production Build

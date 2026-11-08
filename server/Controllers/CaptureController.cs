@@ -38,6 +38,7 @@ public sealed class CaptureController : ControllerBase
         return result.ToActionResult();
     }
 
+    [ApiExplorerSettings(IgnoreApi = true)]
     [HttpPost("upload-and-analyze")]
     [Authorize(Roles = "TenantAdmin,OperationsManager")]
     [Consumes("multipart/form-data")]

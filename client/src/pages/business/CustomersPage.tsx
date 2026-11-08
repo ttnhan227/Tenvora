@@ -64,6 +64,10 @@ export default function CustomersPage() {
   const [editing, setEditing] = useState<BusinessCustomer | null>(null);
   const [deletingCustomer, setDeletingCustomer] = useState<BusinessCustomer | null>(null);
   const [form, setForm] = useState<CustomerInput>(emptyCustomer);
+  const [quickRepayCustomer, setQuickRepayCustomer] = useState<BusinessCustomer | null>(null);
+  const [repayAmount, setRepayAmount] = useState(0);
+  const [repayMethod, setRepayMethod] = useState("Cash");
+  const [repayNotes, setRepayNotes] = useState("");
 
   const { data: pagedData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["business-customers-paged", search, statusFilter, debtFilter, page],
@@ -192,6 +196,43 @@ export default function CustomersPage() {
     },
     onError: (error) => toast.error(apiError(error, isVietnamese ? "Không thể xoá khách hàng." : "Could not delete the customer.")),
   });
+
+  const quickRepayMutation = useMutation({
+    mutationFn: async () => {
+      if (!quickRepayCustomer) return;
+      return businessService.recordCustomerAccountPayment(quickRepayCustomer.id, {
+        amount: repayAmount,
+        method: repayMethod,
+        notes: repayNotes.trim() || undefined,
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["business-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["business-customers-paged"] });
+      queryClient.invalidateQueries({ queryKey: ["business-dashboard"] });
+      const name = quickRepayCustomer?.name ?? "";
+      const curr = quickRepayCustomer?.currency ?? "USD";
+      setQuickRepayCustomer(null);
+      toast.success(
+        isVietnamese ? `Đã thu ${businessMoney(repayAmount, curr)} từ ${name}` : `Collected ${businessMoney(repayAmount, curr)} from ${name}`,
+        {
+          description: isVietnamese
+            ? `Đã phân bổ thanh toán qua ${result?.affectedSales.length ?? 0} đơn bán cũ nhất (FIFO). Số dư còn lại: ${businessMoney(result?.remainingBalance ?? 0, curr)}.`
+            : `Allocated across ${result?.affectedSales.length ?? 0} sales (FIFO). Remaining debt: ${businessMoney(result?.remainingBalance ?? 0, curr)}.`,
+        }
+      );
+    },
+    onError: (err) => {
+      toast.error(apiError(err, isVietnamese ? "Không thể ghi nhận thanh toán công nợ." : "Could not record debt payment."));
+    },
+  });
+
+  const openQuickRepay = (customer: BusinessCustomer) => {
+    setQuickRepayCustomer(customer);
+    setRepayAmount(customer.outstandingBalance);
+    setRepayMethod("Cash");
+    setRepayNotes("");
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -428,7 +469,19 @@ export default function CustomersPage() {
                         : `settled · ${customer.salesCount} sales`}
                     </p>
                   </div>
-                  <div className="flex gap-1 sm:justify-end">
+                  <div className="flex items-center gap-1 sm:justify-end">
+                    {customer.outstandingBalance > 0 && canManageRecords && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1 border-emerald-300/80 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+                        onClick={() => openQuickRepay(customer)}
+                        aria-label={`${isVietnamese ? "Thu nợ" : "Collect"} ${customer.name}`}
+                      >
+                        <WalletCards size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>{isVietnamese ? "Thu nợ" : "Collect"}</span>
+                      </Button>
+                    )}
                     {canManageRecords && <Button variant="ghost" size="icon" aria-label={`${isVietnamese ? "Sửa" : "Edit"} ${customer.name}`} onClick={() => openEdit(customer)}><Pencil size={16} /></Button>}
                     {canManageRecords && <Button variant="ghost" size="icon" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`${isVietnamese ? "Xoá" : "Delete"} ${customer.name}`} onClick={() => setDeletingCustomer(customer)}><Trash2 size={16} /></Button>}
                     <Button variant="ghost" size="icon" asChild>
@@ -561,6 +614,105 @@ export default function CustomersPage() {
         isPending={remove.isPending}
         onConfirm={() => deletingCustomer && remove.mutate(deletingCustomer)}
       />
+      {/* Quick Debt Repay Dialog */}
+      <Dialog open={!!quickRepayCustomer} onOpenChange={(open) => !open && setQuickRepayCustomer(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <span className="notebook-label w-fit">{isVietnamese ? "Thu tiền nợ" : "Quick Debt Repay"}</span>
+            <DialogTitle className="mt-1">
+              {isVietnamese ? `Thu nợ từ ${quickRepayCustomer?.name}` : `Collect debt from ${quickRepayCustomer?.name}`}
+            </DialogTitle>
+            <DialogDescription>
+              {isVietnamese
+                ? "Khoản thu này sẽ tự động trừ vào các đơn nợ cũ nhất theo thứ tự thời gian (FIFO)."
+                : "Payment automatically settles oldest outstanding sales first (FIFO)."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {quickRepayCustomer && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                quickRepayMutation.mutate();
+              }}
+              className="space-y-4"
+            >
+              <div className="rounded-lg border border-amber-200/80 bg-amber-50/60 p-3.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+                <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  {isVietnamese ? "Tổng nợ hiện tại" : "Current outstanding debt"}
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-amber-800 dark:text-amber-200">
+                  {businessMoney(quickRepayCustomer.outstandingBalance, quickRepayCustomer.currency)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="quick-repay-amount">{isVietnamese ? "Số tiền khách trả" : "Payment amount"} *</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-primary"
+                    onClick={() => setRepayAmount(quickRepayCustomer.outstandingBalance)}
+                  >
+                    {isVietnamese ? "Trả hết" : "Pay full"}
+                  </Button>
+                </div>
+                <Input
+                  id="quick-repay-amount"
+                  type="number"
+                  min={1}
+                  max={quickRepayCustomer.outstandingBalance}
+                  value={repayAmount || ""}
+                  onChange={(e) => setRepayAmount(Number(e.target.value))}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quick-repay-method">{isVietnamese ? "Hình thức nhận" : "Payment method"}</Label>
+                <Select value={repayMethod} onValueChange={setRepayMethod}>
+                  <SelectTrigger id="quick-repay-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Cash">{isVietnamese ? "Tiền mặt" : "Cash"}</SelectItem>
+                    <SelectItem value="Bank transfer">{isVietnamese ? "Chuyển khoản" : "Bank transfer"}</SelectItem>
+                    <SelectItem value="Card">{isVietnamese ? "Thẻ" : "Card"}</SelectItem>
+                    <SelectItem value="Other">{isVietnamese ? "Khác" : "Other"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quick-repay-notes">{isVietnamese ? "Ghi chú (tuỳ chọn)" : "Note / memo (optional)"}</Label>
+                <Input
+                  id="quick-repay-notes"
+                  value={repayNotes}
+                  onChange={(e) => setRepayNotes(e.target.value)}
+                  placeholder={isVietnamese ? "Khách trả tiền mặt tại quầy..." : "Paid in cash at shop counter..."}
+                />
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setQuickRepayCustomer(null)}>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  disabled={quickRepayMutation.isPending || repayAmount <= 0 || repayAmount > quickRepayCustomer.outstandingBalance}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                >
+                  {quickRepayMutation.isPending
+                    ? (isVietnamese ? "Đang xử lý..." : "Recording...")
+                    : (isVietnamese ? "Xác nhận thu nợ" : "Confirm payment")}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
