@@ -1198,5 +1198,86 @@ public sealed class AiAssistantWorkflowTests
         Assert.Equal(AiActionStatuses.Executed, (await db.AiActions.FindAsync([updateProductAction.Id], ct))!.Status);
         Assert.NotNull(await db.Products.FirstOrDefaultAsync(p => p.Id == product.Id && p.IsActive, ct));
     }
+
+    [Fact]
+    public async Task ExecuteProductChange_PreservesSkuCostMinStockAndTrackInventory_OnUpdateAndArchive()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = SetupWithLocale(db, "en");
+
+        var product = (await business.CreateProductAsync(tenantId,
+            new("Espresso", "SKU-ESP-01", "bag", 120_000m, "House blend", CostPrice: 70_000m, StockQuantity: 15m, MinStockLevel: 5m, TrackInventory: true))).Data!;
+
+        var updateAction = new AiAction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            UserId = userId,
+            Intent = "update_product",
+            RiskLevel = "Moderate",
+            Status = AiActionStatuses.PendingConfirmation,
+            RequiresConfirmation = true,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            SourceText = "Update Espresso price to 135000",
+            IdempotencyKey = "upd-prod-preserve-1",
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                ProductId = product.Id,
+                Name = "Espresso Roast",
+                Unit = "bag",
+                UnitPrice = 135_000m,
+                Status = "Active"
+            })
+        };
+        db.AiActions.Add(updateAction);
+        await db.SaveChangesAsync(ct);
+
+        var execUpdate = await actions.ConfirmAsync(tenantId, userId, updateAction.Id, true, ct: ct);
+        Assert.True(execUpdate.Success, execUpdate.Message);
+
+        var afterUpdate = (await business.GetProductAsync(tenantId, product.Id)).Data!;
+        Assert.Equal("Espresso Roast", afterUpdate.Name);
+        Assert.Equal(135_000m, afterUpdate.DefaultPrice);
+        Assert.Equal("SKU-ESP-01", afterUpdate.Sku);
+        Assert.Equal(70_000m, afterUpdate.CostPrice);
+        Assert.Equal(5m, afterUpdate.MinStockLevel);
+        Assert.True(afterUpdate.TrackInventory);
+        Assert.Equal("House blend", afterUpdate.Notes);
+
+        var archiveAction = new AiAction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            UserId = userId,
+            Intent = "archive_product",
+            RiskLevel = "Destructive",
+            Status = AiActionStatuses.PendingConfirmation,
+            RequiresConfirmation = true,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            SourceText = "Archive Espresso Roast",
+            IdempotencyKey = "arch-prod-preserve-1",
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                ProductId = product.Id,
+                Name = "Espresso Roast",
+                Unit = "bag",
+                UnitPrice = 135_000m,
+                Status = "Inactive"
+            })
+        };
+        db.AiActions.Add(archiveAction);
+        await db.SaveChangesAsync(ct);
+
+        var execArchive = await actions.ConfirmAsync(tenantId, userId, archiveAction.Id, true, ct: ct);
+        Assert.True(execArchive.Success, execArchive.Message);
+
+        var afterArchive = (await business.GetProductAsync(tenantId, product.Id)).Data!;
+        Assert.False(afterArchive.IsActive);
+        Assert.Equal("SKU-ESP-01", afterArchive.Sku);
+        Assert.Equal(5m, afterArchive.MinStockLevel);
+        Assert.Equal(70_000m, afterArchive.CostPrice);
+        Assert.True(afterArchive.TrackInventory);
+    }
 }
 

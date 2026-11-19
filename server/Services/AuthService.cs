@@ -460,6 +460,8 @@ public sealed class AuthService : IAuthService
             return ApiResult<UserProfileResponse>.Fail("Business type is required.");
         }
 
+        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
+
         var user = await _userRepository.GetByIdAsync(userId);
         if (user is null || !user.IsActive)
         {
@@ -489,8 +491,6 @@ public sealed class AuthService : IAuthService
         user.FullName = string.IsNullOrWhiteSpace(request.FullName) ? user.FullName : request.FullName.Trim();
         user.PhoneNumber = request.PhoneNumber != null ? (string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim()) : user.PhoneNumber;
         user.UpdatedAt = DateTime.UtcNow;
-
-        await using var write = await FinancialWriteScope.BeginAsync(_context, tenantId);
 
         if (currencyChanged)
         {
@@ -580,6 +580,10 @@ public sealed class AuthService : IAuthService
             foreach (var item in sale.Items)
             {
                 item.UnitPrice = CurrencyConverter.Convert(item.UnitPrice, fromCur, newCurrency);
+                if (item.UnitCost.HasValue)
+                {
+                    item.UnitCost = CurrencyConverter.Convert(item.UnitCost.Value, fromCur, newCurrency);
+                }
                 item.LineTotal = CurrencyConverter.Convert(item.LineTotal, fromCur, newCurrency);
             }
             foreach (var payment in sale.Payments)
@@ -614,13 +618,22 @@ public sealed class AuthService : IAuthService
             }
         }
 
-        // 4. Convert all BusinessExpenses
+        // 4. Convert all BusinessExpenses and RecurringExpenseTemplates
         var expenses = await _context.BusinessExpenses.Where(e => e.TenantId == tenantId).ToListAsync();
         foreach (var expense in expenses)
         {
             var fromCur = string.IsNullOrWhiteSpace(expense.Currency) ? oldCurrency : expense.Currency;
             expense.Amount = CurrencyConverter.Convert(expense.Amount, fromCur, newCurrency);
             expense.Currency = newCurrency;
+        }
+
+        var recurringTemplates = await _context.RecurringExpenseTemplates.Where(r => r.TenantId == tenantId).ToListAsync();
+        foreach (var template in recurringTemplates)
+        {
+            var fromCur = string.IsNullOrWhiteSpace(template.Currency) ? oldCurrency : template.Currency;
+            template.Amount = CurrencyConverter.Convert(template.Amount, fromCur, newCurrency);
+            template.Currency = newCurrency;
+            template.UpdatedAt = DateTime.UtcNow;
         }
 
         // 5. Update any other users in this tenant to match the new currency

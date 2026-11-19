@@ -1341,8 +1341,23 @@ public sealed class AiActionService(
     {
         if (!payload.ProductId.HasValue || string.IsNullOrWhiteSpace(payload.Name))
             return ApiResult<AiActionExecutionResponse>.Fail("Product target is missing.");
+
+        var currentRes = await business.GetProductAsync(action.TenantId, payload.ProductId.Value);
+        if (!currentRes.Success || currentRes.Data == null)
+            return ApiResult<AiActionExecutionResponse>.Fail(currentRes.Message ?? "Product not found.");
+        var current = currentRes.Data;
+
         var result = await business.UpdateProductAsync(action.TenantId, payload.ProductId.Value,
-            new UpdateProductRequest(payload.Name, null, payload.Unit ?? "item", payload.UnitPrice, IsActive: payload.Status != "Inactive", Notes: payload.Notes));
+            new UpdateProductRequest(
+                payload.Name,
+                current.Sku,
+                !string.IsNullOrWhiteSpace(payload.Unit) ? payload.Unit : current.Unit,
+                payload.UnitPrice > 0 ? payload.UnitPrice : current.DefaultPrice,
+                IsActive: payload.Status != "Inactive",
+                Notes: payload.Notes ?? current.Notes,
+                CostPrice: current.CostPrice,
+                MinStockLevel: current.MinStockLevel,
+                TrackInventory: current.TrackInventory));
         return result.Success && result.Data != null
             ? ApiResult<AiActionExecutionResponse>.Ok(new(action.Id, action.Status,
                 _localizer.GetExecutionMessage(action.Intent, result.Data.Name), "Product", result.Data.Id))

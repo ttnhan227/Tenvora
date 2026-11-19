@@ -355,4 +355,73 @@ public sealed class OnboardingTests
         Assert.Equal(50_000m, reloadedProductVnd.DefaultPrice);
         Assert.Equal(30_000m, reloadedProductVnd.CostPrice);
     }
+
+    [Fact]
+    public async Task UpdateSettingsAsync_ConvertsSaleItemUnitCostAndRecurringTemplates_PreservingDashboardProfitRatios()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var authService = CreateAuthService(db);
+        var business = new BusinessService(db);
+
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        db.Tenants.Add(new Tenant
+        {
+            Id = tenantId,
+            CompanyName = "Margin Co",
+            ApiKey = Guid.NewGuid().ToString("N"),
+            BaseCurrency = "VND",
+            BusinessType = "retail",
+            OnboardingCompleted = true
+        });
+        db.Users.Add(new User
+        {
+            Id = userId,
+            TenantId = tenantId,
+            Email = "margin@co.test",
+            PasswordHash = "hashed",
+            Role = "TenantAdmin",
+            PreferredCurrency = "VND"
+        });
+        await db.SaveChangesAsync(ct);
+
+        var customer = (await business.CreateCustomerAsync(tenantId, new("Khach", null, null, null, null))).Data!;
+        var product = (await business.CreateProductAsync(tenantId,
+            new("Tea", "TEA-1", "box", 100_000m, CostPrice: 60_000m))).Data!;
+        await business.CreateSaleAsync(tenantId, "sale-margin-1",
+            new(customer.Id, [new(product.Id, 2m, 100_000m)], 0m));
+
+        var recurring = new Tenvora.Api.Domain.Entities.RecurringExpenseTemplate
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Category = "Rent",
+            Amount = 50_000m,
+            Currency = "VND",
+            Frequency = "monthly",
+            NextDueDate = DateTime.UtcNow.AddDays(1)
+        };
+        db.RecurringExpenseTemplates.Add(recurring);
+        await db.SaveChangesAsync(ct);
+
+        var dashBefore = (await business.GetDashboardAsync(tenantId, "all")).Data!;
+        Assert.Equal(200_000m, dashBefore.PeriodSales);
+        Assert.Equal(120_000m, dashBefore.PeriodCogs);
+        Assert.Equal(80_000m, dashBefore.PeriodNetProfit);
+
+        var switchRes = await authService.UpdateSettingsAsync(userId, tenantId,
+            new UpdateSettingsRequest("Margin Co", "USD", "retail"));
+        Assert.True(switchRes.Success, switchRes.Message);
+
+        var dashAfter = (await business.GetDashboardAsync(tenantId, "all")).Data!;
+        Assert.Equal("USD", dashAfter.Currency);
+        Assert.Equal(8m, dashAfter.PeriodSales);
+        Assert.Equal(4.8m, dashAfter.PeriodCogs);
+        Assert.Equal(3.2m, dashAfter.PeriodNetProfit);
+
+        var convertedTemplate = await db.RecurringExpenseTemplates.FirstAsync(r => r.Id == recurring.Id, ct);
+        Assert.Equal("USD", convertedTemplate.Currency);
+        Assert.Equal(2m, convertedTemplate.Amount);
+    }
 }
