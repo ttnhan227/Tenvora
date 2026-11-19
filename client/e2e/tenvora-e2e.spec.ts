@@ -197,7 +197,7 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await page.getByRole("button", { name: "Agree and continue" }).click();
     await expect(page.getByText("Synced reply 1", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "AI Assistant" }).last().click();
+    await page.keyboard.press("Control+j");
     const drawer = page.getByRole("dialog", { name: /Tenvora Agent/i });
     await expect(drawer.getByText("Message from full page", { exact: true })).toBeVisible();
     const drawerComposer = drawer.getByPlaceholder(/Message Tenvora Agent/i);
@@ -301,7 +301,7 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await page.goto("/customers");
     await expect(page.getByRole("heading", { name: "Customers", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(321);
-    for (const name of ["Search or jump to", "AI Assistant", "Notifications"]) {
+    for (const name of ["Search or jump to", "Notifications"]) {
       const bounds = await page.getByRole("button", { name, exact: true }).first().boundingBox();
       expect(bounds?.width, `${name} should have a 44px touch target`).toBeGreaterThanOrEqual(44);
       expect(bounds?.height, `${name} should have a 44px touch target`).toBeGreaterThanOrEqual(44);

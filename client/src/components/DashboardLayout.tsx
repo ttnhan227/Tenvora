@@ -302,16 +302,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               <Link to="/sales?create=1"><Plus />{t("header.newSale", "+ Bán hàng")}</Link>
             </Button>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openAi()}
-              aria-label={t("header.aiAssistant", "Trợ lý AI")}
-              className="inline-flex h-11 min-w-11 items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/10 font-bold"
-            >
-              <Sparkles size={14} className="text-primary" />
-              <span className="hidden xl:inline">{t("header.aiAssistant", "Trợ lý AI")}</span>
-            </Button>
-            <Button
               asChild
               variant="outline"
               size="sm"
@@ -393,20 +383,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onOpenChange={setSupplierPaymentOpen}
         currency={user?.preferredCurrency ?? "VND"}
       />
-
-      {/* Floating Agent Trigger Pill */}
-      <button
-        type="button"
-        onClick={() => openAi()}
-        aria-label="Tenvora Agent (Ctrl+J)"
-        className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full border border-primary/30 bg-primary/90 px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg backdrop-blur-md transition-all hover:bg-primary hover:shadow-primary/25 hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
-      >
-        <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
-        <span>Tenvora Agent</span>
-        <span className="hidden rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] sm:inline">
-          Ctrl J
-        </span>
-      </button>
     </div>
   );
 }

@@ -29,11 +29,13 @@ describe("Business workspace navigation", () => {
 
     const linkNames = Array.from(container.querySelectorAll("a"), (link) => link.textContent?.trim());
     expect(linkNames).toEqual(expect.arrayContaining([
-      "Home", "Sales", "Customers", "Products", "Purchases", "Suppliers", "Expenses",
+      "Home", "AI Agent", "Sales", "Customers", "Products", "Purchases", "Suppliers", "Expenses",
     ]));
     for (const section of ["Today", "Record book", "Business operations", "Business setup"]) {
       expect(screen.getByText(section)).toBeInTheDocument();
     }
+    expect(screen.queryByRole("button", { name: /AI Assistant/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Tenvora Agent/i })).not.toBeInTheDocument();
     expect(screen.queryByText("What do you use Tenvora for?")).not.toBeInTheDocument();
   });
 });
