@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ensureUploadedImageUrl } from "@/lib/imageUpload";
 import {
   Dialog,
   DialogContent,
@@ -228,7 +229,7 @@ export function CaptureSheet({
       paymentMethod: paymentMethod,
       dueDate: dueDate || null,
       purchasedAt: date ? new Date(date).toISOString() : null,
-      invoiceImageDataUrl: previewUrl || captureResult.draft.invoiceImageUrl || null,
+      invoiceImageDataUrl: captureResult.draft.invoiceImageUrl || (previewUrl ? await ensureUploadedImageUrl(previewUrl, "invoices") : null) || null,
       description: notes || null,
       purchaseItems: lineItems.map((it) => ({
         description: it.description,

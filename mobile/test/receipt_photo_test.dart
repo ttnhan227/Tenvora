@@ -136,4 +136,25 @@ void main() {
     expect(find.text('Photo unavailable'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('hosted http and relative upload URLs render using network images', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ReceiptPhoto(
+            value: '/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png',
+            languageCode: 'en',
+          ),
+        ),
+      ),
+    );
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.image, isA<NetworkImage>());
+    final networkImage = image.image as NetworkImage;
+    expect(
+      networkImage.url,
+      endsWith('/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png'),
+    );
+  });
 }

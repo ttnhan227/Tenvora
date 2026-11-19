@@ -257,12 +257,28 @@ class TenvoraRepository {
       _items(
         await _api.get('/products', query: {'active': true}),
       ).map(Product.fromJson).toList();
-  Future<Product> createProduct(Json input) async =>
-      Product.fromJson(await _write(() => _api.post('/products', data: input)));
-  Future<Product> updateProduct(String id, Json input) async =>
-      Product.fromJson(
-        await _write(() => _api.put('/products/$id', data: input)),
-      );
+  Future<Json> _withUploadedImage(Json input, String key, String folder) async {
+    final raw = input[key];
+    if (raw is! String) return input;
+    final trimmed = raw.trim();
+    if (!trimmed.startsWith('data:')) return input;
+    final uploadedUrl = await _api.uploadMediaDataUrl(trimmed, folder: folder);
+    return {...input, key: uploadedUrl};
+  }
+
+  Future<Product> createProduct(Json input) async {
+    final payload = await _withUploadedImage(input, 'imageDataUrl', 'products');
+    return Product.fromJson(
+      await _write(() => _api.post('/products', data: payload)),
+    );
+  }
+
+  Future<Product> updateProduct(String id, Json input) async {
+    final payload = await _withUploadedImage(input, 'imageDataUrl', 'products');
+    return Product.fromJson(
+      await _write(() => _api.put('/products/$id', data: payload)),
+    );
+  }
   Future<void> deleteProduct(String id) async {
     await _write(() => _api.delete('/products/$id'));
   }
@@ -386,8 +402,16 @@ class TenvoraRepository {
       ).map(Purchase.fromJson).toList();
   Future<Purchase> purchase(String id) async =>
       Purchase.fromJson(await _api.get('/purchases/$id'));
-  Future<Purchase> createPurchase(Json input) async =>
-      Purchase.fromJson(await _financialPost('/purchases', data: input));
+  Future<Purchase> createPurchase(Json input) async {
+    final payload = await _withUploadedImage(
+      input,
+      'invoiceImageDataUrl',
+      'purchases',
+    );
+    return Purchase.fromJson(
+      await _financialPost('/purchases', data: payload),
+    );
+  }
   Future<Purchase> recordPurchasePayment(String id, Json input) async =>
       Purchase.fromJson(
         await _financialPost('/purchases/$id/payments', data: input),
@@ -437,12 +461,27 @@ class TenvoraRepository {
       _items(
         await _api.get('/business-expenses', query: {'from': from, 'to': to}),
       ).map(Expense.fromJson).toList();
-  Future<Expense> createExpense(Json input) async =>
-      Expense.fromJson(await _financialPost('/business-expenses', data: input));
-  Future<Expense> updateExpense(String id, Json input) async =>
-      Expense.fromJson(
-        await _write(() => _api.put('/business-expenses/$id', data: input)),
-      );
+  Future<Expense> createExpense(Json input) async {
+    final payload = await _withUploadedImage(
+      input,
+      'receiptImageDataUrl',
+      'expenses',
+    );
+    return Expense.fromJson(
+      await _financialPost('/business-expenses', data: payload),
+    );
+  }
+
+  Future<Expense> updateExpense(String id, Json input) async {
+    final payload = await _withUploadedImage(
+      input,
+      'receiptImageDataUrl',
+      'expenses',
+    );
+    return Expense.fromJson(
+      await _write(() => _api.put('/business-expenses/$id', data: payload)),
+    );
+  }
   Future<void> deleteExpense(String id) async {
     await _write(() => _api.delete('/business-expenses/$id'));
   }

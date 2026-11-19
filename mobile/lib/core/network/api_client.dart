@@ -176,7 +176,7 @@ class ApiClient {
       // Create the upload request (Supabase uses signed upload URLs for direct upload)
       final client = Dio();
       client.options.headers['Authorization'] = 'Bearer $anonKey';
-      client.options.headers['apikey'] = supabaseStorageUrl;
+      client.options.headers['apikey'] = anonKey;
       client.options.headers['Content-Type'] = 'application/octet-stream';
 
       final response = await client.post(uploadUrl, data: bytes);
@@ -191,6 +191,40 @@ class ApiClient {
     } on Exception {
       return null;
     }
+  }
+
+  Future<String> uploadMediaDataUrl(
+    String dataUrl, {
+    String folder = 'records',
+  }) async {
+    if (!dataUrl.startsWith('data:')) {
+      return dataUrl;
+    }
+    final res = await post(
+      '/media/upload-dataurl',
+      data: {'dataUrl': dataUrl, 'folder': folder},
+    );
+    final url = (res is Map ? res['url']?.toString() : null) ?? '';
+    if (url.isEmpty) {
+      throw const ApiFailure('Could not upload the selected image.');
+    }
+    return url;
+  }
+
+  static String resolveMediaUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('/')) {
+      final base = Uri.tryParse(_baseUrl);
+      if (base != null && base.hasScheme && base.host.isNotEmpty) {
+        return base.replace(path: trimmed, query: null, fragment: null).toString();
+      }
+    }
+    return trimmed;
   }
 
   Future<String?> _performRefresh() async {

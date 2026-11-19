@@ -1,3 +1,5 @@
+import apiClient from "@/services/apiClient";
+
 const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxSourceBytes = 12_000_000;
 const maxStoredBytes = 1_900_000;
@@ -48,4 +50,53 @@ export async function prepareRecordImage(file: File): Promise<string> {
   }
 
   throw new Error("The image is still too large after processing. Choose a smaller image.");
+}
+
+export async function uploadImageDataUrl(dataUrl: string, folder = "records"): Promise<string> {
+  if (!dataUrl.startsWith("data:")) {
+    return dataUrl;
+  }
+
+  const response = await apiClient.post("/media/upload-dataurl", {
+    dataUrl,
+    folder,
+  });
+  const url = response.data?.data?.url as string | undefined;
+  if (!url) {
+    throw new Error("Could not upload the selected image.");
+  }
+  return url;
+}
+
+export async function ensureUploadedImageUrl(
+  value?: string | null,
+  folder = "records"
+): Promise<string | undefined> {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.startsWith("data:")) {
+    return uploadImageDataUrl(trimmed, folder);
+  }
+  return trimmed;
+}
+
+export function resolveRecordMediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    const baseUrl = apiClient.defaults.baseURL || "";
+    if (/^https?:\/\//i.test(baseUrl)) {
+      try {
+        return `${new URL(baseUrl).origin}${trimmed}`;
+      } catch {
+        return trimmed;
+      }
+    }
+  }
+  return trimmed;
 }

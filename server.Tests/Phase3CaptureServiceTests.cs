@@ -280,4 +280,66 @@ Tổng cộng: 962500
         Assert.Equal(5m, committedPurchase.Items.First().Quantity);
         Assert.Equal("box", committedPurchase.Items.First().Unit);
     }
+
+    [Fact]
+    public async Task CaptureWithDataUrl_StageAndConfirm_PersistsHostedRelativeUrlOnPurchase()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (capture, _, actionService, db, tenantId, userId) = CreateTestEnvironment("capture_photo_confirm");
+
+        var supplier = new Supplier { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Ace Supplies", Status = "Active" };
+        var product = new Product { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Marker Pen", Sku = "PEN-02", Unit = "box", DefaultPrice = 50000, CostPrice = 35000, StockQuantity = 10, Currency = "VND", IsActive = true };
+        db.Suppliers.Add(supplier);
+        db.Products.Add(product);
+        await db.SaveChangesAsync(ct);
+
+        var pngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+        var stageResult = await capture.AnalyzeAndStageAsync(
+            tenantId,
+            userId,
+            new AnalyzeDocumentRequest(DataUrl: pngDataUrl, RawText: "bought 2 boxes Marker Pen from Ace Supplies 70k"),
+            ct: ct);
+
+        Assert.True(stageResult.Success, stageResult.Message);
+        Assert.StartsWith($"/uploads/tenvora/{tenantId:D}/invoices/", stageResult.Data!.Draft.InvoiceImageUrl);
+
+        var confirmResult = await actionService.ConfirmAsync(tenantId, userId, stageResult.Data.ActionId, true, "TenantAdmin", ct);
+        Assert.True(confirmResult.Success, confirmResult.Message);
+
+        var purchase = await db.Purchases.FirstOrDefaultAsync(p => p.TenantId == tenantId, ct);
+        Assert.NotNull(purchase);
+        Assert.Equal(stageResult.Data.Draft.InvoiceImageUrl, purchase.InvoiceImageDataUrl);
+    }
+
+    [Fact]
+    public async Task BusinessService_ImageUrlValidation_AllowsTenantScopedUploadsAndRejectsCrossTenantOrDataUrls()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, _, _, db, tenantId, _) = CreateTestEnvironment("img_validation");
+        var business = new BusinessService(db);
+
+        // Tenant-scoped /uploads/ URL succeeds
+        var ownPath = $"/uploads/tenvora/{tenantId:D}/products/photo.png";
+        var okProd = await business.CreateProductAsync(tenantId,
+            new CreateProductRequest("Notebook", null, "pcs", 25000m, ImageDataUrl: ownPath));
+        Assert.True(okProd.Success, okProd.Message);
+        Assert.Equal(ownPath, okProd.Data!.ImageDataUrl);
+
+        // Cross-tenant /uploads/ URL is rejected
+        var otherTenantId = Guid.NewGuid();
+        var crossTenant = await business.CreateProductAsync(tenantId,
+            new CreateProductRequest("Notebook 2", null, "pcs", 25000m, ImageDataUrl: $"/uploads/tenvora/{otherTenantId:D}/products/photo.png"));
+        Assert.False(crossTenant.Success);
+
+        // Raw data:image/... URL is rejected
+        var rawData = await business.CreateProductAsync(tenantId,
+            new CreateProductRequest("Notebook 3", null, "pcs", 25000m, ImageDataUrl: "data:image/png;base64,iVBORw=="));
+        Assert.False(rawData.Success);
+
+        // Path traversal is rejected
+        var traversal = await business.CreateProductAsync(tenantId,
+            new CreateProductRequest("Notebook 4", null, "pcs", 25000m, ImageDataUrl: $"/uploads/tenvora/{tenantId:D}/../secrets.png"));
+        Assert.False(traversal.Success);
+        await Task.CompletedTask;
+    }
 }

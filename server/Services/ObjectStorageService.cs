@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -15,18 +17,21 @@ public sealed class ObjectStorageService : IObjectStorageService
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
     private readonly ILogger<ObjectStorageService> _logger;
+    private readonly IHttpClientFactory? _httpClientFactory;
     private readonly string _webRootPath;
 
-    public bool IsCloudStorage => false;
+    public bool IsCloudStorage => !string.IsNullOrWhiteSpace(GetSupabaseUrl()) && !string.IsNullOrWhiteSpace(GetSupabaseKey());
 
     public ObjectStorageService(
         IWebHostEnvironment env,
         IConfiguration config,
-        ILogger<ObjectStorageService> logger)
+        ILogger<ObjectStorageService> logger,
+        IHttpClientFactory? httpClientFactory = null)
     {
         _env = env;
         _config = config;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
 
         _webRootPath = !string.IsNullOrWhiteSpace(_env.WebRootPath)
             ? _env.WebRootPath
@@ -44,6 +49,25 @@ public sealed class ObjectStorageService : IObjectStorageService
             }
         }
     }
+
+    private string? GetSupabaseUrl() =>
+        (_config["SUPABASE_STORAGE_URL"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_STORAGE_URL")
+         ?? _config["SUPABASE_URL"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_URL"))?.Trim().TrimEnd('/');
+
+    private string? GetSupabaseKey() =>
+        (_config["SUPABASE_SERVICE_ROLE_KEY"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY")
+         ?? _config["SUPABASE_SERVICE_KEY"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_SERVICE_KEY")
+         ?? _config["SUPABASE_ANON_KEY"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_ANON_KEY"))?.Trim();
+
+    private string GetSupabaseBucket() =>
+        (_config["SUPABASE_STORAGE_BUCKET"]
+         ?? Environment.GetEnvironmentVariable("SUPABASE_STORAGE_BUCKET")
+         ?? "uploads").Trim();
 
     public async Task<StorageUploadResult> UploadAsync(
         Stream stream,
@@ -90,7 +114,40 @@ public sealed class ObjectStorageService : IObjectStorageService
         if (string.IsNullOrWhiteSpace(cleanName)) cleanName = "document";
         var uniqueFileName = $"{fileHash[..12]}_{cleanName}.{ext}";
 
+        // 1. Upload to Supabase Storage when configured (required on ephemeral containers like Cloud Run)
+        var supabaseUrl = GetSupabaseUrl();
+        var supabaseKey = GetSupabaseKey();
+        if (!string.IsNullOrWhiteSpace(supabaseUrl) && !string.IsNullOrWhiteSpace(supabaseKey))
+        {
+            var bucket = GetSupabaseBucket();
+            var objectPath = $"{safeFolderName}/{uniqueFileName}";
+            var uploadEndpoint = $"{supabaseUrl}/storage/v1/object/{Uri.EscapeDataString(bucket)}/{objectPath}";
+            try
+            {
+                using var client = _httpClientFactory?.CreateClient() ?? new HttpClient();
+                using var req = new HttpRequestMessage(HttpMethod.Post, uploadEndpoint);
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", supabaseKey);
+                req.Headers.TryAddWithoutValidation("apikey", supabaseKey);
+                req.Headers.TryAddWithoutValidation("x-upsert", "true");
+                var content = new ByteArrayContent(bytes);
+                content.Headers.ContentType = new MediaTypeHeaderValue(
+                    string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+                req.Content = content;
 
+                using var resp = await client.SendAsync(req, ct);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var publicUrl = $"{supabaseUrl}/storage/v1/object/public/{Uri.EscapeDataString(bucket)}/{objectPath}";
+                    return new StorageUploadResult(publicUrl, publicUrl, fileHash, contentType, bytes.Length);
+                }
+
+                _logger.LogWarning("Supabase Storage upload returned {StatusCode}; falling back to local storage.", resp.StatusCode);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Supabase Storage upload failed; falling back to local storage.");
+            }
+        }
 
         // 2. Local disk storage fallback
         var targetDir = Path.Combine(_webRootPath, "uploads", safeFolderName.Replace('/', Path.DirectorySeparatorChar));

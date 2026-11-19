@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../core/network/api_client.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/localization/languages.dart';
 
@@ -63,10 +64,22 @@ class _ReceiptPhotoState extends State<ReceiptPhoto> {
   }
 
   Widget _image() {
-    final bytes = dataUrlBytes(widget.value);
+    final raw = widget.value?.trim();
     final fallback = Center(
       child: Text(label('Photo unavailable', 'Không hiển thị được ảnh')),
     );
+    if (raw == null || raw.isEmpty) return fallback;
+
+    final resolved = ApiClient.resolveMediaUrl(raw);
+    if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
+      return Image.network(
+        resolved,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+
+    final bytes = dataUrlBytes(raw);
     return bytes == null
         ? fallback
         : Image.memory(

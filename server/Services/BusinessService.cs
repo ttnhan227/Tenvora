@@ -127,7 +127,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         if (request.CostPrice < 0 || Scale(request.CostPrice) > 4) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
         if (request.StockQuantity < 0 || Scale(request.StockQuantity) > 4) return ApiResult<ProductDto>.Fail("Stock quantity cannot be negative.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
-        var image = NormalizeImageUrl(request.ImageDataUrl, out var imageError);
+        var image = NormalizeImageUrl(request.ImageDataUrl, tenantId, out var imageError);
         if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Sku == sku))
@@ -155,7 +155,7 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         if (validation != null) return ApiResult<ProductDto>.Fail(validation);
         if (request.CostPrice.HasValue && (request.CostPrice.Value < 0 || Scale(request.CostPrice.Value) > 4)) return ApiResult<ProductDto>.Fail("Cost price cannot be negative.");
         if (request.MinStockLevel.HasValue && (request.MinStockLevel.Value < 0 || Scale(request.MinStockLevel.Value) > 4)) return ApiResult<ProductDto>.Fail("Minimum stock level cannot be negative.");
-        var image = NormalizeImageUrl(request.ImageDataUrl, out var imageError);
+        var image = NormalizeImageUrl(request.ImageDataUrl, tenantId, out var imageError);
         if (imageError != null) return ApiResult<ProductDto>.Fail(imageError);
         var sku = Clean(request.Sku);
         if (sku != null && await db.Products.AnyAsync(p => p.TenantId == tenantId && p.Id != productId && p.Sku == sku))
@@ -617,24 +617,47 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
     private async Task<string> Currency(Guid tenantId) =>
         (await db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.BaseCurrency).FirstOrDefaultAsync())?.ToUpperInvariant() ?? "USD";
 
-    private static string? NormalizeImageUrl(string? value, out string? error)
+    private static string? NormalizeImageUrl(string? value, Guid tenantId, out string? error)
     {
         error = null;
         if (string.IsNullOrWhiteSpace(value)) return null;
 
         var trimmed = value.Trim();
-        // Accept a Supabase Storage URL (or any public HTTP(S) URL)
+
+        // Allow tenant-scoped local fallback URLs emitted by ObjectStorageService / CaptureService
+        if (trimmed.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            if (trimmed.Contains("..", StringComparison.Ordinal)
+                || trimmed.Contains('\\', StringComparison.Ordinal)
+                || trimmed.IndexOfAny(['?', '#']) >= 0)
+            {
+                error = "Invalid image path.";
+                return null;
+            }
+
+            var expectedPrefix = $"/uploads/tenvora/{tenantId:D}/";
+            if (!trimmed.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase)
+                || trimmed.Length <= expectedPrefix.Length)
+            {
+                error = "Image path does not belong to this workspace.";
+                return null;
+            }
+
+            return trimmed;
+        }
+
+        // Otherwise require a valid HTTP(S) URL (such as Supabase Storage public URLs)
         if (!trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
             !trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            error = "Image must be a valid Supabase Storage URL.";
+            error = "Image must be uploaded or a valid Supabase Storage URL.";
             return null;
         }
 
         try
         {
             var uri = new Uri(trimmed);
-            if (uri.Host.IndexOf('.') < 0)
+            if (!uri.IsLoopback && uri.Host.IndexOf('.') < 0)
             {
                 error = "Invalid image URL.";
                 return null;

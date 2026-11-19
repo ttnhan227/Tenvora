@@ -1,4 +1,5 @@
 import { financialWrite } from "@/lib/financialWrite";
+import { ensureUploadedImageUrl } from "@/lib/imageUpload";
 import apiClient from "./apiClient";
 import { getApiErrorMessage } from "@/lib/apiErrors";
 
@@ -387,14 +388,16 @@ export const businessService = {
   },
 
   async createProduct(input: ProductInput): Promise<Product> {
-    const payload = { ...input };
+    const imageDataUrl = await ensureUploadedImageUrl(input.imageDataUrl, "products");
+    const payload = { ...input, imageDataUrl };
     delete payload.removeImage;
     const response = await apiClient.post("/products", payload);
     return response.data.data;
   },
 
   async updateProduct(id: string, input: ProductInput): Promise<Product> {
-    const response = await apiClient.put(`/products/${id}`, { ...input, isActive: input.isActive ?? true });
+    const imageDataUrl = await ensureUploadedImageUrl(input.imageDataUrl, "products");
+    const response = await apiClient.put(`/products/${id}`, { ...input, imageDataUrl, isActive: input.isActive ?? true });
     return response.data.data;
   },
 
@@ -499,7 +502,8 @@ export const businessService = {
   },
 
   async createPurchase(input: { supplierId: string; items: Array<{ description: string; unit: string; quantity: number; unitCost: number; productId?: string }>; paymentAmount: number; paymentMethod: string; notes?: string; purchasedAt?: string; invoiceImageDataUrl?: string; dueDate?: string }): Promise<Purchase> {
-    const response = await financialWrite("/purchases", input);
+    const invoiceImageDataUrl = await ensureUploadedImageUrl(input.invoiceImageDataUrl, "purchases");
+    const response = await financialWrite("/purchases", { ...input, invoiceImageDataUrl });
     return response.data.data;
   },
 
@@ -529,12 +533,14 @@ export const businessService = {
   },
 
   async createBusinessExpense(input: { category: string; amount: number; expenseDate?: string; description?: string; receiptImageDataUrl?: string }): Promise<BusinessExpense> {
-    const response = await financialWrite("/business-expenses", input);
+    const receiptImageDataUrl = await ensureUploadedImageUrl(input.receiptImageDataUrl, "expenses");
+    const response = await financialWrite("/business-expenses", { ...input, receiptImageDataUrl });
     return response.data.data;
   },
 
   async updateBusinessExpense(id: string, input: { category: string; amount: number; expenseDate?: string; description?: string; receiptImageDataUrl?: string; removeReceiptImage?: boolean }): Promise<BusinessExpense> {
-    const response = await apiClient.put(`/business-expenses/${id}`, input);
+    const receiptImageDataUrl = await ensureUploadedImageUrl(input.receiptImageDataUrl, "expenses");
+    const response = await apiClient.put(`/business-expenses/${id}`, { ...input, receiptImageDataUrl });
     return response.data.data;
   },
 

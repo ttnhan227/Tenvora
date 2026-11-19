@@ -4,16 +4,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { prepareRecordImage } from "@/lib/imageUpload";
+import { prepareRecordImage, resolveRecordMediaUrl, uploadImageDataUrl } from "@/lib/imageUpload";
 
 interface RecordImageFieldProps {
   label: string;
   helpText: string;
   value?: string;
+  folder?: string;
   onChange: (value: string | undefined, removed: boolean) => void;
 }
 
-export function RecordImageField({ label, helpText, value, onChange }: RecordImageFieldProps) {
+export function RecordImageField({ label, helpText, value, folder = "records", onChange }: RecordImageFieldProps) {
   const labelId = useId();
   const helpId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,13 +28,17 @@ export function RecordImageField({ label, helpText, value, onChange }: RecordIma
 
     setProcessing(true);
     try {
-      onChange(await prepareRecordImage(file), false);
+      const prepared = await prepareRecordImage(file);
+      const uploadedUrl = await uploadImageDataUrl(prepared, folder);
+      onChange(uploadedUrl, false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not process this image.");
     } finally {
       setProcessing(false);
     }
   };
+
+  const displayUrl = resolveRecordMediaUrl(value);
 
   return (
     <div role="group" aria-labelledby={labelId} className="space-y-2">
@@ -42,8 +47,8 @@ export function RecordImageField({ label, helpText, value, onChange }: RecordIma
       </Label>
       <div className="flex gap-3 rounded-2xl border border-dashed bg-muted/20 p-3">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-card">
-          {value ? (
-            <img src={value} alt="" className="h-full w-full object-cover" />
+          {displayUrl ? (
+            <img src={displayUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             <ImagePlus className="h-6 w-6 text-muted-foreground" />
           )}
