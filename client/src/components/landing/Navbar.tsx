@@ -25,6 +25,12 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl transition-all">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground focus:shadow-lg"
+      >
+        {isVietnamese ? "Chuyển tới nội dung chính" : "Skip to main content"}
+      </a>
       <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">

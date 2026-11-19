@@ -198,13 +198,14 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await expect(page.getByText("Synced reply 1", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "AI Assistant" }).last().click();
-    const drawer = page.getByRole("complementary", { name: "Tenvora Agent Drawer" });
+    const drawer = page.getByRole("dialog", { name: /Tenvora Agent/i });
     await expect(drawer.getByText("Message from full page", { exact: true })).toBeVisible();
     const drawerComposer = drawer.getByPlaceholder(/Message Tenvora Agent/i);
     await drawerComposer.fill("Message from drawer");
     await drawerComposer.press("Enter");
     await expect(drawer.getByText("Synced reply 2", { exact: true })).toBeVisible();
     await drawer.getByRole("button", { name: "Close" }).click();
+    await expect(drawer).toBeHidden();
 
     await expect(page.getByText("Message from drawer", { exact: true })).toBeVisible();
     await expect(page.getByText("Synced reply 2", { exact: true })).toBeVisible();

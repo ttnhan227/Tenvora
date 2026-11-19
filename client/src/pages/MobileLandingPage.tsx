@@ -109,7 +109,7 @@ export default function MobileLandingPage() {
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <Navbar />
 
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {/* Hero Section */}
         <section className="relative overflow-hidden border-b bg-linear-to-b from-card/30 to-background pb-16 pt-12 sm:pb-24 sm:pt-20">
           <div className="pointer-events-none absolute -right-32 -top-40 h-144 w-xl rounded-full bg-accent/40 blur-3xl" />
@@ -329,9 +329,9 @@ export default function MobileLandingPage() {
             </div>
           </div>
         </section>
+        <section className="mx-auto max-w-sm px-5 py-10"><QrCodeCard /></section>
       </main>
 
-      <section className="mx-auto max-w-sm px-5 py-10"><QrCodeCard /></section>
       <Footer />
     </div>
   );

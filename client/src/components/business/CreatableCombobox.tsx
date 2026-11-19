@@ -53,10 +53,13 @@ export function CreatableCombobox<T = any>({
 }: CreatableComboboxProps<T>) {
   const { t, isVietnamese } = useLanguage();
   const qc = useQueryClient();
+  const baseId = React.useId();
+  const listboxId = `${baseId}-listbox`;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
 
   // Quick Create Form States
   const [createName, setCreateName] = useState("");
@@ -195,6 +198,8 @@ export function CreatableCombobox<T = any>({
         variant="outline"
         role="combobox"
         aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
+        aria-haspopup="listbox"
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
@@ -211,11 +216,28 @@ export function CreatableCombobox<T = any>({
 
       {open && (
         <div
+          id={listboxId}
+          ref={listboxRef}
           role="listbox"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+            const optionButtons = Array.from(
+              listboxRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [],
+            );
+            if (optionButtons.length === 0) return;
+            e.preventDefault();
+            const currentIdx = optionButtons.indexOf(document.activeElement as HTMLButtonElement);
+            const nextIdx =
+              e.key === "ArrowDown"
+                ? (currentIdx + 1) % optionButtons.length
+                : (currentIdx - 1 + optionButtons.length) % optionButtons.length;
+            optionButtons[nextIdx]?.focus();
+          }}
           className="absolute left-0 top-full mt-1 z-50 w-full min-w-[240px] rounded-xl border bg-popover p-2 text-popover-foreground shadow-lg outline-none"
         >
           <div className="space-y-2">
             <Input
+              aria-label={searchPlaceholder || t("Search or type new name…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder || t("Search or type new name…")}
@@ -228,8 +250,10 @@ export function CreatableCombobox<T = any>({
               {search.trim() && !exactMatch && (
                 <button
                   type="button"
+                  role="option"
+                  aria-selected={false}
                   onClick={() => handleStartQuickCreate(search.trim())}
-                  className="flex w-full items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+                  className="flex w-full items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-2 text-xs font-bold text-primary hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Plus className="h-4 w-4 shrink-0" />
                   <span className="truncate">
@@ -244,9 +268,11 @@ export function CreatableCombobox<T = any>({
                   <button
                     key={opt.id}
                     type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => handleSelect(opt)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition-colors",
+                      "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isSelected
                         ? "bg-accent font-bold text-accent-foreground"
                         : "hover:bg-muted"
@@ -298,8 +324,9 @@ export function CreatableCombobox<T = any>({
 
           <form onSubmit={handleQuickCreateSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label>{t("Name")} *</Label>
+              <Label htmlFor={`${baseId}-name`}>{t("Name")} *</Label>
               <Input
+                id={`${baseId}-name`}
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
                 placeholder={t("Name")}
@@ -312,16 +339,18 @@ export function CreatableCombobox<T = any>({
             {entityType === "supplier" && (
               <>
                 <div className="space-y-1.5">
-                  <Label>{t("Phone Number")}</Label>
+                  <Label htmlFor={`${baseId}-supplier-phone`}>{t("Phone Number")}</Label>
                   <Input
+                    id={`${baseId}-supplier-phone`}
                     value={createPhone}
                     onChange={(e) => setCreatePhone(e.target.value)}
                     placeholder="0912 345 678"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t("Payment terms (days)")}</Label>
+                  <Label htmlFor={`${baseId}-supplier-terms`}>{t("Payment terms (days)")}</Label>
                   <Input
+                    id={`${baseId}-supplier-terms`}
                     type="number"
                     min="0"
                     value={createTermsDays}
@@ -335,8 +364,9 @@ export function CreatableCombobox<T = any>({
             {/* Customer Fields */}
             {entityType === "customer" && (
               <div className="space-y-1.5">
-                <Label>{t("Phone Number")}</Label>
+                <Label htmlFor={`${baseId}-customer-phone`}>{t("Phone Number")}</Label>
                 <Input
+                  id={`${baseId}-customer-phone`}
                   value={createPhone}
                   onChange={(e) => setCreatePhone(e.target.value)}
                   placeholder="0912 345 678"
@@ -357,8 +387,9 @@ export function CreatableCombobox<T = any>({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>{t("Selling Price")}</Label>
+                    <Label htmlFor={`${baseId}-price`}>{t("Selling Price")}</Label>
                     <Input
+                      id={`${baseId}-price`}
                       type="number"
                       min="0"
                       step="any"
@@ -369,8 +400,9 @@ export function CreatableCombobox<T = any>({
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t("Cost Price (Optional)")}</Label>
+                  <Label htmlFor={`${baseId}-cost`}>{t("Cost Price (Optional)")}</Label>
                   <Input
+                    id={`${baseId}-cost`}
                     type="number"
                     min="0"
                     step="any"

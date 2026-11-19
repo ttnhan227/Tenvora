@@ -59,7 +59,7 @@ export function DataTable<T>({
     const col = columns.find((c) => c.key === sortKey);
     if (!col || !col.sortable) return data;
 
-    return [...data].sort((a, b) => {
+    return data.toSorted((a, b) => {
       const valA = col.sortAccessor ? col.sortAccessor(a) : (a as any)[sortKey];
       const valB = col.sortAccessor ? col.sortAccessor(b) : (b as any)[sortKey];
 
@@ -114,7 +114,7 @@ export function DataTable<T>({
           <thead>
             <tr className="border-b border-border bg-muted/40 text-muted-foreground text-xs tracking-wide select-none">
               {onToggleSelect && (
-                <th className="py-2 px-3 w-8 text-center">
+                <th scope="col" className="py-2 px-3 w-8 text-center">
                   <input
                     type="checkbox"
                     aria-label={isVietnamese ? "Chọn tất cả dòng trên trang" : "Select all rows on this page"}
@@ -136,6 +136,7 @@ export function DataTable<T>({
                 return (
                   <th
                     key={col.key}
+                    scope="col"
                     aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
                     className={cn(
                       "py-3 px-4 font-bold transition-colors whitespace-nowrap text-muted-foreground",
@@ -195,11 +196,25 @@ export function DataTable<T>({
                 return (
                   <tr
                     key={id}
+                    tabIndex={onRowClick ? 0 : undefined}
                     onClick={() => onRowClick && onRowClick(item)}
+                    onKeyDown={
+                      onRowClick
+                        ? (event) => {
+                            if (event.target !== event.currentTarget && (event.target as HTMLElement).closest("a, button, input, select, textarea")) {
+                              return;
+                            }
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              onRowClick(item);
+                            }
+                          }
+                        : undefined
+                    }
                     className={cn(
                       "transition-colors duration-100",
                       hoverable && "hover:bg-muted/40",
-                      onRowClick && "cursor-pointer",
+                      onRowClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                       isSelected && "bg-primary/10",
                     )}
                   >

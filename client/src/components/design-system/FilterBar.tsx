@@ -44,8 +44,8 @@ export function FilterBar({
     <div className={cn("space-y-3", className)}>
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Bar */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
+        <div role="search" aria-label={searchLabel} className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <Input
             aria-label={searchLabel}
             value={searchQuery}

@@ -62,40 +62,6 @@ export function CustomerStatementModal({
           </p>
         ) : (
           <div className="space-y-6 pt-2 font-sans" id="printable-statement">
-            <style>
-              {`
-                @media print {
-                  body * {
-                    visibility: hidden !important;
-                  }
-                  #printable-statement, #printable-statement * {
-                    visibility: visible !important;
-                  }
-                  #printable-statement {
-                    position: absolute !important;
-                    left: 0 !important;
-                    top: 0 !important;
-                    width: 100% !important;
-                    padding: 16px !important;
-                    background: white !important;
-                    color: black !important;
-                    font-size: 12px !important;
-                  }
-                  .no-print {
-                    display: none !important;
-                  }
-                  table {
-                    border-collapse: collapse !important;
-                    width: 100% !important;
-                  }
-                  th, td {
-                    border: 1px solid #ddd !important;
-                    padding: 6px 8px !important;
-                  }
-                }
-              `}
-            </style>
-
             {/* Header */}
             <div className="border-b pb-4 flex justify-between items-start flex-wrap gap-4">
               <div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
+import { prefersReducedMotion } from "@/hooks/useReducedMotion";
 import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -83,7 +84,7 @@ export default function AgentChatPage() {
   }, [initialPrompt]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: "smooth" });
+    endRef.current?.scrollIntoView?.({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }, [messages, isBusy]);
 
   const loadConversations = useLatestCallback(async (preferredId?: string | null, reloadMessages = true) => {
@@ -394,19 +395,23 @@ export default function AgentChatPage() {
               conversations.map((c) => (
                 <div
                   key={c.id}
-                  onClick={() => loadConversation(c.id)}
-                  className={`group flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors hover:bg-secondary ${
+                  className={`group flex items-center gap-1 rounded-xl px-1.5 py-1 text-xs transition-colors hover:bg-secondary ${
                     activeId === c.id ? "bg-secondary font-semibold text-foreground shadow-xs" : "text-muted-foreground"
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => loadConversation(c.id)}
+                    className="friendly-focus flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left"
+                  >
                     <MessageSquare className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{c.title || (isVietnamese ? "Cuộc trò chuyện" : "Conversation")}</span>
-                  </div>
+                  </button>
                   <button
                     type="button"
                     onClick={(e) => handleDeleteConversation(c.id, e)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive p-1 rounded"
+                    aria-label={isVietnamese ? "Xoá cuộc trò chuyện" : "Delete conversation"}
+                    className="friendly-focus opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-destructive p-1 rounded"
                     title={isVietnamese ? "Xoá" : "Delete"}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -418,7 +423,7 @@ export default function AgentChatPage() {
         </aside>
 
         {/* Center: Main Agent Chat Stream */}
-        <main aria-label="Agent chat workspace" className="flex flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <section aria-label="Agent chat workspace" className="flex flex-1 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
           {/* Top Chat Bar */}
           <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
             <div className="flex items-center gap-2.5">
@@ -542,6 +547,9 @@ export default function AgentChatPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
+                    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                      return;
+                    }
                     handleSend();
                   }
                 }}
@@ -564,7 +572,7 @@ export default function AgentChatPage() {
               </Button>
             </form>
           </footer>
-        </main>
+        </section>
       </div>
     </DashboardLayout>
   );

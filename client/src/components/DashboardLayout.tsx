@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X, LogOut, Plus, MoreHorizontal, Shield, Sparkles, Settings, Search } from "lucide-react";
@@ -33,7 +33,88 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureIntent, setCaptureIntent] = useState<"purchase" | "expense">("purchase");
   const [supplierPaymentOpen, setSupplierPaymentOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(min-width: 768px)").matches
+      : true,
+  );
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasSidebarOpenRef = useRef(false);
   const needsOnboarding = user?.role === "TenantAdmin" && user.onboardingCompleted === false;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+      if (event.matches) setOpen(false);
+    };
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+    mq.addListener?.(onChange);
+    return () => mq.removeListener?.(onChange);
+  }, []);
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const isHiddenMobileDrawer = !isDesktop && !open;
+    sidebar.inert = isHiddenMobileDrawer;
+  }, [isDesktop, open]);
+
+  useEffect(() => {
+    if (open && !isDesktop) {
+      wasSidebarOpenRef.current = true;
+      const frame = window.requestAnimationFrame(() => sidebarCloseRef.current?.focus());
+
+      const handleDrawerKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setOpen(false);
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const container = sidebarRef.current;
+        if (!container) return;
+        const focusables = Array.from(
+          container.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => el.offsetParent !== null || el === sidebarCloseRef.current);
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+
+      window.addEventListener("keydown", handleDrawerKeyDown);
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.removeEventListener("keydown", handleDrawerKeyDown);
+      };
+    }
+
+    if (wasSidebarOpenRef.current) {
+      wasSidebarOpenRef.current = false;
+      sidebarTriggerRef.current?.focus();
+    }
+  }, [open, isDesktop]);
+
+  const openMobileSidebar = (trigger: HTMLButtonElement) => {
+    sidebarTriggerRef.current = trigger;
+    setOpen(true);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,14 +161,31 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     setAiOpen(true);
   };
 
+  const isMobileDrawerOpen = !isDesktop && open;
+  const isMobileDrawerHidden = !isDesktop && !open;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground focus:shadow-lg"
+      >
+        {isVietnamese ? "Chuyển tới nội dung chính" : "Skip to main content"}
+      </a>
       {open && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-[hsl(var(--brand-ink)/.45)] backdrop-blur-[2px] md:hidden" onClick={() => setOpen(false)} />}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-68 flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside
+        id="workspace-sidebar"
+        ref={sidebarRef}
+        role={isMobileDrawerOpen ? "dialog" : undefined}
+        aria-modal={isMobileDrawerOpen ? true : undefined}
+        aria-label={t("nav.workspaceNavigation", "Workspace navigation")}
+        aria-hidden={isMobileDrawerHidden ? true : undefined}
+        className={`fixed inset-y-0 left-0 z-50 flex w-68 flex-col overscroll-contain border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <div className="flex h-20 items-center justify-between px-5">
           <BrandLogo to="" size="md" />
-          <button type="button" aria-label="Close navigation" className="friendly-focus inline-flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setOpen(false)}><X size={20} /></button>
+          <button ref={sidebarCloseRef} type="button" aria-label="Close navigation" className="friendly-focus inline-flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-secondary md:hidden" onClick={() => setOpen(false)}><X size={20} /></button>
         </div>
 
         <div className="mx-4 mb-4 rounded-2xl border bg-[hsl(var(--warning)/.1)] p-4">
@@ -162,7 +260,18 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <div className="md:pl-68">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/92 px-3 backdrop-blur-xl sm:px-6 md:px-8">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="Open navigation" className="md:hidden" onClick={() => setOpen(true)}><Menu size={20} /></Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Open navigation"
+              aria-expanded={open}
+              aria-controls="workspace-sidebar"
+              className="md:hidden"
+              onClick={(e) => openMobileSidebar(e.currentTarget)}
+            >
+              <Menu size={20} />
+            </Button>
             <div className="min-w-0"><p className="truncate text-xs text-muted-foreground">{t("header.yourRecords", "Sổ ghi chép của bạn")}</p><p className="truncate text-sm font-bold">{currentTitle}</p></div>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
@@ -232,7 +341,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto min-h-[calc(100vh-4rem)] max-w-304 px-4 pb-28 pt-6 sm:px-6 md:px-8 md:pb-12 md:pt-8">
+        <main id="main-content" tabIndex={-1} className="mx-auto min-h-[calc(100vh-4rem)] max-w-304 px-4 pb-28 pt-6 focus:outline-none sm:px-6 md:px-8 md:pb-12 md:pt-8">
           <ContextualAiBar pathname={pathname} isVietnamese={isVietnamese} onPrompt={openAi} />
           <div className="animate-fade-in">{children}</div>
         </main>
@@ -243,7 +352,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return <Link key={item.href} to={item.href} aria-current={active ? "page" : undefined} className={`friendly-focus flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold ${active ? "text-primary" : "text-muted-foreground"}`}><item.icon size={20} /><span>{t(item.key, item.label)}</span></Link>;
         })}
-        <button type="button" onClick={() => setOpen(true)} className="friendly-focus flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold text-muted-foreground"><MoreHorizontal size={20} /><span>{t("nav.more", "Thêm")}</span></button>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="workspace-sidebar"
+          onClick={(e) => openMobileSidebar(e.currentTarget)}
+          className="friendly-focus flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold text-muted-foreground"
+        >
+          <MoreHorizontal size={20} />
+          <span>{t("nav.more", "Thêm")}</span>
+        </button>
       </nav>
 
       <AccountSecurityDialog open={securityOpen} onOpenChange={setSecurityOpen} />
@@ -280,7 +398,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <button
         type="button"
         onClick={() => openAi()}
-        aria-label={t("header.aiAssistant", "Tenvora Agent")}
+        aria-label="Tenvora Agent (Ctrl+J)"
         className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full border border-primary/30 bg-primary/90 px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg backdrop-blur-md transition-all hover:bg-primary hover:shadow-primary/25 hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
       >
         <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />

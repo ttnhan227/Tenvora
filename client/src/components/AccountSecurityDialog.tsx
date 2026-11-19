@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, CheckCircle2, KeyRound, Loader2, Shield } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -171,7 +171,7 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
         </div>
 
         {/* Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 border-t pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 border-t pt-4" noValidate>
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-foreground">
               {hasPassword ? (isVietnamese ? "Đổi mật khẩu" : "Change Password") : (isVietnamese ? "Đặt mật khẩu" : "Set a Password")}
@@ -201,9 +201,9 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
           {hasPassword && (
             <div className="space-y-1.5">
               <Label htmlFor="current-password" className="text-xs font-medium">{isVietnamese ? "Mật khẩu hiện tại" : "Current password"}</Label>
-              <Input
+              <PasswordInput
                 id="current-password"
-                type="password"
+                autoComplete="current-password"
                 placeholder={isVietnamese ? "Nhập mật khẩu hiện tại" : "Enter current password"}
                 value={currentPassword}
                 onChange={(e) => {
@@ -213,9 +213,10 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
                 disabled={isSubmitting}
                 className={fieldErrors.currentPassword ? "border-destructive" : ""}
                 aria-invalid={!!fieldErrors.currentPassword}
+                aria-describedby={fieldErrors.currentPassword ? "current-password-error" : undefined}
               />
               {fieldErrors.currentPassword && (
-                <p className="text-[11px] font-medium text-destructive">{fieldErrors.currentPassword}</p>
+                <p id="current-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.currentPassword}</p>
               )}
             </div>
           )}
@@ -223,9 +224,9 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
           {/* New password */}
           <div className="space-y-1.5">
             <Label htmlFor="new-password" className="text-xs font-medium">{isVietnamese ? "Mật khẩu mới" : "New password"}</Label>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
+              autoComplete="new-password"
               placeholder={isVietnamese ? "Ít nhất 12 ký tự (hoa, thường, số)" : "12+ characters (upper, lower, number)"}
               value={newPassword}
               onChange={(e) => {
@@ -235,18 +236,19 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
               disabled={isSubmitting}
               className={fieldErrors.newPassword ? "border-destructive" : ""}
               aria-invalid={!!fieldErrors.newPassword}
+              aria-describedby={fieldErrors.newPassword ? "new-password-error" : undefined}
             />
             {fieldErrors.newPassword && (
-              <p className="text-[11px] font-medium text-destructive">{fieldErrors.newPassword}</p>
+              <p id="new-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.newPassword}</p>
             )}
           </div>
 
           {/* Confirm password */}
           <div className="space-y-1.5">
             <Label htmlFor="confirm-password" className="text-xs font-medium">{isVietnamese ? "Nhập lại mật khẩu mới" : "Confirm new password"}</Label>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
+              autoComplete="new-password"
               placeholder={isVietnamese ? "Nhập lại mật khẩu mới" : "Re-enter new password"}
               value={confirmPassword}
               onChange={(e) => {
@@ -256,9 +258,10 @@ export function AccountSecurityDialog({ open, onOpenChange }: AccountSecurityDia
               disabled={isSubmitting}
               className={fieldErrors.confirmPassword ? "border-destructive" : ""}
               aria-invalid={!!fieldErrors.confirmPassword}
+              aria-describedby={fieldErrors.confirmPassword ? "confirm-password-error" : undefined}
             />
             {fieldErrors.confirmPassword && (
-              <p className="text-[11px] font-medium text-destructive">{fieldErrors.confirmPassword}</p>
+              <p id="confirm-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.confirmPassword}</p>
             )}
           </div>
 

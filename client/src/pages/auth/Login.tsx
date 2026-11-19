@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -23,6 +23,7 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleCredential = async (cred: string) => {
     setGoogleBusy(true);
@@ -121,12 +122,14 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-5" noValidate>
               <div className="space-y-1.5">
                 <Label htmlFor="email">{isVietnamese ? "Địa chỉ Email" : "Email address"}</Label>
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="username"
+                  spellCheck={false}
                   placeholder="you@yourbusiness.com"
                   value={email}
                   onChange={(e) => {
@@ -144,21 +147,34 @@ export default function Login() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="password">{isVietnamese ? "Mật khẩu" : "Password"}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setFieldErrors((current) => ({ ...current, password: undefined }));
-                    setError("");
-                  }}
-                  disabled={isBusy}
-                  aria-invalid={!!fieldErrors.password}
-                  aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
-                  className={fieldErrors.password ? "border-destructive" : ""}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setFieldErrors((current) => ({ ...current, password: undefined }));
+                      setError("");
+                    }}
+                    disabled={isBusy}
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
+                    className={`pr-11 ${fieldErrors.password ? "border-destructive" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? (isVietnamese ? "Ẩn mật khẩu" : "Hide password") : (isVietnamese ? "Hiện mật khẩu" : "Show password")}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    disabled={isBusy}
+                    className="friendly-focus absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {fieldErrors.password && <p id="login-password-error" role="alert" className="text-[11px] font-medium text-destructive">{fieldErrors.password}</p>}
               </div>
 

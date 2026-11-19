@@ -80,31 +80,6 @@ export function ReceiptModal({ open, onOpenChange, sale, companyName = "Tenvora 
 
         {/* Printable thermal receipt layout */}
         <div className="relative mt-1 rounded-xl border bg-card p-4 font-mono text-xs sm:text-sm leading-relaxed shadow-sm" id="printable-receipt">
-          <style>
-            {`
-              @media print {
-                body * {
-                  visibility: hidden;
-                }
-                #printable-receipt, #printable-receipt * {
-                  visibility: visible;
-                }
-                #printable-receipt {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 80mm;
-                  margin: 0;
-                  padding: 10px;
-                  background: white;
-                  color: black;
-                  border: none;
-                  font-size: 12px;
-                }
-              }
-            `}
-          </style>
-
           <div className="text-center space-y-0.5 pb-2.5 border-b border-dashed border-border/80">
             <h3 className="font-bold text-sm tracking-wide text-foreground uppercase">{companyName}</h3>
             <p className="text-[11px] text-muted-foreground">{isVietnamese ? "PHIẾU BÁN HÀNG" : "SALES RECEIPT"}</p>

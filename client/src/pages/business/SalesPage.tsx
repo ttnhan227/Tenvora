@@ -819,6 +819,9 @@ export default function SalesPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
+                          if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                            return;
+                          }
                           handleBarcodeSubmit();
                         }
                       }}

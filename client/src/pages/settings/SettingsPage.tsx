@@ -251,6 +251,7 @@ export default function SettingsPage() {
           {canManageWorkspace && (
             <button
               type="button"
+              aria-pressed={activeTab === "store"}
               onClick={() => setActiveTab("store")}
               className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
                 activeTab === "store"
@@ -265,6 +266,7 @@ export default function SettingsPage() {
 
           <button
             type="button"
+            aria-pressed={activeTab === "display"}
             onClick={() => setActiveTab("display")}
             className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
               activeTab === "display"
@@ -278,6 +280,7 @@ export default function SettingsPage() {
 
           <button
             type="button"
+            aria-pressed={activeTab === "account"}
             onClick={() => setActiveTab("account")}
             className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
               activeTab === "account"
@@ -292,6 +295,7 @@ export default function SettingsPage() {
           {canManageWorkspace && (
             <button
               type="button"
+              aria-pressed={activeTab === "telemetry"}
               onClick={() => setActiveTab("telemetry")}
               className={`friendly-focus flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
                 activeTab === "telemetry"
@@ -340,9 +344,11 @@ export default function SettingsPage() {
                   </Label>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {/* Retail */}
-                    <div
+                    <button
+                      type="button"
+                      aria-pressed={businessType === "retail"}
                       onClick={() => setBusinessType("retail")}
-                      className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                      className={`friendly-focus cursor-pointer rounded-2xl border-2 p-4 text-left transition-all ${
                         businessType === "retail"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/40 bg-card"
@@ -353,21 +359,23 @@ export default function SettingsPage() {
                           <ShoppingBag size={22} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-sm flex items-center justify-between">
+                          <span className="flex items-center justify-between text-sm font-bold">
                             {t("profile.retail", "Tạp hoá & Cửa hàng bán lẻ")}
                             {businessType === "retail" && <Check size={18} className="text-primary" />}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
                             {t("profile.retailDesc", "Bán hàng hoá, bánh kẹo, đồ uống, quần áo, quản lý tồn kho và sổ nợ khách.")}
-                          </p>
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Food & Drink */}
-                    <div
+                    <button
+                      type="button"
+                      aria-pressed={businessType === "food"}
                       onClick={() => setBusinessType("food")}
-                      className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                      className={`friendly-focus cursor-pointer rounded-2xl border-2 p-4 text-left transition-all ${
                         businessType === "food"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/40 bg-card"
@@ -378,21 +386,23 @@ export default function SettingsPage() {
                           <Coffee size={22} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-sm flex items-center justify-between">
+                          <span className="flex items-center justify-between text-sm font-bold">
                             {t("profile.food", "Quán ăn / Café / Trà sữa")}
                             {businessType === "food" && <Check size={18} className="text-primary" />}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
                             {t("profile.foodDesc", "Bán món ăn, thức uống, ghi nhanh thu chi trong ca và mua nguyên vật liệu.")}
-                          </p>
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Services */}
-                    <div
+                    <button
+                      type="button"
+                      aria-pressed={businessType === "services"}
                       onClick={() => setBusinessType("services")}
-                      className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                      className={`friendly-focus cursor-pointer rounded-2xl border-2 p-4 text-left transition-all ${
                         businessType === "services"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/40 bg-card"
@@ -403,21 +413,23 @@ export default function SettingsPage() {
                           <Briefcase size={22} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-sm flex items-center justify-between">
+                          <span className="flex items-center justify-between text-sm font-bold">
                             {t("profile.services", "Dịch vụ & Khách hàng")}
                             {businessType === "services" && <Check size={18} className="text-primary" />}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
                             {t("profile.servicesDesc", "Sửa chữa, làm đẹp, tư vấn, dịch vụ tính tiền theo lượt hoặc theo công việc.")}
-                          </p>
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Simple Cashbook */}
-                    <div
+                    <button
+                      type="button"
+                      aria-pressed={businessType === "simple"}
                       onClick={() => setBusinessType("simple")}
-                      className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                      className={`friendly-focus cursor-pointer rounded-2xl border-2 p-4 text-left transition-all ${
                         businessType === "simple"
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/40 bg-card"
@@ -428,16 +440,16 @@ export default function SettingsPage() {
                           <BookOpenCheck size={22} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-sm flex items-center justify-between">
+                          <span className="flex items-center justify-between text-sm font-bold">
                             {t("profile.simple", "Sổ tay thu chi cá nhân")}
                             {businessType === "simple" && <Check size={18} className="text-primary" />}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
                             {t("profile.simpleDesc", "Ghi chép tiền vào, tiền ra hàng ngày đơn giản nhất như một cuốn sổ giấy.")}
-                          </p>
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   </div>
                 </div>
 
@@ -540,10 +552,12 @@ export default function SettingsPage() {
                   {SUPPORTED_LANGUAGES.map((langItem) => {
                     const isSelected = language === langItem.code;
                     return (
-                      <div
+                      <button
                         key={langItem.code}
+                        type="button"
+                        aria-pressed={isSelected}
                         onClick={() => setLanguage(langItem.code)}
-                        className={`cursor-pointer rounded-2xl border-2 p-4 transition-all ${
+                        className={`friendly-focus cursor-pointer rounded-2xl border-2 p-4 text-left transition-all ${
                           isSelected
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-border hover:border-primary/40 bg-card"
@@ -552,16 +566,16 @@ export default function SettingsPage() {
                         <div className="flex items-start gap-3">
                           <span className="text-3xl" role="img" aria-hidden="true">{langItem.flag}</span>
                           <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <p className="font-bold text-base">{langItem.name}</p>
+                            <span className="flex items-center justify-between">
+                              <span className="font-bold text-base">{langItem.name}</span>
                               {isSelected && <Check className="h-5 w-5 text-primary" />}
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                            </span>
+                            <span className="mt-1 block text-xs text-muted-foreground leading-relaxed">
                               {langItem.englishName}
-                            </p>
+                            </span>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -822,6 +836,7 @@ export default function SettingsPage() {
                       <Input
                         id="current-pw"
                         type="password"
+                        autoComplete="current-password"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         className="min-h-[48px] rounded-xl text-base"
@@ -837,6 +852,7 @@ export default function SettingsPage() {
                     <Input
                       id="new-pw"
                       type="password"
+                      autoComplete="new-password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder={isVietnamese ? "Ít nhất 12 ký tự, gồm chữ hoa, thường & số" : "At least 12 characters with upper, lower & number"}
@@ -852,6 +868,7 @@ export default function SettingsPage() {
                     <Input
                       id="confirm-pw"
                       type="password"
+                      autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="min-h-[48px] rounded-xl text-base"

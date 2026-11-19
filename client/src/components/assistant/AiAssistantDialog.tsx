@@ -46,7 +46,7 @@ export function AiAssistantDialog({ open, onOpenChange, canMutate = true }: AiAs
   const send = async (value?: string) => {
     const text = (value ?? input).trim();
     if (!text || busy) return;
-    const pendingMessage = [...messages].reverse().find(
+    const pendingMessage = messages.findLast(
       (message) => message.proposal?.actionId && message.proposal.requiresConfirmation
     );
     const sentId = crypto.randomUUID();

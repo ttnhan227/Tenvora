@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { WalkthroughVideo } from "@/components/landing/WalkthroughVideo";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -123,7 +124,7 @@ export default function Index() {
     <div id="top" className="flex min-h-screen flex-col bg-background text-foreground transition-colors selection:bg-primary/20">
       <Navbar />
 
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {/* =========================================================================
             1. HERO SECTION: High-impact SaaS Headline & Value Proposition
         ========================================================================= */}
@@ -312,20 +313,26 @@ export default function Index() {
                       </div>
                       <div className="relative flex justify-center bg-black/5 dark:bg-black/30 p-2 sm:p-4">
                         {demoView === "desktop" ? (
-                          <img
-                            src="/tenvora-demo.gif"
-                            alt={isVietnamese ? "Trải nghiệm Tenvora trực tiếp trên Web" : "Tenvora Web Live Walkthrough"}
+                          <WalkthroughVideo
+                            key="desktop-demo"
+                            srcBase="/tenvora-demo"
+                            poster="/tenvora-demo-poster.webp"
+                            width={840}
+                            height={524}
+                            label={isVietnamese ? "Trải nghiệm Tenvora trực tiếp trên Web" : "Tenvora Web Live Walkthrough"}
                             className="w-full max-w-4xl rounded-xl border border-border/70 shadow-lg object-contain"
-                            loading="eager"
                           />
                         ) : (
                           <div className="relative mx-auto my-1 max-w-[320px] rounded-[2rem] border-4 border-foreground/15 bg-background p-2 shadow-2xl">
                             <div className="mx-auto mb-2 h-3 w-16 rounded-full bg-foreground/20" />
-                            <img
-                              src="/tenvora-mobile-demo.gif"
-                              alt={isVietnamese ? "Trải nghiệm Tenvora Di Động" : "Tenvora Mobile Companion Walkthrough"}
+                            <WalkthroughVideo
+                              key="mobile-hero-demo"
+                              srcBase="/tenvora-mobile-demo"
+                              poster="/tenvora-mobile-demo-poster.webp"
+                              width={380}
+                              height={822}
+                              label={isVietnamese ? "Trải nghiệm Tenvora Di Động" : "Tenvora Mobile Companion Walkthrough"}
                               className="w-full rounded-2xl object-contain shadow-inner"
-                              loading="eager"
                             />
                           </div>
                         )}
@@ -804,11 +811,14 @@ export default function Index() {
                 <div className="flex justify-center">
                   <div className="relative w-full max-w-[280px] sm:max-w-[310px] rounded-[2.5rem] border-4 border-foreground/15 bg-card/90 p-2.5 shadow-2xl">
                     <div className="mx-auto mb-2.5 h-3.5 w-20 rounded-full bg-foreground/20" />
-                    <img
-                      src="/tenvora-mobile-demo.gif"
-                      alt={isVietnamese ? "Ứng dụng di động Tenvora trực tiếp" : "Tenvora Mobile Companion in Action"}
+                    <WalkthroughVideo
+                      srcBase="/tenvora-mobile-demo"
+                      poster="/tenvora-mobile-demo-poster.webp"
+                      width={380}
+                      height={822}
+                      lazy
+                      label={isVietnamese ? "Ứng dụng di động Tenvora trực tiếp" : "Tenvora Mobile Companion in Action"}
                       className="w-full rounded-[1.75rem] border border-border/60 object-contain shadow-md"
-                      loading="lazy"
                     />
                     <div className="mt-3 text-center px-2 pb-1 space-y-1">
                       <p className="text-xs font-bold text-foreground">

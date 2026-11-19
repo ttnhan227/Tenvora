@@ -9,6 +9,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -133,6 +134,7 @@ export default function Register() {
                   placeholder={isVietnamese ? "vd: Tiệm Tạp Hoá Cô Ba" : "e.g. Mai's Market"}
                   disabled={isBusy}
                   aria-invalid={!!fieldErrors.companyName}
+                  aria-describedby={fieldErrors.companyName ? "company-error" : undefined}
                 />
               </FieldBlock>
 
@@ -144,11 +146,14 @@ export default function Register() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="username"
+                  spellCheck={false}
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); clear("email"); }}
                   placeholder="you@yourbusiness.com"
                   disabled={isBusy}
                   aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 />
               </FieldBlock>
 
@@ -158,15 +163,16 @@ export default function Register() {
                 error={fieldErrors.password}
                 help={isVietnamese ? "12 ký tự trở lên gồm chữ hoa, chữ thường và chữ số." : "12 or more characters with uppercase, lowercase, and a number."}
               >
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clear("password"); }}
                   placeholder={isVietnamese ? "Bảo vệ an toàn sổ sách" : "Keep your records safe"}
                   disabled={isBusy}
                   minLength={12}
                   aria-invalid={!!fieldErrors.password}
+                  aria-describedby={fieldErrors.password ? "password-error" : "password-help"}
                 />
               </FieldBlock>
 
@@ -225,7 +231,15 @@ function FieldBlock({ label, htmlFor, error, help, children }: { label: string; 
     <div className="space-y-2">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {error ? <p role="alert" className="text-xs font-bold text-destructive">{error}</p> : help ? <p className="text-xs text-muted-foreground">{help}</p> : null}
+      {error ? (
+        <p id={`${htmlFor}-error`} role="alert" className="text-xs font-bold text-destructive">
+          {error}
+        </p>
+      ) : help ? (
+        <p id={`${htmlFor}-help`} className="text-xs text-muted-foreground">
+          {help}
+        </p>
+      ) : null}
     </div>
   );
 }

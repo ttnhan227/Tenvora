@@ -180,5 +180,73 @@
 }
 
 @keyframes gentle-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes request-progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(100%); } 100% { transform: translateX(300%); } }
 .animate-fade-in { animation: gentle-in .25s ease-out both; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  .animate-fade-in,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping,
+  [class*="animate-in"],
+  [class*="animate-out"],
+  [class*="request-progress"] {
+    animation: none !important;
+  }
+  [class*="request-progress"] {
+    width: 100%;
+    opacity: 0.45;
+  }
+}
+
+@media print {
+  body:has(#printable-receipt) * {
+    visibility: hidden;
+  }
+  body:has(#printable-receipt) #printable-receipt,
+  body:has(#printable-receipt) #printable-receipt * {
+    visibility: visible;
+  }
+  body:has(#printable-receipt) #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    margin: 0;
+    padding: 10px;
+    background: white;
+    color: black;
+    border: none;
+    font-size: 12px;
+  }
+
+  body:has(#printable-statement) * {
+    visibility: hidden !important;
+  }
+  body:has(#printable-statement) #printable-statement,
+  body:has(#printable-statement) #printable-statement * {
+    visibility: visible !important;
+  }
+  body:has(#printable-statement) #printable-statement {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    padding: 16px !important;
+    background: white !important;
+    color: black !important;
+    font-size: 12px !important;
+  }
+  body:has(#printable-statement) #printable-statement .no-print {
+    display: none !important;
+  }
+  body:has(#printable-statement) #printable-statement table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  body:has(#printable-statement) #printable-statement th,
+  body:has(#printable-statement) #printable-statement td {
+    border: 1px solid #ddd !important;
+    padding: 6px 8px !important;
+  }
+}

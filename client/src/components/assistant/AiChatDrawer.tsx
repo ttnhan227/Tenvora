@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { isAiConsentDeclined } from "@/lib/aiConsent";
 import { useLatestCallback } from "@/hooks/useLatestCallback";
+import { prefersReducedMotion } from "@/hooks/useReducedMotion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { businessService } from "@/services/businessService";
@@ -93,7 +95,7 @@ export function AiChatDrawer({
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: "smooth" });
+    endRef.current?.scrollIntoView?.({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }, [messages, isBusy]);
 
   const loadConversations = useLatestCallback(async (preferredId?: string | null, reloadMessages = true) => {
@@ -369,20 +371,15 @@ export function AiChatDrawer({
   };
   const contextBanner = getContextBannerText();
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/60 backdrop-blur-sm transition-opacity"
-        onClick={() => onOpenChange(false)}
-      />
-
-      {/* Slide-out Drawer Panel */}
-      <aside
-        aria-label="Tenvora Agent Drawer"
-        className="relative z-50 flex h-full w-full flex-col border-l bg-card shadow-2xl transition-transform duration-300 ease-in-out sm:w-md md:w-lg"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          textareaRef.current?.focus();
+        }}
+        className="left-auto right-0 top-0 bottom-0 flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 bg-card p-0 shadow-2xl sm:w-md sm:max-w-md sm:p-0 md:w-lg md:max-w-lg data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100"
       >
         {/* Drawer Header */}
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">
@@ -392,51 +389,59 @@ export function AiChatDrawer({
             </span>
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="text-sm font-bold">Tenvora Agent</h2>
+                <DialogTitle className="text-sm font-bold">Tenvora Agent</DialogTitle>
                 <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                   Online
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <DialogDescription className="text-xs text-muted-foreground">
                 {isVietnamese ? "Trợ lý quản trị kinh doanh thông minh" : "Autonomous business manager"}
-              </p>
+              </DialogDescription>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => setShowHistory(!showHistory)}
+              aria-expanded={showHistory}
+              aria-label={isVietnamese ? "Lịch sử cuộc trò chuyện" : "Conversation history"}
               title={isVietnamese ? "Lịch sử cuộc trò chuyện" : "Conversation history"}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               <History className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => startNewConversation()}
+              aria-label={isVietnamese ? "Cuộc trò chuyện mới" : "New chat"}
               title={isVietnamese ? "Cuộc trò chuyện mới" : "New chat"}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               <Plus className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={handleExpandToFullPage}
+              aria-label={isVietnamese ? "Mở toàn màn hình" : "Open full page"}
               title={isVietnamese ? "Mở toàn màn hình" : "Open full page"}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={() => onOpenChange(false)}
               aria-label={isVietnamese ? "Đóng" : "Close"}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -473,16 +478,23 @@ export function AiChatDrawer({
                 {conversations.map((c) => (
                   <div
                     key={c.id}
-                    onClick={() => loadConversation(c.id)}
-                    className={`group flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-secondary ${
+                    className={`group flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs transition-colors hover:bg-secondary ${
                       activeConversationId === c.id ? "bg-secondary font-semibold text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    <span className="truncate">{c.title || (isVietnamese ? "Cuộc trò chuyện" : "Conversation")}</span>
+                    <button
+                      type="button"
+                      onClick={() => loadConversation(c.id)}
+                      className="friendly-focus min-w-0 flex-1 rounded-md px-1 py-0.5 text-left"
+                    >
+                      <span className="block truncate">{c.title || (isVietnamese ? "Cuộc trò chuyện" : "Conversation")}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={(e) => handleDeleteConversation(c.id, e)}
-                      className="opacity-0 group-hover:opacity-100 hover:text-destructive"
+                      aria-label={isVietnamese ? "Xoá cuộc trò chuyện" : "Delete conversation"}
+                      title={isVietnamese ? "Xoá" : "Delete"}
+                      className="friendly-focus rounded p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-destructive"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -596,6 +608,9 @@ export function AiChatDrawer({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
+                    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                      return;
+                    }
                     handleSend();
                   }
                 }}
@@ -606,6 +621,7 @@ export function AiChatDrawer({
                 }
                 disabled={isBusy}
                 rows={1}
+                aria-label={isVietnamese ? "Tin nhắn cho Tenvora Agent" : "Message Tenvora Agent"}
                 className="max-h-32 min-h-[44px] resize-none py-2.5 text-sm"
               />
             </div>
@@ -624,7 +640,7 @@ export function AiChatDrawer({
             <span className="hidden sm:inline">Ctrl + K</span>
           </div>
         </footer>
-      </aside>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

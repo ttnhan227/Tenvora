@@ -540,7 +540,7 @@ export function generateBusinessReportHtml(data: BusinessReportData): string {
         TENVORA STORE MANAGER &bull; ${isVietnamese ? "BÁO CÁO TÀI CHÍNH" : "FINANCIAL STATEMENT"}
       </div>
       <div class="actions">
-        <button class="btn btn-light" onclick="window.print()">
+        <button type="button" id="tenvora-print-btn" class="btn btn-light">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 6 2 18 2 18 9"></polyline>
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -862,9 +862,22 @@ export function downloadHtmlReport(data: BusinessReportData, filename?: string):
 
 export function printReport(data: BusinessReportData): void {
   const html = generateBusinessReportHtml(data);
-  const printWindow = window.open("", "_blank");
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+
+  const wirePrintControls = (win: Window | null) => {
+    if (!win) return;
+    try {
+      const btn = win.document?.getElementById("tenvora-print-btn");
+      btn?.addEventListener("click", () => win.print());
+    } catch {
+      // Cross-origin or closed window; ignore
+    }
+  };
+
+  const printWindow = window.open(blobUrl, "_blank");
   if (!printWindow) {
-    // Fallback using invisible iframe
+    // Fallback using invisible iframe loaded from same-origin Blob URL (no document.write)
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -872,28 +885,39 @@ export function printReport(data: BusinessReportData): void {
     iframe.style.width = "0";
     iframe.style.height = "0";
     iframe.style.border = "0";
+    iframe.addEventListener(
+      "load",
+      () => {
+        wirePrintControls(iframe.contentWindow);
+        iframe.contentWindow?.focus();
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            iframe.remove();
+            URL.revokeObjectURL(blobUrl);
+          }, 2000);
+        }, 300);
+      },
+      { once: true },
+    );
+    iframe.src = blobUrl;
     document.body.appendChild(iframe);
-    const doc = iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(html);
-      doc.close();
-      iframe.contentWindow?.focus();
-      setTimeout(() => {
-        iframe.contentWindow?.print();
-        setTimeout(() => document.body.removeChild(iframe), 2000);
-      }, 500);
-    }
     return;
   }
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-  }, 400);
+  printWindow.opener = null;
+  printWindow.addEventListener(
+    "load",
+    () => {
+      wirePrintControls(printWindow);
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        URL.revokeObjectURL(blobUrl);
+      }, 300);
+    },
+    { once: true },
+  );
 }
 
 export function exportReportCsv(data: BusinessReportData, filename?: string): void {

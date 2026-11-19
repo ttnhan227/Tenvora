@@ -1,4 +1,4 @@
-import { ChangeEvent, useId, useState } from "react";
+import { ChangeEvent, useId, useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,9 @@ interface RecordImageFieldProps {
 }
 
 export function RecordImageField({ label, helpText, value, onChange }: RecordImageFieldProps) {
-  const id = useId();
+  const labelId = useId();
+  const helpId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
   const { isVietnamese } = useLanguage();
 
@@ -34,8 +36,10 @@ export function RecordImageField({ label, helpText, value, onChange }: RecordIma
   };
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+    <div role="group" aria-labelledby={labelId} className="space-y-2">
+      <Label asChild>
+        <span id={labelId} className="block">{label}</span>
+      </Label>
       <div className="flex gap-3 rounded-2xl border border-dashed bg-muted/20 p-3">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-card">
           {value ? (
@@ -45,15 +49,21 @@ export function RecordImageField({ label, helpText, value, onChange }: RecordIma
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs leading-relaxed text-muted-foreground">{helpText}</p>
+          <p id={helpId} className="text-xs leading-relaxed text-muted-foreground">{helpText}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" asChild disabled={processing}>
-              <label htmlFor={id} className={processing ? "pointer-events-none gap-2" : "cursor-pointer gap-2"}>
-                {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                {value
-                  ? (isVietnamese ? "Thay ảnh" : "Replace image")
-                  : (isVietnamese ? "Chọn ảnh" : "Choose image")}
-              </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={processing}
+              aria-describedby={helpId}
+              onClick={() => fileInputRef.current?.click()}
+              className="gap-2"
+            >
+              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              {value
+                ? (isVietnamese ? "Thay ảnh" : "Replace image")
+                : (isVietnamese ? "Chọn ảnh" : "Choose image")}
             </Button>
             {value && (
               <Button type="button" variant="ghost" size="sm" onClick={() => onChange(undefined, true)} className="gap-2 text-destructive hover:text-destructive">
@@ -64,7 +74,15 @@ export function RecordImageField({ label, helpText, value, onChange }: RecordIma
           </div>
         </div>
       </div>
-      <input id={id} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={selectImage} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="sr-only"
+        onChange={selectImage}
+      />
     </div>
   );
 }

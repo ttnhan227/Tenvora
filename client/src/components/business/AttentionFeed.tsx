@@ -43,7 +43,7 @@ export function AttentionFeed({ onPaySupplier, onOpenReviewQueue, className }: A
   const rawItems = query.data ?? [];
 
   // Sort by severity: urgent first, then warn, then info
-  const sortedItems = [...rawItems].sort((a, b) => {
+  const sortedItems = rawItems.toSorted((a, b) => {
     const score = (sev: string) => (sev === "urgent" ? 3 : sev === "warn" ? 2 : 1);
     return score(b.severity) - score(a.severity);
   });

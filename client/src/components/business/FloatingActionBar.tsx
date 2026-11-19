@@ -43,7 +43,8 @@ export function FloatingActionBar({
         <button
           type="button"
           onClick={handleClear}
-          className="ml-1 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          aria-label={t("Clear selection")}
+          className="friendly-focus ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title={t("Clear selection")}
         >
           <X className="h-3.5 w-3.5" />
