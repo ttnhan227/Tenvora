@@ -450,5 +450,68 @@ public sealed class EngineeringAuditRegressionTests
             Environment.SetEnvironmentVariable("SEED_DEMO_DATA", prevSeedEnv);
         }
     }
+
+    [Fact]
+    public async Task IdempotencyKey_BoundsRawKeysTo80Chars_AndSupportsAllocationSuffixes()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var (service, tenantId) = await SetupBusiness(db);
+
+        var cust = (await service.CreateCustomerAsync(tenantId, new("Bounded Key Cust", null, null, null, null))).Data!;
+        var prod = (await service.CreateProductAsync(tenantId, new("Bounded Key Prod", null, "pcs", 100_000m, null, StockQuantity: 10, TrackInventory: true))).Data!;
+        await service.CreateSaleAsync(tenantId, "sale-bnd-1", new(cust.Id, [new(prod.Id, 1m, 100_000m)]));
+
+        // 100-char key rejected cleanly before appending ":1" would exceed varchar(100)
+        var overlongKey = new string('k', 100);
+        var tooLongRes = await service.RecordCustomerAccountPaymentAsync(
+            tenantId, cust.Id, overlongKey, new(50_000m, "Cash"));
+        Assert.False(tooLongRes.Success);
+        Assert.Contains("80 characters", tooLongRes.Message);
+
+        // 80-char key succeeds and allocated payment key stays <= 100 chars
+        var maxAllowedKey = new string('k', 80);
+        var okRes = await service.RecordCustomerAccountPaymentAsync(
+            tenantId, cust.Id, maxAllowedKey, new(50_000m, "Cash"));
+        Assert.True(okRes.Success, okRes.Message);
+
+        var persistedPayment = await db.BusinessPayments.SingleAsync(p => p.TenantId == tenantId && p.CustomerId == cust.Id, ct);
+        Assert.True(persistedPayment.IdempotencyKey!.Length <= 100);
+        Assert.StartsWith($"{maxAllowedKey}:", persistedPayment.IdempotencyKey);
+    }
+
+    [Fact]
+    public void TenantScopedDbEntities_AreAllCoveredByPostgreSqlRlsMigrations()
+    {
+        var tenantTables = typeof(AppDbContext).GetProperties()
+            .Where(p => p.PropertyType.IsGenericType
+                && p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>)
+                && p.PropertyType.GetGenericArguments()[0].GetProperty("TenantId") != null)
+            .Select(p => p.Name)
+            .Distinct()
+            .ToList();
+
+        Assert.Contains("AiTelemetryEvents", tenantTables);
+        Assert.Contains("RecurringExpenseTemplates", tenantTables);
+        Assert.Contains("TenantExtractionRules", tenantTables);
+
+        // Locate server/Migrations directory relative to test assembly output
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "server", "Migrations")))
+        {
+            dir = dir.Parent;
+        }
+        Assert.NotNull(dir);
+
+        var rlsMigrationSql = string.Join("\n",
+            Directory.GetFiles(Path.Combine(dir!.FullName, "server", "Migrations"), "*Rls*.cs")
+                .Where(f => !f.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase))
+                .Select(File.ReadAllText));
+
+        foreach (var table in tenantTables)
+        {
+            Assert.Contains($"\"{table}\"", rlsMigrationSql);
+        }
+    }
 }
 

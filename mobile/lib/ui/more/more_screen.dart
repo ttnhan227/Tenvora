@@ -94,7 +94,7 @@ class MoreScreen extends StatelessWidget {
           ),
           const TeamScreen(),
         ),
-      if (user.canManage)
+      if (user.isAdmin)
         _MenuItem(
           Icons.history_outlined,
           tr(context, 'Audit log', 'Nhật ký kiểm toán'),

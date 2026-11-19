@@ -38,7 +38,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 * **🧾 Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
-* **🔒 Tenant Scoping & RLS:** Global query filters on EF Core combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
+* **🔒 Tenant Scoping & RLS:** Explicit `TenantId` query scoping in EF Core services combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
 * **🌐 Multilingual & Multi-Currency Support:** Comprehensive web workspace with USD ($) primary currency and international localization (English and Vietnamese); native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
 
 ---
@@ -52,7 +52,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (314 tests: 187 .NET + 127 Vitest), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (355 tests: 212 .NET + 143 Vitest), Docker images, verified APK builds. |
 
 ---
 
@@ -126,10 +126,10 @@ pwsh scripts/verify-all.ps1        # Windows PowerShell
 bash scripts/verify-all.sh         # Linux / macOS
 
 # Or run individual test suites:
-# Backend Tests (187 xUnit tests verifying ledger math, concurrency, and RLS)
+# Backend Tests (212 xUnit tests verifying ledger math, concurrency, and RLS)
 dotnet test server.Tests
 
-# Frontend Unit & Integration Tests (127 Vitest tests across 29 test suites)
+# Frontend Unit & Integration Tests (143 Vitest tests across 33 test suites)
 npm --prefix client run test:run
 
 # Frontend Linter & Production Build
@@ -154,7 +154,7 @@ Tenvora/
 │   ├── Data/               # AppDbContext, migrations, audit interceptors
 │   ├── Domain/Entities/    # Tenant-scoped domain models
 │   └── Services/           # Ledger calculations, business rules, AI services
-├── server.Tests/           # 187 xUnit unit, integration, and security regression tests
+├── server.Tests/           # 212 xUnit unit, integration, and security regression tests
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration

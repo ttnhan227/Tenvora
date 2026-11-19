@@ -706,8 +706,8 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         return null;
     }
 
-    private static string? ValidateKey(string key) => string.IsNullOrWhiteSpace(key) || key.Trim().Length > 100
-        ? "Provide an Idempotency-Key header up to 100 characters."
+    private static string? ValidateKey(string key) => string.IsNullOrWhiteSpace(key) || key.Trim().Length > 80
+        ? "Provide an Idempotency-Key header up to 80 characters."
         : null;
     private static string NormalizeMethod(string? method) => string.IsNullOrWhiteSpace(method) ? "Other" : method.Trim();
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

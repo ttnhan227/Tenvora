@@ -22,7 +22,7 @@ This document outlines the deployment architecture, database recovery procedures
 ## 2. Database Verification & Disaster Recovery
 
 ### Invariant & Integrity Checks
-1. **Tenant Scoping**: All relational queries enforce tenant isolation via EF Core query filters.
+1. **Tenant Scoping**: All relational queries enforce tenant isolation via explicit `TenantId` predicates in application services, backed by PostgreSQL `FORCE ROW LEVEL SECURITY` policies.
 2. **Row-Level Security (RLS)**: PostgreSQL `FORCE ROW LEVEL SECURITY` session policies protect data across all tenant layers.
 3. **Automated Recovery Testing**:
    Run the isolated PostgreSQL backup and restore verification:
@@ -57,7 +57,7 @@ Configure uptime monitors (e.g., Render Health Checks or external uptime service
 
 Before promoting any release to production:
 
-- [ ] **Automated Tests**: All backend (187 xUnit tests) and frontend (91 Vitest tests) pass via `pwsh scripts/verify-all.ps1`.
+- [ ] **Automated Tests**: All backend (212 xUnit tests) and frontend (143 Vitest tests across 33 suites) pass via `pwsh scripts/verify-all.ps1`.
 - [ ] **Security**: CORS origins are restricted to configured web domains; SSL/TLS is enforced.
 - [ ] **Secrets**: No `.env` files or developmental keys are checked into source control.
 - [ ] **Storage**: Object storage bucket policies allow authenticated receipt and document uploads with secure access.

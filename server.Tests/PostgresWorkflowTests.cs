@@ -191,6 +191,39 @@ public sealed class PostgresWorkflowTests
             // Reset role and tenant session
             await db.Database.ExecuteSqlRawAsync("RESET ROLE");
             await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)");
+
+            // Every tenant-scoped EF entity table (including AiTelemetryEvents, RecurringExpenseTemplates, TenantExtractionRules)
+            // must have both rowsecurity and force rowsecurity enabled in PostgreSQL.
+            var tenantTableNames = db.Model.GetEntityTypes()
+                .Where(et => et.FindProperty("TenantId") != null)
+                .Select(et => et.GetTableName())
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct()
+                .ToList();
+
+            Assert.Contains("AiTelemetryEvents", tenantTableNames);
+            Assert.Contains("RecurringExpenseTemplates", tenantTableNames);
+            Assert.Contains("TenantExtractionRules", tenantTableNames);
+
+            var conn = db.Database.GetDbConnection();
+            foreach (var tableName in tenantTableNames)
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT c.relrowsecurity, c.relforcerowsecurity
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE n.nspname = 'public' AND c.relname = @tbl";
+                var p = cmd.CreateParameter();
+                p.ParameterName = "@tbl";
+                p.Value = tableName;
+                cmd.Parameters.Add(p);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                Assert.True(await reader.ReadAsync(), $"Missing PostgreSQL table '{tableName}'.");
+                Assert.True(reader.GetBoolean(0), $"relrowsecurity is false for '{tableName}'.");
+                Assert.True(reader.GetBoolean(1), $"relforcerowsecurity is false for '{tableName}'.");
+            }
         }
         finally
         {
