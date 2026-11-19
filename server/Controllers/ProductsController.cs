@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Tenvora.Api.Common;
 using Tenvora.Api.Dtos;
 using Tenvora.Api.Services;
@@ -43,6 +44,19 @@ public sealed class ProductsController(IBusinessService service) : ControllerBas
     [HttpGet("adjustments")]
     public async Task<IActionResult> GetAdjustments([FromQuery] Guid? productId) =>
         (await service.GetStockAdjustmentsAsync(User.GetTenantId(), productId)).ToActionResult();
+
+    [HttpPost("adjustments"), Authorize(Roles = "TenantAdmin,OperationsManager"), EnableRateLimiting("payments-rate-limit")]
+    public async Task<IActionResult> CreateAdjustment(
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CreateStockAdjustmentRequest request)
+    {
+        var userId = User.GetUserId();
+        return (await service.CreateStockAdjustmentAsync(
+            User.GetTenantId(),
+            userId == Guid.Empty ? null : userId,
+            request,
+            idempotencyKey?.Trim())).ToActionResult();
+    }
 
     [HttpGet("{id:guid}/defaults")]
     public async Task<IActionResult> GetDefaults(Guid id, [FromQuery] Guid? supplierId = null, CancellationToken ct = default) =>
