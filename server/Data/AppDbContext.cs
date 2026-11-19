@@ -120,7 +120,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasOne<Tenant>().WithMany(t => t.AiActions).HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique();
-            entity.ToTable(t => t.HasCheckConstraint("CK_AiActions_Status", "\"Status\" IN ('PendingConfirmation','Executing','Executed','Cancelled','Expired','Failed')"));
+            entity.ToTable(t => t.HasCheckConstraint("CK_AiActions_Status", "\"Status\" IN ('PendingConfirmation','Executing','Executed','Undone','Cancelled','Expired','Failed')"));
         });
 
         modelBuilder.Entity<Customer>(entity =>

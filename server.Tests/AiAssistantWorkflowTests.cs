@@ -1074,5 +1074,129 @@ public sealed class AiAssistantWorkflowTests
         Assert.StartsWith("Create 3 products", proposalEn.Data!.Summary);
         Assert.Contains("Bàn Phím Cơ", proposalEn.Data!.Summary);
     }
+
+    [Fact]
+    public async Task UndoAsync_ReversesSalePayment_AndMarksActionUndone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = SetupWithLocale(db, "en");
+        var customer = (await business.CreateCustomerAsync(tenantId, new("Anh Nam", null, null, null, null))).Data!;
+        var product = (await business.CreateProductAsync(tenantId, new("Rice", null, "kg", 20_000m, null))).Data!;
+        await business.CreateSaleAsync(tenantId, "seed-sale-undo", new(customer.Id, [new(product.Id, 1, 4_700_000m)], 0m));
+
+        var proposal = await actions.ProposeAsync(tenantId, userId, new("Anh Nam vừa trả 2 triệu"), ct: ct);
+        Assert.True(proposal.Success, proposal.Message);
+        var confirm = await actions.ConfirmAsync(tenantId, userId, proposal.Data!.ActionId!.Value, true, ct: ct);
+        Assert.True(confirm.Success, confirm.Message);
+        Assert.Equal(2_700_000m, (await business.GetCustomerAsync(tenantId, customer.Id)).Data!.Customer.OutstandingBalance);
+
+        var undo = await actions.UndoAsync(tenantId, userId, proposal.Data.ActionId!.Value, ct: ct);
+        Assert.True(undo.Success, undo.Message);
+        Assert.Equal(AiActionStatuses.Undone, undo.Data!.Status);
+
+        var payment = await db.BusinessPayments.SingleAsync(p => p.TenantId == tenantId, ct);
+        Assert.True(payment.IsReversed);
+        Assert.Equal("AI Action Undo", payment.ReversalReason);
+        Assert.Equal(4_700_000m, (await business.GetCustomerAsync(tenantId, customer.Id)).Data!.Customer.OutstandingBalance);
+    }
+
+    [Fact]
+    public async Task UndoAsync_ReversesPurchasePayment_AndRestoresSupplierBalance()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = SetupWithLocale(db, "en");
+        var supplier = (await business.CreateSupplierAsync(tenantId, new("Cong Ty A"))).Data!;
+        var product = (await business.CreateProductAsync(tenantId, new("Flour", null, "kg", 10_000m, null))).Data!;
+        var purchase = (await business.CreatePurchaseAsync(tenantId, "seed-purch-undo",
+            new(supplier.Id, [new("Flour", "kg", 10m, 30_000m, product.Id)], 0m))).Data!;
+        var payAction = new AiAction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            UserId = userId,
+            Intent = "supplier_payment",
+            RiskLevel = "Medium",
+            Status = AiActionStatuses.PendingConfirmation,
+            RequiresConfirmation = true,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            SourceText = "Pay Cong Ty A 100000",
+            IdempotencyKey = "undo-supp-pay-1",
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                SupplierId = supplier.Id,
+                PurchaseId = purchase.Id,
+                Amount = 100_000m
+            })
+        };
+        db.AiActions.Add(payAction);
+        await db.SaveChangesAsync(ct);
+
+        var confirm = await actions.ConfirmAsync(tenantId, userId, payAction.Id, true, ct: ct);
+        Assert.True(confirm.Success, confirm.Message);
+        Assert.Equal(200_000m, (await business.GetSupplierAsync(tenantId, supplier.Id)).Data!.Supplier.OutstandingBalance);
+
+        var undo = await actions.UndoAsync(tenantId, userId, payAction.Id, ct: ct);
+        Assert.True(undo.Success, undo.Message);
+        Assert.Equal(AiActionStatuses.Undone, undo.Data!.Status);
+
+        var purchasePayment = await db.PurchasePayments.SingleAsync(p => p.TenantId == tenantId, ct);
+        Assert.True(purchasePayment.IsReversed);
+        Assert.Equal(300_000m, (await business.GetSupplierAsync(tenantId, supplier.Id)).Data!.Supplier.OutstandingBalance);
+    }
+
+    [Fact]
+    public async Task UndoAsync_RejectsSettingsAndUpdateActionsWithoutDeletingRecords()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var db = Db();
+        var (_, actions, business, tenantId, userId) = SetupWithLocale(db, "en");
+        var product = (await business.CreateProductAsync(tenantId, new("Coffee", "SKU-1", "box", 50_000m, null))).Data!;
+
+        var settingsAction = new AiAction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            UserId = userId,
+            Intent = "update_settings",
+            RiskLevel = "Medium",
+            Status = AiActionStatuses.Executed,
+            SourceText = "Change currency",
+            IdempotencyKey = "undo-settings-1",
+            PayloadJson = "{}",
+            AffectedEntityType = "Tenant",
+            AffectedEntityId = tenantId,
+            ExecutedAt = DateTime.UtcNow
+        };
+        var updateProductAction = new AiAction
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            UserId = userId,
+            Intent = "update_product",
+            RiskLevel = "Medium",
+            Status = AiActionStatuses.Executed,
+            SourceText = "Update Coffee price",
+            IdempotencyKey = "undo-upd-prod-1",
+            PayloadJson = "{}",
+            AffectedEntityType = "Product",
+            AffectedEntityId = product.Id,
+            ExecutedAt = DateTime.UtcNow
+        };
+        db.AiActions.AddRange(settingsAction, updateProductAction);
+        await db.SaveChangesAsync(ct);
+
+        var settingsUndo = await actions.UndoAsync(tenantId, userId, settingsAction.Id, ct: ct);
+        Assert.False(settingsUndo.Success);
+        Assert.Equal("UNDO_NOT_SUPPORTED", settingsUndo.Code);
+        Assert.Equal(AiActionStatuses.Executed, (await db.AiActions.FindAsync([settingsAction.Id], ct))!.Status);
+
+        var productUpdateUndo = await actions.UndoAsync(tenantId, userId, updateProductAction.Id, ct: ct);
+        Assert.False(productUpdateUndo.Success);
+        Assert.Equal("UNDO_NOT_SUPPORTED", productUpdateUndo.Code);
+        Assert.Equal(AiActionStatuses.Executed, (await db.AiActions.FindAsync([updateProductAction.Id], ct))!.Status);
+        Assert.NotNull(await db.Products.FirstOrDefaultAsync(p => p.Id == product.Id && p.IsActive, ct));
+    }
 }
 

@@ -259,73 +259,118 @@ public sealed class AiActionService(
             return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.undo_window_expired"));
         }
 
-        string entityType = action.AffectedEntityType ?? string.Empty;
+        string intent = (action.Intent ?? string.Empty).Trim().ToLowerInvariant();
+        string entityType = (action.AffectedEntityType ?? string.Empty).Trim().ToLowerInvariant();
         Guid? entityId = action.AffectedEntityId;
 
-        if (entityId.HasValue)
+        if (!entityId.HasValue)
         {
-            SetAiAuditContext(action.Id, userId);
+            if (write != null) await write.CommitAsync(ct);
+            return ApiResult<AiActionExecutionResponse>.Fail(
+                "This action cannot be undone automatically because it does not target a single reversible record.",
+                "UNDO_NOT_SUPPORTED");
+        }
 
-            switch (entityType.ToLowerInvariant())
-            {
-                case "sale":
-                    var voidSaleRes = await business.VoidSaleAsync(tenantId, entityId.Value, userId, new VoidSaleRequest(true, "AI Action Undo"));
-                    if (!voidSaleRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(voidSaleRes.Message ?? "Failed to void sale.");
-                    }
-                    break;
+        SetAiAuditContext(action.Id, userId);
 
-                case "purchase":
-                    var voidPurchRes = await business.VoidPurchaseAsync(tenantId, entityId.Value, userId, new VoidPurchaseRequest(true, "AI Action Undo"));
-                    if (!voidPurchRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(voidPurchRes.Message ?? "Failed to void purchase.");
-                    }
-                    break;
+        switch ((intent, entityType))
+        {
+            case ("sale", "sale"):
+                var voidSaleRes = await business.VoidSaleAsync(tenantId, entityId.Value, userId, new VoidSaleRequest(true, "AI Action Undo"));
+                if (!voidSaleRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(voidSaleRes.Message ?? "Failed to void sale.");
+                }
+                break;
 
-                case "expense":
-                case "businessexpense":
-                    var delExpRes = await business.DeleteBusinessExpenseAsync(tenantId, entityId.Value);
-                    if (!delExpRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(delExpRes.Message ?? "Failed to delete expense.");
-                    }
-                    break;
+            case ("purchase", "purchase"):
+                var voidPurchRes = await business.VoidPurchaseAsync(tenantId, entityId.Value, userId, new VoidPurchaseRequest(true, "AI Action Undo"));
+                if (!voidPurchRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(voidPurchRes.Message ?? "Failed to void purchase.");
+                }
+                break;
 
-                case "customer":
-                    var delCustRes = await business.DeleteCustomerAsync(tenantId, entityId.Value);
-                    if (!delCustRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(delCustRes.Message ?? "Failed to delete customer.");
-                    }
-                    break;
+            case ("expense", "expense"):
+            case ("expense", "businessexpense"):
+                var delExpRes = await business.DeleteBusinessExpenseAsync(tenantId, entityId.Value);
+                if (!delExpRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(delExpRes.Message ?? "Failed to delete expense.");
+                }
+                break;
 
-                case "product":
-                    var delProdRes = await business.DeleteProductAsync(tenantId, entityId.Value);
-                    if (!delProdRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(delProdRes.Message ?? "Failed to delete product.");
-                    }
-                    break;
+            case ("create_customer", "customer"):
+                var delCustRes = await business.DeleteCustomerAsync(tenantId, entityId.Value);
+                if (!delCustRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(delCustRes.Message ?? "Failed to delete customer.");
+                }
+                break;
 
-                case "supplier":
-                    var delSuppRes = await business.DeleteSupplierAsync(tenantId, entityId.Value);
-                    if (!delSuppRes.Success)
-                    {
-                        if (write != null) await write.CommitAsync(ct);
-                        return ApiResult<AiActionExecutionResponse>.Fail(delSuppRes.Message ?? "Failed to delete supplier.");
-                    }
-                    break;
+            case ("create_product", "product"):
+                var delProdRes = await business.DeleteProductAsync(tenantId, entityId.Value);
+                if (!delProdRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(delProdRes.Message ?? "Failed to delete product.");
+                }
+                break;
 
-                default:
-                    break;
-            }
+            case ("create_supplier", "supplier"):
+                var delSuppRes = await business.DeleteSupplierAsync(tenantId, entityId.Value);
+                if (!delSuppRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(delSuppRes.Message ?? "Failed to delete supplier.");
+                }
+                break;
+
+            case ("debt_payment", "payment"):
+            case ("payment", "payment"):
+                var salePayment = await db.BusinessPayments.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == entityId.Value, ct);
+                if (salePayment == null)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail("Payment record not found for undo.");
+                }
+                var revSalePayRes = await business.ReverseSalePaymentAsync(
+                    tenantId, salePayment.SaleId, salePayment.Id, userId, new ReversePaymentRequest("AI Action Undo"));
+                if (!revSalePayRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(revSalePayRes.Message ?? "Failed to reverse sale payment.");
+                }
+                break;
+
+            case ("supplier_payment", "purchasepayment"):
+            case ("purchasepayment", "purchasepayment"):
+                var purchasePayment = await db.PurchasePayments.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id == entityId.Value, ct);
+                if (purchasePayment == null)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail("Supplier payment record not found for undo.");
+                }
+                var revPurchPayRes = await business.ReversePurchasePaymentAsync(
+                    tenantId, purchasePayment.PurchaseId, purchasePayment.Id, userId, new ReversePaymentRequest("AI Action Undo"));
+                if (!revPurchPayRes.Success)
+                {
+                    if (write != null) await write.CommitAsync(ct);
+                    return ApiResult<AiActionExecutionResponse>.Fail(revPurchPayRes.Message ?? "Failed to reverse supplier payment.");
+                }
+                break;
+
+            default:
+                if (write != null) await write.CommitAsync(ct);
+                return ApiResult<AiActionExecutionResponse>.Fail(
+                    $"Undo is not supported for action '{action.Intent}'.",
+                    "UNDO_NOT_SUPPORTED");
         }
 
         action.Status = AiActionStatuses.Undone;

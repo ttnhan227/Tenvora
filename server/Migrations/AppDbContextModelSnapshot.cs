@@ -1020,7 +1020,7 @@ namespace Tenvora.Api.Migrations
 
                     b.ToTable("AiActions", t =>
                         {
-                            t.HasCheckConstraint("CK_AiActions_Status", "\"Status\" IN ('PendingConfirmation','Executing','Executed','Cancelled','Expired','Failed')");
+                            t.HasCheckConstraint("CK_AiActions_Status", "\"Status\" IN ('PendingConfirmation','Executing','Executed','Undone','Cancelled','Expired','Failed')");
                         });
                 });
 

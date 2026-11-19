@@ -91,6 +91,15 @@ public class AiAssistantController : ControllerBase
         return result.ToActionResult();
     }
 
+    [HttpPost("actions/{actionId:guid}/undo")]
+    [Authorize(Roles = "TenantAdmin,OperationsManager")]
+    public async Task<IActionResult> UndoAction(Guid actionId, CancellationToken ct)
+    {
+        var result = await _actionService.UndoAsync(
+            User.GetTenantId(), User.GetUserId(), actionId, User.GetUserRole(), ct);
+        return result.ToActionResult();
+    }
+
     [HttpPost("agent-chat")]
     public async Task<IActionResult> AgentChat([FromBody] AiAgentChatRequest request, CancellationToken ct)
     {
