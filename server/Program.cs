@@ -89,37 +89,16 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+var allowedClientOrigins = CorsOriginPolicy.BuildAllowedOrigins(
+    builder.Configuration["CLIENT_ORIGINS"] ?? Environment.GetEnvironmentVariable("CLIENT_ORIGINS"));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
     {
-        var origins = new List<string>
-        {
-            "http://localhost:5173",
-            "https://localhost:5173",
-            "http://localhost:4173",
-            "https://localhost:4173",
-            "http://localhost:80",
-            "http://localhost:3000"
-        };
-
-        var extraOrigins = Environment.GetEnvironmentVariable("CLIENT_ORIGINS");
-        if (!string.IsNullOrWhiteSpace(extraOrigins))
-        {
-            var validOrigins = extraOrigins
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(o => o.Trim().TrimEnd('/'))
-                .Where(o => Uri.TryCreate(o, UriKind.Absolute, out _))
-                .ToList();
-            origins.AddRange(validOrigins);
-        }
-
-        policy.WithOrigins(origins.Distinct(StringComparer.OrdinalIgnoreCase).ToArray())
-            .SetIsOriginAllowed(origin =>
-            {
-                var host = new Uri(origin).Host;
-                return host == "localhost" || host == "127.0.0.1";
-            })
+        // SetIsOriginAllowed replaces WithOrigins in ASP.NET Core, so keep both
+        // configured CLIENT_ORIGINS and loopback dev origins in one predicate.
+        policy.SetIsOriginAllowed(origin => CorsOriginPolicy.IsOriginAllowed(origin, allowedClientOrigins))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
