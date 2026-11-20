@@ -24,6 +24,7 @@ import { PaymentReversalModal } from "@/components/business/PaymentReversalModal
 import { RecordImageField } from "@/components/business/RecordImageField";
 import { VoidDocumentModal } from "@/components/business/VoidDocumentModal";
 import { exportToCsv } from "@/lib/csvExport";
+import { resolveRecordMediaUrl } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -252,6 +253,8 @@ export default function PurchasesPage() {
             <div className="paper-card divide-y overflow-hidden">
               {purchaseItems.map((p) => {
                 const isVoided = p.status === "Voided";
+                const invoiceUrl = resolveRecordMediaUrl(p.invoiceImageDataUrl);
+
                 return (
                   <article
                     key={p.id}
@@ -261,9 +264,9 @@ export default function PurchasesPage() {
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row">
                       <div className="flex min-w-0 gap-4">
-                        {p.invoiceImageDataUrl && (
-                          <a href={p.invoiceImageDataUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-20 w-16 shrink-0 overflow-hidden rounded-lg border bg-card" aria-label={isVietnamese ? "Mở ảnh hoá đơn" : "Open invoice image"}>
-                            <img src={p.invoiceImageDataUrl} alt="" className="h-full w-full object-cover" />
+                        {invoiceUrl && (
+                          <a href={invoiceUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-20 w-16 shrink-0 overflow-hidden rounded-lg border bg-card" aria-label={isVietnamese ? "Mở ảnh hoá đơn" : "Open invoice image"}>
+                            <img src={invoiceUrl} alt="" className="h-full w-full object-cover" />
                           </a>
                         )}
                         <div className="min-w-0">

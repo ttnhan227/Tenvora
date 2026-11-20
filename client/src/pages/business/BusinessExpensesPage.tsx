@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { EmptyState, LoadingState, PageHeader } from "@/components/business/BusinessUI";
 import { SafeDeleteDialog } from "@/components/business/SafeDeleteDialog";
 import { RecordImageField } from "@/components/business/RecordImageField";
+import { resolveRecordMediaUrl } from "@/lib/imageUpload";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -297,7 +298,9 @@ export default function BusinessExpensesPage() {
         ) : (
           <div className="overflow-hidden rounded-[28px] border bg-card p-2 shadow-sm">
             <div className="divide-y">
-              {query.data!.map((e) => (
+              {query.data!.map((e) => {
+                const receiptUrl = resolveRecordMediaUrl(e.receiptImageDataUrl);
+                return (
                 <div key={e.id} className="grid gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/25 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center">
                   <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {new Date(e.expenseDate).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}
@@ -305,9 +308,9 @@ export default function BusinessExpensesPage() {
                   </div>
                   <div className="min-w-0 border-l-2 border-rose-500/25 pl-4">
                     <div className="flex items-center gap-3">
-                      {e.receiptImageDataUrl && (
-                        <a href={e.receiptImageDataUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-11 w-11 shrink-0 overflow-hidden rounded-lg border" aria-label={isVietnamese ? "Mở ảnh biên lai" : "Open receipt image"}>
-                          <img src={e.receiptImageDataUrl} alt="" className="h-full w-full object-cover" />
+                      {receiptUrl && (
+                        <a href={receiptUrl} target="_blank" rel="noreferrer" className="friendly-focus block h-11 w-11 shrink-0 overflow-hidden rounded-lg border" aria-label={isVietnamese ? "Mở ảnh biên lai" : "Open receipt image"}>
+                          <img src={receiptUrl} alt="" className="h-full w-full object-cover" />
                         </a>
                       )}
                       <div className="min-w-0">
@@ -343,7 +346,8 @@ export default function BusinessExpensesPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

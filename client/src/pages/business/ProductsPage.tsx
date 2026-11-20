@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBusinessPermissions } from "@/hooks/useBusinessPermissions";
 import { exportToCsv } from "@/lib/csvExport";
+import { resolveRecordMediaUrl } from "@/lib/imageUpload";
 import { apiError, businessMoney, businessService, Product, ProductInput } from "@/services/businessService";
 
 const emptyProduct: ProductInput = {
@@ -493,14 +494,16 @@ export default function ProductsPage() {
                 const isOutOfStock = stock <= 0;
                 const isLowStock = !isOutOfStock && minLevel > 0 && stock <= minLevel;
 
+                const productImageUrl = resolveRecordMediaUrl(product.imageDataUrl);
+
                 return (
                   <article
                     key={product.id}
                     className={`paper-card overflow-hidden transition-colors hover:border-primary/25 ${!product.isActive ? "opacity-60" : ""}`}
                   >
                     <div className="flex h-36 items-center justify-center overflow-hidden border-b bg-linear-to-br from-secondary/80 to-accent/35">
-                      {product.imageDataUrl ? (
-                        <img src={product.imageDataUrl} alt={product.name} className="h-full w-full object-cover" />
+                      {productImageUrl ? (
+                        <img src={productImageUrl} alt={product.name} className="h-full w-full object-cover" />
                       ) : (
                         <Package className="h-10 w-10 text-primary/45" aria-hidden="true" />
                       )}

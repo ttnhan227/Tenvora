@@ -54,10 +54,33 @@ describe("record image upload", () => {
     expect(postSpy).not.toHaveBeenCalled();
 
     const prevBaseUrl = apiClient.defaults.baseURL;
-    apiClient.defaults.baseURL = "https://api.tenvora.example/api";
-    expect(resolveRecordMediaUrl("/uploads/tenvora/t1/expenses/r.jpg")).toBe(
-      "https://api.tenvora.example/uploads/tenvora/t1/expenses/r.jpg"
-    );
-    apiClient.defaults.baseURL = prevBaseUrl;
+    try {
+      apiClient.defaults.baseURL = "https://api.tenvora.example/api";
+      expect(resolveRecordMediaUrl("/uploads/tenvora/t1/expenses/r.jpg")).toBe(
+        "https://api.tenvora.example/uploads/tenvora/t1/expenses/r.jpg"
+      );
+      expect(resolveRecordMediaUrl("https://cdn.example.com/receipt.jpg")).toBe(
+        "https://cdn.example.com/receipt.jpg"
+      );
+      expect(resolveRecordMediaUrl("http://cdn.example.com/receipt.jpg")).toBe(
+        "http://cdn.example.com/receipt.jpg"
+      );
+      expect(
+        resolveRecordMediaUrl("https://proj.supabase.co/storage/v1/object/public/receipts/tenvora/t1/r.webp")
+      ).toBe(
+        "https://proj.supabase.co/storage/v1/object/public/receipts/tenvora/t1/r.webp"
+      );
+      expect(resolveRecordMediaUrl(undefined)).toBeUndefined();
+      expect(resolveRecordMediaUrl(null)).toBeUndefined();
+      expect(resolveRecordMediaUrl("")).toBeUndefined();
+      expect(resolveRecordMediaUrl("   ")).toBeUndefined();
+
+      apiClient.defaults.baseURL = "not-a-valid-url";
+      expect(resolveRecordMediaUrl("/uploads/tenvora/t1/expenses/r.jpg")).toBe(
+        "/uploads/tenvora/t1/expenses/r.jpg"
+      );
+    } finally {
+      apiClient.defaults.baseURL = prevBaseUrl;
+    }
   });
 });
