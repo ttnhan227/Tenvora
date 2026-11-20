@@ -137,154 +137,167 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 28),
                   Form(
                     key: _form,
-                    child: Column(
-                      children: [
-                        if (_register) ...[
-                          TextFormField(
-                            controller: _company,
-                            textInputAction: TextInputAction.next,
-                            decoration: InputDecoration(
-                              labelText: tr(
-                                context,
-                                'Company name',
-                                'Tên doanh nghiệp',
+                    child: AutofillGroup(
+                      child: Column(
+                        children: [
+                          if (_register) ...[
+                            TextFormField(
+                              controller: _company,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [
+                                AutofillHints.organizationName,
+                              ],
+                              decoration: InputDecoration(
+                                labelText: tr(
+                                  context,
+                                  'Company name',
+                                  'Tên doanh nghiệp',
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.storefront_outlined,
+                                ),
                               ),
-                              prefixIcon: const Icon(Icons.storefront_outlined),
+                              validator:
+                                  (v) =>
+                                      (v?.trim().isEmpty ?? true)
+                                          ? tr(
+                                            context,
+                                            'Company name is required',
+                                            'Vui lòng nhập tên doanh nghiệp',
+                                          )
+                                          : null,
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          TextFormField(
+                            controller: _email,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.email],
+                            autocorrect: false,
+                            decoration: InputDecoration(
+                              labelText: tr(context, 'Email', 'Email'),
+                              prefixIcon: Icon(Icons.mail_outline),
                             ),
                             validator:
                                 (v) =>
-                                    (v?.trim().isEmpty ?? true)
+                                    !(v?.contains('@') ?? false)
                                         ? tr(
                                           context,
-                                          'Company name is required',
-                                          'Vui lòng nhập tên doanh nghiệp',
+                                          'Enter a valid email',
+                                          'Email không hợp lệ',
                                         )
                                         : null,
                           ),
                           const SizedBox(height: 14),
-                        ],
-                        TextFormField(
-                          controller: _email,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          autocorrect: false,
-                          decoration: InputDecoration(
-                            labelText: tr(context, 'Email', 'Email'),
-                            prefixIcon: Icon(Icons.mail_outline),
-                          ),
-                          validator:
-                              (v) =>
-                                  !(v?.contains('@') ?? false)
-                                      ? tr(
-                                        context,
-                                        'Enter a valid email',
-                                        'Email không hợp lệ',
-                                      )
-                                      : null,
-                        ),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _password,
-                          obscureText: _obscure,
-                          onFieldSubmitted: (_) => _submit(),
-                          decoration: InputDecoration(
-                            labelText: tr(context, 'Password', 'Mật khẩu'),
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              tooltip:
-                                  _obscure
-                                      ? tr(
-                                        context,
-                                        'Show password',
-                                        'Hiện mật khẩu',
-                                      )
-                                      : tr(
-                                        context,
-                                        'Hide password',
-                                        'Ẩn mật khẩu',
-                                      ),
-                              onPressed:
-                                  () => setState(() => _obscure = !_obscure),
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (v) {
-                            final value = v ?? '';
-                            if (!_register) {
-                              return value.isEmpty
-                                  ? tr(
-                                    context,
-                                    'Password is required',
-                                    'Vui lòng nhập mật khẩu',
-                                  )
-                                  : null;
-                            }
-                            final strong =
-                                value.length >= 12 &&
-                                value.contains(RegExp('[A-Z]')) &&
-                                value.contains(RegExp('[a-z]')) &&
-                                value.contains(RegExp('[0-9]'));
-                            return strong
-                                ? null
-                                : tr(
-                                  context,
-                                  'Use 12+ characters with upper/lowercase and a number',
-                                  'Dùng ít nhất 12 ký tự, gồm chữ hoa, chữ thường và số',
-                                );
-                          },
-                        ),
-                        if (_register) ...[
-                          const SizedBox(height: 14),
-                          DropdownButtonFormField<String>(
-                            initialValue: _currency,
+                          TextFormField(
+                            controller: _password,
+                            obscureText: _obscure,
+                            textInputAction: TextInputAction.done,
+                            autofillHints:
+                                _register
+                                    ? const [AutofillHints.newPassword]
+                                    : const [AutofillHints.password],
+                            onFieldSubmitted: (_) => _submit(),
                             decoration: InputDecoration(
-                              labelText: tr(
-                                context,
-                                'Base currency',
-                                'Tiền tệ cơ sở',
-                              ),
-                              prefixIcon: const Icon(Icons.currency_exchange),
-                            ),
-                            items:
-                                supportedCurrencies
-                                    .map(
-                                      (v) => DropdownMenuItem(
-                                        value: v,
-                                        child: Text(tr(context, v, v)),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged:
-                                (v) => setState(() => _currency = v ?? 'VND'),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        FilledButton(
-                          onPressed: app.busy ? null : _submit,
-                          child:
-                              app.busy
-                                  ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : Text(
-                                    _register
+                              labelText: tr(context, 'Password', 'Mật khẩu'),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                tooltip:
+                                    _obscure
                                         ? tr(
                                           context,
-                                          'Create workspace',
-                                          'Tạo không gian',
+                                          'Show password',
+                                          'Hiện mật khẩu',
                                         )
-                                        : tr(context, 'Sign in', 'Đăng nhập'),
-                                  ),
-                        ),
-                      ],
+                                        : tr(
+                                          context,
+                                          'Hide password',
+                                          'Ẩn mật khẩu',
+                                        ),
+                                onPressed:
+                                    () => setState(() => _obscure = !_obscure),
+                                icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
+                            ),
+                            validator: (v) {
+                              final value = v ?? '';
+                              if (!_register) {
+                                return value.isEmpty
+                                    ? tr(
+                                      context,
+                                      'Password is required',
+                                      'Vui lòng nhập mật khẩu',
+                                    )
+                                    : null;
+                              }
+                              final strong =
+                                  value.length >= 12 &&
+                                  value.contains(RegExp('[A-Z]')) &&
+                                  value.contains(RegExp('[a-z]')) &&
+                                  value.contains(RegExp('[0-9]'));
+                              return strong
+                                  ? null
+                                  : tr(
+                                    context,
+                                    'Use 12+ characters with upper/lowercase and a number',
+                                    'Dùng ít nhất 12 ký tự, gồm chữ hoa, chữ thường và số',
+                                  );
+                            },
+                          ),
+                          if (_register) ...[
+                            const SizedBox(height: 14),
+                            DropdownButtonFormField<String>(
+                              initialValue: _currency,
+                              decoration: InputDecoration(
+                                labelText: tr(
+                                  context,
+                                  'Base currency',
+                                  'Tiền tệ cơ sở',
+                                ),
+                                prefixIcon: const Icon(Icons.currency_exchange),
+                              ),
+                              items:
+                                  supportedCurrencies
+                                      .map(
+                                        (v) => DropdownMenuItem(
+                                          value: v,
+                                          child: Text(tr(context, v, v)),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged:
+                                  (v) => setState(() => _currency = v ?? 'VND'),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          FilledButton(
+                            onPressed: app.busy ? null : _submit,
+                            child:
+                                app.busy
+                                    ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                    : Text(
+                                      _register
+                                          ? tr(
+                                            context,
+                                            'Create workspace',
+                                            'Tạo không gian',
+                                          )
+                                          : tr(context, 'Sign in', 'Đăng nhập'),
+                                    ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),

@@ -285,6 +285,12 @@ class AppController extends ChangeNotifier {
     await prefs.setString('tenvora_theme', mode.name);
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    _googleAuthenticationSubscription?.cancel();
+    super.dispose();
+  }
 }
 
 class AppScope extends InheritedNotifier<AppController> {
