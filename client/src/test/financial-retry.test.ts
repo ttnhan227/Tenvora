@@ -1,18 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import apiClient from "@/services/apiClient";
-import { financialWrite } from "@/lib/financialWrite";
+import { financialWrite, setFinancialWriteScope } from "@/lib/financialWrite";
 import { getApiErrorInfo } from "@/lib/apiErrors";
 
 vi.mock("@/services/apiClient", () => ({ default: { post: vi.fn() } }));
 
 describe("financial retry safety", () => {
-  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); localStorage.setItem("user", JSON.stringify({ id: "owner", tenantId: "workspace" })); });
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); setFinancialWriteScope("workspace:owner"); });
   it("reuses the request ID after an uncertain failure, including a module reload", async () => {
     vi.mocked(apiClient.post).mockRejectedValueOnce(new Error("Network Error"));
     await expect(financialWrite("/sales/sale/payments", { amount: 10, method: "Cash" })).rejects.toMatchObject({ code: "write_uncertain" });
     const first = vi.mocked(apiClient.post).mock.calls[0][2]?.headers?.["Idempotency-Key"];
     vi.resetModules();
-    const { financialWrite: restartedWrite } = await import("@/lib/financialWrite");
+    const { financialWrite: restartedWrite, setFinancialWriteScope: setRestartedScope } = await import("@/lib/financialWrite");
+    setRestartedScope("workspace:owner");
     vi.mocked(apiClient.post).mockResolvedValue({ data: { data: { id: "payment" } } });
     await restartedWrite("/sales/sale/payments", { method: "Cash", amount: 10 });
     expect(vi.mocked(apiClient.post).mock.calls[1][2]?.headers?.["Idempotency-Key"]).toBe(first);
@@ -36,7 +37,7 @@ describe("financial retry safety", () => {
     expect(localStorage.getItem("tenvora_pending_writes")).toBe("{}");
     vi.mocked(apiClient.post).mockRejectedValue(new Error("Network Error"));
     await expect(financialWrite("/sales", { amount: 10 })).rejects.toThrow();
-    localStorage.setItem("user", JSON.stringify({ id: "other", tenantId: "workspace" }));
+    setFinancialWriteScope("workspace:other");
     await expect(financialWrite("/sales", { amount: 10 })).rejects.toThrow();
     expect(vi.mocked(apiClient.post).mock.calls[1][2]?.headers?.["Idempotency-Key"]).not.toBe(vi.mocked(apiClient.post).mock.calls[2][2]?.headers?.["Idempotency-Key"]);
   });

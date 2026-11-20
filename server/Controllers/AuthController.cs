@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -13,11 +14,100 @@ namespace Tenvora.Api.Controllers;
 [EnableRateLimiting("auth-rate-limit")]
 public class AuthController : ControllerBase
 {
+    private const string AccessCookieName = "tenvora_access_token";
+    private const string RefreshCookieName = "tenvora_refresh_token";
+    private const string CsrfCookieName = "XSRF-TOKEN";
+
     private readonly IAuthService _authService;
 
     public AuthController(IAuthService authService)
     {
         _authService = authService;
+    }
+
+    private (bool Secure, SameSiteMode SameSite) ResolveCookieSecurity()
+    {
+        var configuredSameSite = Environment.GetEnvironmentVariable("AUTH_COOKIE_SAMESITE");
+        var sameSite = string.Equals(configuredSameSite, "None", StringComparison.OrdinalIgnoreCase)
+            ? SameSiteMode.None
+            : SameSiteMode.Lax;
+
+        var isHttps = Request.IsHttps
+            || string.Equals(Request.Headers["X-Forwarded-Proto"].FirstOrDefault(), "https", StringComparison.OrdinalIgnoreCase)
+            || sameSite == SameSiteMode.None;
+
+        return (isHttps, sameSite);
+    }
+
+    private void SetAuthCookies(AuthResponse auth)
+    {
+        if (HttpContext is null) return;
+        var (secure, sameSite) = ResolveCookieSecurity();
+
+        Response.Cookies.Append(AccessCookieName, auth.AccessToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/",
+            IsEssential = true,
+            Expires = DateTimeOffset.UtcNow.AddHours(2)
+        });
+
+        Response.Cookies.Append(RefreshCookieName, auth.RefreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/api/auth",
+            IsEssential = true,
+            Expires = DateTimeOffset.UtcNow.AddDays(7)
+        });
+
+        EnsureCsrfCookie(secure, sameSite);
+    }
+
+    private void EnsureCsrfCookie(bool secure, SameSiteMode sameSite)
+    {
+        if (HttpContext is null) return;
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        Response.Cookies.Append(CsrfCookieName, token, new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/",
+            IsEssential = true,
+            Expires = DateTimeOffset.UtcNow.AddDays(7)
+        });
+    }
+
+    private void ClearAuthCookies()
+    {
+        if (HttpContext is null) return;
+        var (secure, sameSite) = ResolveCookieSecurity();
+
+        Response.Cookies.Delete(AccessCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/"
+        });
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/api/auth"
+        });
+        Response.Cookies.Delete(CsrfCookieName, new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = secure,
+            SameSite = sameSite,
+            Path = "/"
+        });
     }
 
     [HttpPost("register")]
@@ -26,6 +116,9 @@ public class AuthController : ControllerBase
         var result = await _authService.RegisterAsync(request);
         if (!result.Success)
             return BadRequest(result);
+
+        if (result.Data is not null)
+            SetAuthCookies(result.Data);
 
         return Ok(result);
     }
@@ -36,6 +129,9 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         if (!result.Success)
             return Unauthorized(result);
+
+        if (result.Data is not null)
+            SetAuthCookies(result.Data);
 
         return Ok(result);
     }
@@ -61,15 +157,28 @@ public class AuthController : ControllerBase
             return Unauthorized(result);
         }
 
+        if (result.Data is not null)
+            SetAuthCookies(result.Data);
+
         return Ok(result);
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
-        var result = await _authService.RefreshTokenAsync(request);
+        var refreshToken = !string.IsNullOrWhiteSpace(request?.RefreshToken)
+            ? request.RefreshToken
+            : HttpContext?.Request.Cookies[RefreshCookieName];
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Unauthorized(ApiResult<AuthResponse>.Fail("Refresh token is required."));
+
+        var result = await _authService.RefreshTokenAsync(new RefreshTokenRequest(refreshToken));
         if (!result.Success)
             return Unauthorized(result);
+
+        if (result.Data is not null)
+            SetAuthCookies(result.Data);
 
         return Ok(result);
     }
@@ -82,7 +191,16 @@ public class AuthController : ControllerBase
         {
             try { userId = User.GetUserId(); } catch { /* ignore if missing */ }
         }
-        var result = await _authService.LogoutAsync(userId, request?.RefreshToken);
+        var refreshToken = !string.IsNullOrWhiteSpace(request?.RefreshToken)
+            ? request.RefreshToken
+            : HttpContext?.Request.Cookies[RefreshCookieName];
+
+        var result = await _authService.LogoutAsync(userId, refreshToken);
+        ClearAuthCookies();
+        if (HttpContext is not null)
+        {
+            Response.Headers["Clear-Site-Data"] = "\"cookies\", \"storage\"";
+        }
         return Ok(result);
     }
 
@@ -94,6 +212,14 @@ public class AuthController : ControllerBase
         var result = await _authService.GetProfileAsync(userId);
         if (!result.Success)
             return NotFound(result);
+
+        if (HttpContext is not null
+            && Request.Cookies.ContainsKey(AccessCookieName)
+            && !Request.Cookies.ContainsKey(CsrfCookieName))
+        {
+            var (secure, sameSite) = ResolveCookieSecurity();
+            EnsureCsrfCookie(secure, sameSite);
+        }
 
         return Ok(result);
     }

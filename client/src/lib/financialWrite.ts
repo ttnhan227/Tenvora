@@ -3,6 +3,15 @@ import type { AxiosResponse } from "axios";
 
 const storageKey = "tenvora_pending_writes";
 const active = new Map<string, Promise<AxiosResponse>>();
+let sessionScope: string | null = null;
+
+export function setFinancialWriteScope(scope: string | null) {
+  sessionScope = scope;
+}
+
+function getScope(): string {
+  return sessionScope ?? "local-session";
+}
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -12,10 +21,9 @@ function canonical(value: unknown): unknown {
   return value;
 }
 
-// Store only a digest and request ID, never the submitted financial details.
+// Store only a digest and request ID, never the submitted financial details or user PII.
 export async function financialWrite(path: string, input: unknown): Promise<AxiosResponse> {
-  const user = JSON.parse(localStorage.getItem("user") ?? "null");
-  const scope = user ? `${user.tenantId}:${user.id ?? user.userId ?? user.email}` : localStorage.getItem("refreshToken") ?? "local-session";
+  const scope = getScope();
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify([scope, path, canonical(input)])));
   const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
   const inFlight = active.get(fingerprint);
@@ -27,9 +35,7 @@ export async function financialWrite(path: string, input: unknown): Promise<Axio
     pending[fingerprint] = id;
     // Fail before the network request if safe retry persistence is unavailable.
     localStorage.setItem(storageKey, JSON.stringify(pending));
-    const currentUser = JSON.parse(localStorage.getItem("user") ?? "null");
-    const currentScope = currentUser ? `${currentUser.tenantId}:${currentUser.id ?? currentUser.userId ?? currentUser.email}` : localStorage.getItem("refreshToken") ?? "local-session";
-    if (currentScope !== scope) throw new Error("Your account changed. Open the form again.");
+    if (getScope() !== scope) throw new Error("Your account changed. Open the form again.");
     const forget = () => {
       const current = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
       delete current[fingerprint];

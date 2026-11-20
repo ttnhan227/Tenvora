@@ -100,7 +100,8 @@ builder.Services.AddCors(options =>
         // configured CLIENT_ORIGINS and loopback dev origins in one predicate.
         policy.SetIsOriginAllowed(origin => CorsOriginPolicy.IsOriginAllowed(origin, allowedClientOrigins))
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -276,6 +277,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ClockSkew = TimeSpan.Zero
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token) &&
+                    context.Request.Cookies.TryGetValue("tenvora_access_token", out var cookieToken) &&
+                    !string.IsNullOrWhiteSpace(cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -319,6 +333,57 @@ app.UseRequestLocalization(localizationOptions);
 
 app.UseCors("ClientApp");
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    var method = context.Request.Method;
+    var isUnsafeMethod = !HttpMethods.IsGet(method)
+        && !HttpMethods.IsHead(method)
+        && !HttpMethods.IsOptions(method)
+        && !HttpMethods.IsTrace(method);
+
+    if (isUnsafeMethod)
+    {
+        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+        var usesBearerHeader = !string.IsNullOrWhiteSpace(authHeader)
+            && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
+
+        var hasAuthCookie = context.Request.Cookies.ContainsKey("tenvora_access_token")
+            || context.Request.Cookies.ContainsKey("tenvora_refresh_token");
+
+        var path = context.Request.Path.Value ?? string.Empty;
+        var isPublicAuthEntry = path.Equals("/api/auth/login", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/auth/register", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/auth/google", StringComparison.OrdinalIgnoreCase);
+
+        if (!usesBearerHeader && hasAuthCookie && !isPublicAuthEntry)
+        {
+            var csrfCookie = context.Request.Cookies["XSRF-TOKEN"];
+            var csrfHeader = context.Request.Headers["X-XSRF-TOKEN"].FirstOrDefault()
+                ?? context.Request.Headers["X-CSRF-TOKEN"].FirstOrDefault();
+
+            var valid = !string.IsNullOrWhiteSpace(csrfCookie)
+                && !string.IsNullOrWhiteSpace(csrfHeader)
+                && csrfCookie.Length == csrfHeader.Length
+                && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                    Encoding.UTF8.GetBytes(csrfCookie),
+                    Encoding.UTF8.GetBytes(csrfHeader));
+
+            if (!valid)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    success = false,
+                    message = "CSRF validation failed.",
+                    code = "csrf_invalid"
+                });
+                return;
+            }
+        }
+    }
+
+    await next();
+});
 app.UseRateLimiter();
 
 // SECURITY: Set PostgreSQL session variable 'app.current_tenant_id' after authentication

@@ -1,4 +1,4 @@
-import apiClient from "./apiClient";
+import apiClient, { bumpApiSessionEpoch } from "./apiClient";
 import { toApiFailure } from "@/lib/apiErrors";
 
 export interface LoginRequest {
@@ -81,21 +81,18 @@ export interface ApiResponse<T> {
   fieldErrors?: Record<string, string[]>;
 }
 
+let refreshEpoch = 0;
+
 export const authService = {
   refreshSession: async (): Promise<boolean> => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (!refreshToken) return false;
-
+    const startEpoch = refreshEpoch;
     try {
-      const response = await apiClient.post("/auth/refresh-token", { refreshToken });
-      if (localStorage.getItem("refreshToken") !== refreshToken) return !!localStorage.getItem("accessToken");
-      if (!response.data.data?.accessToken || !response.data.data?.refreshToken) throw new Error("Incomplete session response");
-      localStorage.setItem("accessToken", response.data.data.accessToken);
-      localStorage.setItem("refreshToken", response.data.data.refreshToken);
-      return true;
+      const response = await apiClient.post("/auth/refresh-token", {});
+      if (refreshEpoch !== startEpoch) return false;
+      return Boolean(response.data?.success);
     } catch (error) {
       const failure = toApiFailure(error, "Could not restore your session");
-      if (localStorage.getItem("refreshToken") !== refreshToken) return !!localStorage.getItem("accessToken");
+      if (refreshEpoch !== startEpoch) return false;
       if (failure.status === 401 || failure.status === 403) return false;
       throw error;
     }
@@ -166,14 +163,10 @@ export const authService = {
 
 
   logout: async () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    refreshEpoch++;
+    bumpApiSessionEpoch?.();
     try {
-      if (refreshToken) {
-        await apiClient.post("/auth/logout", { refreshToken });
-      }
+      await apiClient.post("/auth/logout", {});
     } catch {
       // Ignore network errors on logout
     }

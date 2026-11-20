@@ -24,17 +24,10 @@ async function businessFixture(page: Page, role = "OperationsManager") {
   const purchases: any[] = [];
   const expenses: any[] = [];
 
-  await page.addInitScript((userRole) => {
-    // API calls are mocked, but the real auth guard still checks token expiry.
-    const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
-    localStorage.setItem("accessToken", `test.${payload}.test-signature`);
-    localStorage.setItem("user", JSON.stringify({
-      id: "operator", tenantId: "tenant-1", role: userRole,
-      email: "owner@example.test", companyName: "Example Local Business", preferredCurrency: "VND", onboardingCompleted: true, isActive: true,
-    }));
+  await page.addInitScript(() => {
     localStorage.setItem("theme", "light");
     localStorage.setItem("tenvora_lang", "en");
-  }, role);
+  });
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();

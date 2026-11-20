@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { UserProfile, authService, AuthResponse, ApiResponse } from "@/services/authService";
+import { setFinancialWriteScope } from "@/lib/financialWrite";
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -18,29 +19,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function accessTokenNeedsRefresh(token: string) {
-  try {
-    const encoded = token.split(".")[1];
-    if (!encoded) return true;
-    const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
-    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    const payload = JSON.parse(atob(normalized)) as { exp?: number };
-    return !payload.exp || payload.exp * 1000 <= Date.now() + 30_000;
-  } catch {
-    return true;
-  }
+function scopeForUser(profile: UserProfile | null): string | null {
+  return profile ? `${profile.tenantId}:${profile.id ?? profile.email}` : null;
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const stored = localStorage.getItem("user");
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem("accessToken"));
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [sessionError, setSessionError] = useState(false);
   const [retrySession, setRetrySession] = useState(0);
   const authEpoch = useRef(0);
@@ -49,27 +34,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let active = true;
     const epoch = authEpoch.current;
     const initializeAuth = async () => {
-      const token = localStorage.getItem("accessToken");
-      if (!token) { setIsLoading(false); return; }
       setIsLoading(true);
       setSessionError(false);
       try {
-        if (accessTokenNeedsRefresh(token) && !(await authService.refreshSession())) {
-          if (active && authEpoch.current === epoch) { void authService.logout(); setUser(null); }
-          return;
-        }
         const result = await authService.getProfile();
-        if (!active || !localStorage.getItem("accessToken") || authEpoch.current !== epoch) return;
+        if (!active || authEpoch.current !== epoch) return;
         if (result.success && result.data) {
           setUser(result.data);
-          localStorage.setItem("user", JSON.stringify(result.data));
+          setFinancialWriteScope(scopeForUser(result.data));
         } else if (result.status === 401 || result.status === 403) {
-          void authService.logout(); setUser(null);
+          setUser(null);
+          setFinancialWriteScope(null);
         } else {
           setSessionError(true);
         }
       } catch {
-        if (active) setSessionError(true);
+        if (active && authEpoch.current === epoch) setSessionError(true);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -84,8 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.data) {
         authEpoch.current++;
         setSessionError(false);
-        localStorage.setItem("accessToken", result.data.accessToken);
-        localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
           id: result.data.userId,
           tenantId: result.data.tenantId,
@@ -102,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
-        localStorage.setItem("user", JSON.stringify(profile));
+        setFinancialWriteScope(scopeForUser(profile));
         return true;
       }
       return false;
@@ -118,8 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.data) {
         authEpoch.current++;
         setSessionError(false);
-        localStorage.setItem("accessToken", result.data.accessToken);
-        localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
           id: result.data.userId,
           tenantId: result.data.tenantId,
@@ -136,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
-        localStorage.setItem("user", JSON.stringify(profile));
+        setFinancialWriteScope(scopeForUser(profile));
         return result;
       }
       return result;
@@ -156,8 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.data) {
         authEpoch.current++;
         setSessionError(false);
-        localStorage.setItem("accessToken", result.data.accessToken);
-        localStorage.setItem("refreshToken", result.data.refreshToken);
         const profile: UserProfile = {
           id: result.data.userId,
           tenantId: result.data.tenantId,
@@ -174,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: result.data.phoneNumber,
         };
         setUser(profile);
-        localStorage.setItem("user", JSON.stringify(profile));
+        setFinancialWriteScope(scopeForUser(profile));
         return result;
       }
       return result;
@@ -222,7 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (result.success && result.data) {
         setUser(result.data);
-        localStorage.setItem("user", JSON.stringify(result.data));
+        setFinancialWriteScope(scopeForUser(result.data));
       }
       return result;
     } catch (error) {
@@ -252,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (result.success && result.data) {
         setUser(result.data);
-        localStorage.setItem("user", JSON.stringify(result.data));
+        setFinancialWriteScope(scopeForUser(result.data));
       }
       return result;
     } catch (error) {
@@ -267,7 +241,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     authEpoch.current++;
-    authService.logout();
+    void authService.logout();
+    setFinancialWriteScope(null);
     setSessionError(false);
     setUser(null);
   };
@@ -276,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const result = await authService.getProfile();
     if (result.success && result.data) {
       setUser(result.data);
-      localStorage.setItem("user", JSON.stringify(result.data));
+      setFinancialWriteScope(scopeForUser(result.data));
     }
   };
 
