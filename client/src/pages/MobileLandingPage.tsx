@@ -219,13 +219,13 @@ export default function MobileLandingPage() {
             </div>
             <div className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-4 sm:gap-8">
               <figure className="overflow-hidden rounded-3xl border bg-background p-2 shadow-lg">
-                <img src="/screenshots/overview.png" alt="Tenvora Android business overview" className="w-full rounded-2xl" loading="lazy" />
+                <img src="/screenshots/overview.png" alt="Tenvora Android business overview" width={1280} height={800} className="w-full rounded-2xl" loading="lazy" />
                 <figcaption className="px-2 pb-2 pt-3 text-center text-xs font-semibold text-muted-foreground">
                   {isVietnamese ? "Tổng quan kinh doanh" : "Business overview"}
                 </figcaption>
               </figure>
               <figure className="overflow-hidden rounded-3xl border bg-background p-2 shadow-lg">
-                <img src="/screenshots/assistant.png" alt="Tenvora Android AI assistant" className="w-full rounded-2xl" loading="lazy" />
+                <img src="/screenshots/assistant.png" alt="Tenvora Android AI assistant" width={1280} height={800} className="w-full rounded-2xl" loading="lazy" />
                 <figcaption className="px-2 pb-2 pt-3 text-center text-xs font-semibold text-muted-foreground">
                   {isVietnamese ? "Trợ lý kinh doanh" : "Business assistant"}
                 </figcaption>

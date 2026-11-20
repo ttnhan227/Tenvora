@@ -38,9 +38,9 @@ export default function Footer() {
 
           {/* Product Links */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
               {isVietnamese ? "Sản phẩm" : "Product"}
-            </h4>
+            </h2>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li><Link to="/privacy" className="hover:underline">{isVietnamese ? "Quyền riêng tư" : "Privacy"}</Link></li>
               <li><Link to="/delete-account" className="hover:underline">{isVietnamese ? "Xóa tài khoản" : "Delete account"}</Link></li>
@@ -75,9 +75,9 @@ export default function Footer() {
 
           {/* Solutions by Industry */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
               {isVietnamese ? "Ngành nghề" : "Solutions"}
-            </h4>
+            </h2>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li>
                 <a href="#solutions" className="hover:text-foreground transition-colors">
@@ -104,9 +104,9 @@ export default function Footer() {
 
           {/* Security & Access */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
               {isVietnamese ? "Bảo mật & Tài nguyên" : "Trust & Access"}
-            </h4>
+            </h2>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li>
                 <Link to="/login" className="hover:text-foreground transition-colors">

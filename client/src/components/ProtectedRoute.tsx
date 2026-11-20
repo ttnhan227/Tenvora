@@ -12,9 +12,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div role="status" className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 inline-block animate-spin">
+          <div aria-hidden="true" className="mb-4 inline-block animate-spin">
             <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
           <p className="text-muted-foreground">Loading...</p>

@@ -449,7 +449,7 @@ export default function Index() {
                     <div className="rounded-xl border border-border/70 bg-card p-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
                         <div>
-                          <h4 className="text-base font-bold">{isVietnamese ? "Sổ theo dõi nợ khách hàng đang hoạt động" : "Active Customer Debt Ledger"}</h4>
+                          <h2 className="text-base font-bold">{isVietnamese ? "Sổ theo dõi nợ khách hàng đang hoạt động" : "Active Customer Debt Ledger"}</h2>
                           <p className="text-xs text-muted-foreground">
                             {isVietnamese ? "Sắp xếp theo số dư lớn nhất · Cập nhật tức thì" : "Sorted by highest balance · Real-time aging ledger"}
                           </p>

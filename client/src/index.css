@@ -133,17 +133,8 @@
 }
 
 @utility custom-scrollbar {
-  &::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 999px;
-  }
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--border)) transparent;
 }
 
 @utility micro-label {
@@ -152,13 +143,14 @@
 
 @layer base {
   * { @apply border-border; }
-  html { color-scheme: light; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  html { color-scheme: light; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
   html.dark { color-scheme: dark; }
   body {
     @apply bg-background text-foreground;
     min-width: 320px;
     font-family: "Be Vietnam Pro", "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 15px;
+    font-size: 0.9375rem;
+    font-size-adjust: from-font;
     line-height: 1.6;
     letter-spacing: -0.003em;
     background-image: radial-gradient(circle at 15% 5%, hsl(var(--warning) / .055), transparent 30rem), radial-gradient(circle at 90% 35%, hsl(var(--primary) / .04), transparent 34rem);
@@ -166,6 +158,7 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
     font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size-adjust: from-font;
     letter-spacing: -0.015em;
     text-wrap: balance;
   }
@@ -193,9 +186,27 @@
   [class*="request-progress"] {
     animation: none !important;
   }
+  .animate-spin {
+    animation-duration: 3s !important;
+  }
   [class*="request-progress"] {
     width: 100%;
     opacity: 0.45;
+  }
+}
+
+@media (forced-colors: active) {
+  .paper-card {
+    border-color: CanvasText;
+  }
+  .friendly-focus:focus-visible,
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }
 

@@ -57,7 +57,7 @@ Configure uptime monitors (e.g., Render Health Checks or external uptime service
 
 Before promoting any release to production:
 
-- [ ] **Automated Tests**: All backend (212 xUnit tests) and frontend (143 Vitest tests across 33 suites) pass via `pwsh scripts/verify-all.ps1`.
+- [ ] **Automated Tests**: All backend (212 xUnit tests) and frontend (146 Vitest tests across 34 suites) pass via `pwsh scripts/verify-all.ps1`.
 - [ ] **Security**: CORS origins are restricted to configured web domains; SSL/TLS is enforced.
 - [ ] **Secrets**: No `.env` files or developmental keys are checked into source control.
 - [ ] **Storage**: Object storage bucket policies allow authenticated receipt and document uploads with secure access.

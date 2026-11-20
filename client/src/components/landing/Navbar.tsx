@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Smartphone, Menu, X, Sparkles, Globe } from "lucide-react";
 import { useOptionalAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,20 @@ export default function Navbar() {
   const location = useLocation();
   const { language, setLanguage, isVietnamese, canChangeLanguage } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileToggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+        mobileToggleRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const isHome = location.pathname === "/";
 
@@ -38,21 +52,24 @@ export default function Navbar() {
         </div>
 
         {/* Desktop Navigation Links */}
-        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-6 text-sm font-medium">
-          {navLinks.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="group inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span>{item.label}</span>
-              {item.badge && (
-                <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary">
-                  {item.badge}
-                </span>
-              )}
-            </a>
-          ))}
+        <nav aria-label="Main" className="hidden lg:block">
+          <ul className="flex items-center gap-6 text-sm font-medium">
+            {navLinks.map((item) => (
+              <li key={item.label}>
+                <a
+                  href={item.href}
+                  className="group inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
         </nav>
 
         {/* Right Action Buttons */}
@@ -93,10 +110,11 @@ export default function Navbar() {
 
           {/* Mobile Menu Hamburger */}
           <button
+            ref={mobileToggleRef}
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="friendly-focus lg:hidden inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border/80 bg-card/60 text-foreground hover:bg-accent/60 transition-colors"
-            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="public-mobile-navigation"
           >
@@ -108,22 +126,25 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div id="public-mobile-navigation" className="lg:hidden border-b border-border/80 bg-background px-5 py-4 animate-fade-in shadow-lg">
-          <nav aria-label="Mobile navigation" className="flex flex-col gap-3 text-sm font-medium">
-            {navLinks.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between py-2 text-foreground/80 hover:text-foreground transition-colors border-b border-border/40"
-              >
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
-                    {item.badge}
-                  </span>
-                )}
-              </a>
-            ))}
+          <nav aria-label="Mobile" className="flex flex-col gap-3 text-sm font-medium">
+            <ul className="flex flex-col gap-3">
+              {navLinks.map((item) => (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between py-2 text-foreground/80 hover:text-foreground transition-colors border-b border-border/40"
+                  >
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+                        {item.badge}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
 
             {/* Mobile Drawer Language Row */}
             {canChangeLanguage && <div className="flex items-center justify-between py-2 border-b border-border/40">

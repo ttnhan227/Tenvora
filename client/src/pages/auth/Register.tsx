@@ -128,6 +128,7 @@ export default function Register() {
               >
                 <Input
                   id="company"
+                  autoComplete="organization"
                   autoFocus
                   value={companyName}
                   onChange={(e) => { setCompanyName(e.target.value); clear("companyName"); }}

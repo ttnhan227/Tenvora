@@ -1,5 +1,5 @@
 import { translationsMap, type SupportedLanguage } from "@/locales";
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -80,9 +80,42 @@ const queryClient = new QueryClient({
   },
 });
 
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "Tenvora — Your Business, Clearly Recorded",
+  "/mobile": "Mobile App — Tenvora",
+  "/privacy": "Privacy Policy — Tenvora",
+  "/terms": "Terms of Service — Tenvora",
+  "/delete-account": "Delete Account — Tenvora",
+  "/login": "Sign In — Tenvora",
+  "/register": "Create Account — Tenvora",
+  "/dashboard": "Overview — Tenvora",
+  "/agent": "AI Assistant — Tenvora",
+  "/review": "Review Queue — Tenvora",
+  "/imports": "Data Imports — Tenvora",
+  "/customers": "Customers — Tenvora",
+  "/products": "Products — Tenvora",
+  "/sales": "Sales — Tenvora",
+  "/suppliers": "Suppliers — Tenvora",
+  "/purchases": "Purchases — Tenvora",
+  "/expenses": "Expenses — Tenvora",
+  "/reports": "Reports — Tenvora",
+  "/settings": "Settings — Tenvora",
+  "/team": "Team — Tenvora",
+  "/audit": "Audit Log — Tenvora",
+};
+
+function getTitleForPath(pathname: string): string {
+  const normalized = pathname.replace(/\/+$/, "") || "/";
+  if (normalized.startsWith("/customers/")) return "Customer Details — Tenvora";
+  return ROUTE_TITLES[normalized] ?? "Tenvora — Your Business, Clearly Recorded";
+}
+
 function RouteLanguageProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const publicPage = isPublicPage(pathname);
+  useEffect(() => {
+    document.title = getTitleForPath(pathname);
+  }, [pathname]);
   return <LanguageProvider fixedLanguage={publicPage ? "en" : undefined}>{children}</LanguageProvider>;
 }
 

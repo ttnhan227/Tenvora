@@ -52,7 +52,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (355 tests: 212 .NET + 143 Vitest), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (358 tests: 212 .NET + 146 Vitest), Docker images, verified APK builds. |
 
 ---
 
@@ -129,7 +129,7 @@ bash scripts/verify-all.sh         # Linux / macOS
 # Backend Tests (212 xUnit tests verifying ledger math, concurrency, and RLS)
 dotnet test server.Tests
 
-# Frontend Unit & Integration Tests (143 Vitest tests across 33 test suites)
+# Frontend Unit & Integration Tests (146 Vitest tests across 34 test suites)
 npm --prefix client run test:run
 
 # Frontend Linter & Production Build
@@ -158,7 +158,8 @@ Tenvora/
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration
-├── docs/                   # Production operations and Play Store compliance
+├── docs/                   # Production operations, engineering records, and Play Store compliance
+│   ├── engineering-records.md # Engineering audit closures and verification records
 │   ├── operations.md       # Deployment runbooks, database recovery, and health checks
 │   └── google-play.md      # Store listing metadata, Data Safety, and compliance
 └── .github/workflows/      # Automated CI/CD & Mobile release pipelines
