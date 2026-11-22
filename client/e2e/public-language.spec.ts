@@ -17,18 +17,18 @@ test("public navigation stays usable at tablet, phone, and desktop widths", asyn
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
 
-    const menuButton = page.getByRole("button", { name: "Open navigation menu" });
+    const menuButton = page.getByRole("button", { name: "Open menu" });
     await expect(menuButton).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
     await menuButton.click();
-    await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Close navigation menu" })).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("navigation", { name: "Mobile" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Close menu" })).toHaveAttribute("aria-expanded", "true");
   }
 
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open navigation menu" })).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeHidden();
 });
 
 test("unknown routes render the not-found screen", async ({ page }) => {

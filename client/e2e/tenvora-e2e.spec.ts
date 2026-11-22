@@ -244,8 +244,11 @@ test.describe("Tenvora 2.0 golden workflow", () => {
     await expect(page.getByText("Partially paid").first()).toBeVisible();
     await expect(page.getByText(/1,700,000/).first()).toBeVisible();
 
-    const receiptDialog = page.getByRole("dialog", { name: "Sales Receipt Slip" });
+    await page.locator("article").getByRole("button", { name: "Receipt" }).click();
+    const receiptDialog = page.getByRole("dialog", { name: "Sales Receipt" });
+    await expect(receiptDialog).toBeVisible();
     await receiptDialog.getByRole("button", { name: "Close" }).click();
+    await expect(receiptDialog).toBeHidden();
     await page.getByRole("button", { name: "Receive payment" }).click();
     const paymentDialog = page.getByRole("dialog");
     await expect(paymentDialog.getByLabel("Amount *")).toHaveValue("1700000");
