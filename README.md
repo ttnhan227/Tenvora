@@ -1,7 +1,7 @@
 # Tenvora
 
 <p align="center">
-  <img src="client/public/logo-mark.png" alt="Tenvora Logo" width="88" height="88" />
+  <img src="client/public/logo.svg" alt="Tenvora Logo" width="88" height="88" />
 </p>
 
 <p align="center">
@@ -39,6 +39,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 * **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
 * **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
 * **🔒 Tenant Scoping & RLS:** Explicit `TenantId` query scoping in EF Core services combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
+* **📡 Observability & Event Delivery:** End-to-end OpenTelemetry distributed tracing across HTTP, EF Core, and Npgsql, paired with a Transactional Outbox webhook dispatcher for reliable external integrations.
 * **🌐 Multilingual & Multi-Currency Support:** Comprehensive web workspace with USD ($) primary currency and international localization (English and Vietnamese); native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
 
 ---
@@ -52,7 +53,7 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (230 local / 239 CI .NET + 146 Vitest + 11 Playwright E2E + 66 Flutter), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Google Cloud Run, Render | Automated testing (230 local / 239 CI .NET + 149 Vitest + 11 Playwright E2E + 66 Flutter), Docker images, verified APK/AAB builds. |
 
 For detailed system architecture, ADRs, concurrency controls, OpenTelemetry tracing, transactional outbox webhooks, and failure recovery matrices, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
@@ -131,7 +132,7 @@ bash scripts/verify-all.sh         # Linux / macOS
 # Backend Tests (230 local / 239 CI xUnit tests verifying ledger math, concurrency, RLS, tracing, and webhooks)
 dotnet test server.Tests
 
-# Frontend Unit & Integration Tests (146 Vitest tests across 34 test suites)
+# Frontend Unit & Integration Tests (149 Vitest tests across 35 test suites)
 npm --prefix client run test:run
 
 # Frontend Linter & Production Build
@@ -169,7 +170,8 @@ Tenvora/
     ├── ci.yml              # Tests and Docker images
     ├── verify-product.yml  # PostgreSQL, recovery, backend and browser checks
     ├── deploy-render.yml   # Manual Render deployment after verification
-    └── build-mobile.yml    # APK verification; publication is explicitly selected
+    ├── build-mobile.yml    # APK verification; publication is explicitly selected
+    └── build-play-bundle.yml # Signed Google Play AAB/APK bundle verification
 ```
 
 ---

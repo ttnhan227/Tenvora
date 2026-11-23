@@ -279,6 +279,7 @@ class TenvoraRepository {
       await _write(() => _api.put('/products/$id', data: payload)),
     );
   }
+
   Future<void> deleteProduct(String id) async {
     await _write(() => _api.delete('/products/$id'));
   }
@@ -408,10 +409,9 @@ class TenvoraRepository {
       'invoiceImageDataUrl',
       'purchases',
     );
-    return Purchase.fromJson(
-      await _financialPost('/purchases', data: payload),
-    );
+    return Purchase.fromJson(await _financialPost('/purchases', data: payload));
   }
+
   Future<Purchase> recordPurchasePayment(String id, Json input) async =>
       Purchase.fromJson(
         await _financialPost('/purchases/$id/payments', data: input),
@@ -482,6 +482,7 @@ class TenvoraRepository {
       await _write(() => _api.put('/business-expenses/$id', data: payload)),
     );
   }
+
   Future<void> deleteExpense(String id) async {
     await _write(() => _api.delete('/business-expenses/$id'));
   }

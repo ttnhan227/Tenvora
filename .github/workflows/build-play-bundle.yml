@@ -2,6 +2,10 @@ name: Prepare verified Google Play bundle
 on:
   push:
     branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-play-bundle.yml'
+      - '.github/workflows/verify-product.yml'
   workflow_dispatch:
     inputs:
       build_number:

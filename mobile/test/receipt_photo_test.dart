@@ -143,7 +143,8 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: ReceiptPhoto(
-            value: '/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png',
+            value:
+                '/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png',
             languageCode: 'en',
           ),
         ),
@@ -154,7 +155,9 @@ void main() {
     final networkImage = image.image as NetworkImage;
     expect(
       networkImage.url,
-      endsWith('/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png'),
+      endsWith(
+        '/uploads/tenvora/11111111-1111-1111-1111-111111111111/expenses/receipt.png',
+      ),
     );
   });
 }

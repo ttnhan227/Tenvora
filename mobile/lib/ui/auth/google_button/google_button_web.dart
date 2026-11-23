@@ -13,9 +13,10 @@ Widget buildGoogleSignInButton({
       child: web.renderButton(
         configuration: web.GSIButtonConfiguration(
           text: web.GSIButtonText.continueWith,
-          theme: Theme.of(context).brightness == Brightness.dark
-              ? web.GSIButtonTheme.filledBlue
-              : web.GSIButtonTheme.outline,
+          theme:
+              Theme.of(context).brightness == Brightness.dark
+                  ? web.GSIButtonTheme.filledBlue
+                  : web.GSIButtonTheme.outline,
         ),
       ),
     ),

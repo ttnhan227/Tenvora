@@ -5,6 +5,10 @@ on:
     types: [published]
   push:
     branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-mobile.yml'
+      - '.github/workflows/verify-product.yml'
   workflow_dispatch:
     inputs:
       publish:
@@ -76,7 +80,7 @@ jobs:
         env:
           KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          PUBLISH: ${{ inputs.publish || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+          PUBLISH: ${{ inputs.publish || github.event_name == 'release' }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_PROPERTIES" ]; then
             echo "Decoded production upload keystore from GitHub Secrets..."
@@ -99,7 +103,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID || secrets.GOOGLE_SERVER_CLIENT_ID }}
           SUPABASE_STORAGE_URL: ${{ vars.SUPABASE_STORAGE_URL || secrets.SUPABASE_STORAGE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
-          PUBLISH: ${{ inputs.publish || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+          PUBLISH: ${{ inputs.publish || github.event_name == 'release' }}
         run: |
           API_URL="${INPUT_API_URL:-$CONFIG_API_URL}"
           if [ -z "$API_URL" ]; then
@@ -167,7 +171,7 @@ jobs:
 
       - name: Wait for matching backend deployment and reject stale builds
         id: publication
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -191,7 +195,7 @@ jobs:
           exit 1
 
       - name: Generate Product Release Notes
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
         run: |
           cat << 'EOF' > release_body.md
           ## Verified Tenvora Android build
@@ -216,7 +220,7 @@ jobs:
         run: sha256sum dist/tenvora-mobile.apk > dist/tenvora-mobile.apk.sha256
 
       - name: Record published build provenance
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || github.event_name == 'release'
         env:
           API_URL: ${{ inputs.api_base_url || vars.MOBILE_API_BASE_URL || secrets.MOBILE_API_BASE_URL }}
         run: |

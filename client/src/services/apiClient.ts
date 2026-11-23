@@ -120,12 +120,17 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         const status = axios.isAxiosError(refreshError) ? refreshError.response?.status : undefined;
-        if (status !== 401 && status !== 403) return Promise.reject(refreshError);
-        if (sessionEpoch !== epochAtStart) return Promise.reject(refreshError);
-        if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/") {
+        if (status !== 400 && status !== 401 && status !== 403) return Promise.reject(refreshError);
+        if (sessionEpoch !== epochAtStart) return Promise.reject(error);
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/" &&
+          !String(originalRequest.url || "").includes("/auth/me")
+        ) {
           window.location.href = "/login";
         }
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
     }
 

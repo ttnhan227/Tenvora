@@ -221,7 +221,9 @@ class ApiClient {
     if (trimmed.startsWith('/')) {
       final base = Uri.tryParse(_baseUrl);
       if (base != null && base.hasScheme && base.host.isNotEmpty) {
-        return base.replace(path: trimmed, query: null, fragment: null).toString();
+        return base
+            .replace(path: trimmed, query: null, fragment: null)
+            .toString();
       }
     }
     return trimmed;
