@@ -29,6 +29,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AiAction> AiActions => Set<AiAction>();
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiConversationMessage> AiConversationMessages => Set<AiConversationMessage>();
+    public DbSet<WebhookEndpoint> WebhookEndpoints => Set<WebhookEndpoint>();
+    public DbSet<WebhookOutboxEvent> WebhookOutboxEvents => Set<WebhookOutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +57,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasMany(e => e.BusinessExpenses).WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany<RecurringExpenseTemplate>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany<TenantExtractionRule>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany<WebhookEndpoint>().WithOne().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(e => e.ApiKey).IsUnique();
         });
 
@@ -387,6 +390,39 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(e => e.Content).IsRequired();
             entity.Property(e => e.ToolCallsJson).HasColumnType("jsonb");
             entity.HasIndex(e => new { e.TenantId, e.ConversationId, e.CreatedAt });
+        });
+
+        modelBuilder.Entity<WebhookEndpoint>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Url).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.SigningSecret).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.EventTypes).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(200);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasIndex(e => new { e.TenantId, e.IsActive });
+        });
+
+        modelBuilder.Entity<WebhookOutboxEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EventType).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.DeliveryId).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.PayloadJson).HasColumnType("text").IsRequired();
+            entity.Property(e => e.TraceParent).HasMaxLength(128);
+            entity.Property(e => e.Status).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.MaxAttempts).HasDefaultValue(5);
+            entity.Property(e => e.LastError).HasMaxLength(500);
+            entity.HasOne(e => e.Endpoint)
+                .WithMany(ep => ep.OutboxEvents)
+                .HasForeignKey(e => e.EndpointId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.Status, e.NextAttemptAt });
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.EndpointId, e.DeliveryId }).IsUnique();
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_WebhookOutboxEvents_Status",
+                "\"Status\" IN ('Pending','Delivering','Delivered','DeadLettered')"));
         });
     }
 }

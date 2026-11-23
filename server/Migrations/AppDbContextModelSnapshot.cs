@@ -939,6 +939,129 @@ namespace Tenvora.Api.Migrations
                     b.ToTable("TenantExtractionRules");
                 });
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.WebhookEndpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("EventTypes")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("SigningSecret")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.ToTable("WebhookEndpoints");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.WebhookOutboxEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeadLetteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeliveryId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("EndpointId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("LastHttpStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5);
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EndpointId", "DeliveryId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptAt");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt");
+
+                    b.ToTable("WebhookOutboxEvents", t =>
+                        {
+                            t.HasCheckConstraint("CK_WebhookOutboxEvents_Status", "\"Status\" IN ('Pending','Delivering','Delivered','DeadLettered')");
+                        });
+                });
+
             modelBuilder.Entity("Tenvora.Api.Models.AiAction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1534,6 +1657,26 @@ namespace Tenvora.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.WebhookEndpoint", b =>
+                {
+                    b.HasOne("Tenvora.Api.Models.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.WebhookOutboxEvent", b =>
+                {
+                    b.HasOne("Tenvora.Api.Domain.Entities.WebhookEndpoint", "Endpoint")
+                        .WithMany("OutboxEvents")
+                        .HasForeignKey("EndpointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Endpoint");
+                });
+
             modelBuilder.Entity("Tenvora.Api.Models.AiAction", b =>
                 {
                     b.HasOne("Tenvora.Api.Models.Tenant", null)
@@ -1611,6 +1754,11 @@ namespace Tenvora.Api.Migrations
                     b.Navigation("Payments");
 
                     b.Navigation("Purchases");
+                });
+
+            modelBuilder.Entity("Tenvora.Api.Domain.Entities.WebhookEndpoint", b =>
+                {
+                    b.Navigation("OutboxEvents");
                 });
 
             modelBuilder.Entity("Tenvora.Api.Models.AiConversation", b =>

@@ -68,6 +68,21 @@ public sealed partial class BusinessService
         };
 
         db.StockAdjustments.Add(adjustment);
+        await WebhookOutboxService.EnqueueAsync(
+            db,
+            tenantId,
+            WebhookEventTypes.InventoryAdjusted,
+            adjustment.Id.ToString("N"),
+            new
+            {
+                adjustmentId = adjustment.Id,
+                productId = adjustment.ProductId,
+                quantityBefore = adjustment.QuantityBefore,
+                adjustmentQuantity = adjustment.AdjustmentQuantity,
+                quantityAfter = adjustment.QuantityAfter,
+                reason = adjustment.Reason,
+                adjustedAt = adjustment.AdjustedAt
+            });
         await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
 

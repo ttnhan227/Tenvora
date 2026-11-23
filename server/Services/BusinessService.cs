@@ -306,6 +306,22 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             });
         }
         db.Sales.Add(sale);
+        await WebhookOutboxService.EnqueueAsync(
+            db,
+            tenantId,
+            WebhookEventTypes.SaleRecorded,
+            sale.Id.ToString("N"),
+            new
+            {
+                saleId = sale.Id,
+                saleNumber = sale.SaleNumber,
+                customerId = sale.CustomerId,
+                totalAmount = sale.TotalAmount,
+                currency = sale.Currency,
+                paidAmount = Money(sale.Payments.Where(p => !p.IsReversed).Sum(p => p.Amount)),
+                itemCount = sale.Items.Count,
+                soldAt = sale.SoldAt
+            });
         await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
         return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));
@@ -415,6 +431,22 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
             db.BusinessPayments.Add(payment);
             sale.UpdatedAt = DateTime.UtcNow;
 
+            await WebhookOutboxService.EnqueueAsync(
+                db,
+                tenantId,
+                WebhookEventTypes.PaymentReceived,
+                payment.Id.ToString("N"),
+                new
+                {
+                    paymentId = payment.Id,
+                    saleId = payment.SaleId,
+                    customerId = payment.CustomerId,
+                    amount = payment.Amount,
+                    currency = payment.Currency,
+                    method = payment.Method,
+                    paidAt = payment.PaidAt
+                });
+
             remainingToAllocate = Money(remainingToAllocate - paymentPortion);
             affectedSales.Add(MapSale(sale));
         }
@@ -463,6 +495,21 @@ public sealed partial class BusinessService(AppDbContext db) : IBusinessService
         sale.Payments.Add(payment);
         db.BusinessPayments.Add(payment);
         sale.UpdatedAt = DateTime.UtcNow;
+        await WebhookOutboxService.EnqueueAsync(
+            db,
+            tenantId,
+            WebhookEventTypes.PaymentReceived,
+            payment.Id.ToString("N"),
+            new
+            {
+                paymentId = payment.Id,
+                saleId = payment.SaleId,
+                customerId = payment.CustomerId,
+                amount = payment.Amount,
+                currency = payment.Currency,
+                method = payment.Method,
+                paidAt = payment.PaidAt
+            });
         await db.SaveChangesAsync();
         if (write != null) await write.CommitAsync();
         return ApiResult<SaleSummaryDto>.Ok(MapSale(sale));

@@ -150,6 +150,23 @@ builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 // Services
 builder.Services.AddHttpClient();
+builder.Services.Configure<WebhookOptions>(builder.Configuration.GetSection("Webhooks"));
+builder.Services.AddHttpClient(WebhookOptions.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+}).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    AllowAutoRedirect = false,
+    ConnectTimeout = TimeSpan.FromSeconds(5)
+});
+builder.Services.AddSingleton<IWebhookUrlValidator>(sp =>
+{
+    var webhookOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebhookOptions>>().Value;
+    return new WebhookUrlValidator(resolveDns: webhookOptions.ResolveDns);
+});
+builder.Services.AddScoped<IWebhookOutboxService, WebhookOutboxService>();
+builder.Services.AddScoped<IWebhookDeliveryService, WebhookDeliveryService>();
+builder.Services.AddHostedService<WebhookDispatcherBackgroundService>();
 builder.Services.AddSingleton<IGoogleAuthValidator, GoogleAuthValidator>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<AccountDeletionService>();

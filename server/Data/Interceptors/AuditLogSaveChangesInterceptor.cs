@@ -66,7 +66,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
             if (entry.State is EntityState.Detached or EntityState.Unchanged)
                 continue;
 
-            if (entry.Entity is AuditLog or RefreshToken)
+            if (entry.Entity is AuditLog or RefreshToken or WebhookOutboxEvent)
                 continue; // Skip infrastructure / log tables
 
             var entityType = entry.Entity.GetType().Name;
@@ -98,7 +98,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
 
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is "Id" or "CreatedAt" or "UpdatedAt" or "RowVersion" or "PasswordHash" or "ApiKey" or "InviteToken")
+                    if (prop.Metadata.Name is "Id" or "CreatedAt" or "UpdatedAt" or "RowVersion" or "PasswordHash" or "ApiKey" or "InviteToken" or "SigningSecret")
                         continue;
 
                     if (prop.IsModified)
@@ -137,7 +137,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 var currentSnapshot = new Dictionary<string, object?>();
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken")
+                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken" and not "SigningSecret")
                     {
                         currentSnapshot[prop.Metadata.Name] = IsImageProperty(prop.Metadata.Name) && HasStoredImage(prop.CurrentValue)
                             ? StoredImageMarker
@@ -152,7 +152,7 @@ public sealed class AuditLogSaveChangesInterceptor : SaveChangesInterceptor
                 var originalSnapshot = new Dictionary<string, object?>();
                 foreach (var prop in entry.Properties)
                 {
-                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken")
+                    if (prop.Metadata.Name is not "PasswordHash" and not "ApiKey" and not "InviteToken" and not "SigningSecret")
                     {
                         originalSnapshot[prop.Metadata.Name] = IsImageProperty(prop.Metadata.Name) && HasStoredImage(prop.OriginalValue)
                             ? StoredImageMarker
