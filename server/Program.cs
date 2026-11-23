@@ -50,6 +50,8 @@ if (!string.IsNullOrWhiteSpace(port))
 
 builder.Services.AddLocalization();
 builder.Services.AddSingleton<IAppLocalizer, AppLocalizer>();
+builder.Logging.AddSimpleConsole(options => options.IncludeScopes = true);
+builder.Services.AddTenvoraOpenTelemetry(builder.Configuration);
 builder.Services.AddControllers(options => options.Filters.Add<WorkflowExceptionFilter>());
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
 {
@@ -101,7 +103,8 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin => CorsOriginPolicy.IsOriginAllowed(origin, allowedClientOrigins))
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .WithExposedHeaders("X-Trace-Id");
     });
 });
 
@@ -331,6 +334,7 @@ var localizationOptions = new RequestLocalizationOptions()
 localizationOptions.ApplyCurrentCultureToResponseHeaders = true;
 app.UseRequestLocalization(localizationOptions);
 
+app.UseTraceCorrelation();
 app.UseCors("ClientApp");
 app.UseAuthentication();
 app.Use(async (context, next) =>

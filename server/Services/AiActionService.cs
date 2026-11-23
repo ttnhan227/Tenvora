@@ -36,30 +36,57 @@ public sealed class AiActionService(
         string userRole = "TenantAdmin",
         CancellationToken ct = default)
     {
+        using var activity = TenvoraTelemetry.ActivitySource.StartActivity("tenvora.ai.propose");
         var text = request.Text?.Trim();
         if (string.IsNullOrWhiteSpace(text))
+        {
+            activity?.SetTag("ai.intent", "unknown");
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionProposalResponse>.Fail("Tell Tenvora what you want to record.");
+        }
 
         var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct);
-        if (tenant == null) return ApiResult<AiActionProposalResponse>.Fail("Workspace not found.");
+        if (tenant == null)
+        {
+            activity?.SetTag("ai.intent", "unknown");
+            activity?.SetTag("ai.action.status", "failed");
+            return ApiResult<AiActionProposalResponse>.Fail("Workspace not found.");
+        }
 
         if (request.Products != null && request.Products.Count > 0)
         {
+            activity?.SetTag("ai.intent", "create_product");
             if (userRole is not ("TenantAdmin" or "OperationsManager"))
+            {
+                activity?.SetTag("ai.action.status", "failed");
                 return ApiResult<AiActionProposalResponse>.Fail(_localizer.GetString("error.unauthorized_action"));
-            return await ProposeCreateProduct(tenantId, userId, text, request.UiContext, new("create_product", 0.99m), tenant.BaseCurrency, request.Products, ct);
+            }
+            var res = await ProposeCreateProduct(tenantId, userId, text, request.UiContext, new("create_product", 0.99m), tenant.BaseCurrency, request.Products, ct);
+            activity?.SetTag("ai.action.status", res.Success ? (res.Data?.RequiresConfirmation == true ? "proposed" : "clarification") : "failed");
+            return res;
         }
 
         var interpretedResult = await assistant.InterpretActionAsync(tenantId, text, request.UiContext, ct);
         if (!interpretedResult.Success || interpretedResult.Data == null)
+        {
+            activity?.SetTag("ai.intent", "unknown");
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionProposalResponse>.Fail(interpretedResult.Message);
+        }
 
         var action = interpretedResult.Data;
+        activity?.SetTag("ai.intent", action.Intent);
         if (userRole is not ("TenantAdmin" or "OperationsManager"))
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionProposalResponse>.Fail(_localizer.GetString("error.unauthorized_action"));
+        }
         if (RequiresTenantAdmin(action.Intent) && userRole != "TenantAdmin")
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionProposalResponse>.Fail(_localizer.GetString("error.admin_only_action"));
-        return action.Intent switch
+        }
+        var proposal = action.Intent switch
         {
             "expense" => await ProposeExpense(tenantId, userId, text, request.UiContext, action, tenant.BaseCurrency, ct),
             "debt_payment" => await ProposePayment(tenantId, userId, text, request.UiContext, action, tenant.BaseCurrency, ct),
@@ -77,6 +104,9 @@ public sealed class AiActionService(
             _ => ApiResult<AiActionProposalResponse>.Ok(Clarification(
                 "unknown", _localizer.GetClarification("unknown")))
         };
+
+        activity?.SetTag("ai.action.status", proposal.Success ? (proposal.Data?.RequiresConfirmation == true ? "proposed" : "clarification") : "failed");
+        return proposal;
     }
 
     public async Task<ApiResult<AiActionExecutionResponse>> ConfirmAsync(
@@ -88,13 +118,25 @@ public sealed class AiActionService(
         CancellationToken ct = default,
         AiActionInputOverrides? input = null)
     {
+        using var activity = TenvoraTelemetry.ActivitySource.StartActivity("tenvora.ai.confirm");
         var action = await db.AiActions.FirstOrDefaultAsync(
             a => a.Id == actionId && a.TenantId == tenantId && a.UserId == userId, ct);
-        if (action == null) return ApiResult<AiActionExecutionResponse>.Fail("AI action not found.");
+        if (action == null)
+        {
+            activity?.SetTag("ai.action.status", "failed");
+            return ApiResult<AiActionExecutionResponse>.Fail("AI action not found.");
+        }
+        activity?.SetTag("ai.intent", action.Intent);
         if (userRole is not ("TenantAdmin" or "OperationsManager"))
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail("Only workspace administrators and operations managers can execute business actions.");
+        }
         if (RequiresTenantAdmin(action.Intent) && userRole != "TenantAdmin")
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail("Only a workspace administrator can perform this action.");
+        }
 
         // Serialize confirmation with other tenant financial writes, then reload
         // the proposal inside the transaction to defeat concurrent replays.
@@ -105,6 +147,7 @@ public sealed class AiActionService(
         {
             var replay = JsonSerializer.Deserialize<AiActionExecutionResponse>(action.ResultJson, JsonOptions);
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", replay == null ? "failed" : "replay");
             return replay == null
                 ? ApiResult<AiActionExecutionResponse>.Fail("The saved action result is unavailable.")
                 : ApiResult<AiActionExecutionResponse>.Ok(replay);
@@ -113,6 +156,7 @@ public sealed class AiActionService(
         if (action.Status != AiActionStatuses.PendingConfirmation)
         {
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail($"This action is already {action.Status.ToLowerInvariant()}.");
         }
 
@@ -123,6 +167,7 @@ public sealed class AiActionService(
             action.CancelledAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "cancelled");
             return ApiResult<AiActionExecutionResponse>.Ok(new(
                 action.Id, action.Status, "Action cancelled. Nothing was changed."));
         }
@@ -133,6 +178,7 @@ public sealed class AiActionService(
             action.RequiresConfirmation = false;
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "expired");
             return ApiResult<AiActionExecutionResponse>.Fail("This proposal expired. Ask Tenvora to prepare it again.");
         }
 
@@ -165,6 +211,7 @@ public sealed class AiActionService(
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(ex.Message);
         }
 
@@ -210,6 +257,7 @@ public sealed class AiActionService(
             action.ResultJson = JsonSerializer.Serialize(new { error = execution.Message }, JsonOptions);
             await db.SaveChangesAsync(ct);
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "failed");
             return execution;
         }
 
@@ -222,6 +270,7 @@ public sealed class AiActionService(
         action.ResultJson = JsonSerializer.Serialize(completed, JsonOptions);
         await db.SaveChangesAsync(ct);
         if (write != null) await write.CommitAsync(ct);
+        activity?.SetTag("ai.action.status", "executed");
         return ApiResult<AiActionExecutionResponse>.Ok(completed);
     }
 
@@ -232,8 +281,10 @@ public sealed class AiActionService(
         string userRole = "TenantAdmin",
         CancellationToken ct = default)
     {
+        using var activity = TenvoraTelemetry.ActivitySource.StartActivity("tenvora.ai.undo");
         if (string.Equals(userRole, "Viewer", StringComparison.OrdinalIgnoreCase))
         {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(
                 _localizer.GetString("error.unauthorized_execute"), "UNAUTHORIZED_EXECUTE");
         }
@@ -244,18 +295,30 @@ public sealed class AiActionService(
             a => a.Id == actionId && a.TenantId == tenantId, ct);
 
         if (action == null)
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.action_not_found"));
+        }
+
+        activity?.SetTag("ai.intent", action.Intent);
 
         if (action.Status == AiActionStatuses.Undone)
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.action_already_undone"));
+        }
 
         if (action.Status != AiActionStatuses.Executed)
+        {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail($"Cannot undo an action in '{action.Status}' status.");
+        }
 
         // Check 15-minute rollback window
         var executedTime = action.ExecutedAt ?? action.ConfirmedAt;
         if (executedTime.HasValue && DateTime.UtcNow - executedTime.Value > TimeSpan.FromMinutes(15))
         {
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetString("error.undo_window_expired"));
         }
 
@@ -266,6 +329,7 @@ public sealed class AiActionService(
         if (!entityId.HasValue)
         {
             if (write != null) await write.CommitAsync(ct);
+            activity?.SetTag("ai.action.status", "failed");
             return ApiResult<AiActionExecutionResponse>.Fail(
                 "This action cannot be undone automatically because it does not target a single reversible record.",
                 "UNDO_NOT_SUPPORTED");
@@ -280,6 +344,7 @@ public sealed class AiActionService(
                 if (!voidSaleRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(voidSaleRes.Message ?? "Failed to void sale.");
                 }
                 break;
@@ -289,6 +354,7 @@ public sealed class AiActionService(
                 if (!voidPurchRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(voidPurchRes.Message ?? "Failed to void purchase.");
                 }
                 break;
@@ -299,6 +365,7 @@ public sealed class AiActionService(
                 if (!delExpRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(delExpRes.Message ?? "Failed to delete expense.");
                 }
                 break;
@@ -308,6 +375,7 @@ public sealed class AiActionService(
                 if (!delCustRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(delCustRes.Message ?? "Failed to delete customer.");
                 }
                 break;
@@ -317,6 +385,7 @@ public sealed class AiActionService(
                 if (!delProdRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(delProdRes.Message ?? "Failed to delete product.");
                 }
                 break;
@@ -326,6 +395,7 @@ public sealed class AiActionService(
                 if (!delSuppRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(delSuppRes.Message ?? "Failed to delete supplier.");
                 }
                 break;
@@ -337,6 +407,7 @@ public sealed class AiActionService(
                 if (salePayment == null)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail("Payment record not found for undo.");
                 }
                 var revSalePayRes = await business.ReverseSalePaymentAsync(
@@ -344,6 +415,7 @@ public sealed class AiActionService(
                 if (!revSalePayRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(revSalePayRes.Message ?? "Failed to reverse sale payment.");
                 }
                 break;
@@ -355,6 +427,7 @@ public sealed class AiActionService(
                 if (purchasePayment == null)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail("Supplier payment record not found for undo.");
                 }
                 var revPurchPayRes = await business.ReversePurchasePaymentAsync(
@@ -362,12 +435,14 @@ public sealed class AiActionService(
                 if (!revPurchPayRes.Success)
                 {
                     if (write != null) await write.CommitAsync(ct);
+                    activity?.SetTag("ai.action.status", "failed");
                     return ApiResult<AiActionExecutionResponse>.Fail(revPurchPayRes.Message ?? "Failed to reverse supplier payment.");
                 }
                 break;
 
             default:
                 if (write != null) await write.CommitAsync(ct);
+                activity?.SetTag("ai.action.status", "failed");
                 return ApiResult<AiActionExecutionResponse>.Fail(
                     $"Undo is not supported for action '{action.Intent}'.",
                     "UNDO_NOT_SUPPORTED");
@@ -386,6 +461,7 @@ public sealed class AiActionService(
         await db.SaveChangesAsync(ct);
         if (write != null) await write.CommitAsync(ct);
 
+        activity?.SetTag("ai.action.status", "undone");
         return ApiResult<AiActionExecutionResponse>.Ok(response);
     }
 

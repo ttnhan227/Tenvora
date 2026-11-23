@@ -77,7 +77,10 @@ public sealed class TenantContextMiddleware(RequestDelegate next, ILogger<Tenant
 
         try
         {
-            await next(context);
+            using (logger.BeginScope(new Dictionary<string, object> { ["TenantId"] = tenantId }))
+            {
+                await next(context);
+            }
         }
         finally
         {
