@@ -52,7 +52,9 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 | **Database** | PostgreSQL 16+ / 18 (Supabase / Self-hosted / Neon) | Multi-tenant relational storage, check constraints, RLS policies, audit logs. |
 | **Mobile App** | Flutter 3.x, Dart, Dio, Secure Storage | Android/iOS mobile client, camera receipt capture, offline token cache. |
 | **AI Integration** | Multi-Provider LLM (`Gemini`, `OpenAI`, `Mistral`, `Ollama`, `Custom`) | Contextual chat, natural-language ledger queries, typed proposals. |
-| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (358 tests: 212 .NET + 146 Vitest), Docker images, verified APK builds. |
+| **DevOps & CI/CD** | GitHub Actions, Docker, Render | Automated testing (230 local / 239 CI .NET + 146 Vitest + 11 Playwright E2E + 66 Flutter), Docker images, verified APK builds. |
+
+For detailed system architecture, ADRs, concurrency controls, OpenTelemetry tracing, transactional outbox webhooks, and failure recovery matrices, see [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
 
 ---
 
@@ -126,7 +128,7 @@ pwsh scripts/verify-all.ps1        # Windows PowerShell
 bash scripts/verify-all.sh         # Linux / macOS
 
 # Or run individual test suites:
-# Backend Tests (212 xUnit tests verifying ledger math, concurrency, and RLS)
+# Backend Tests (230 local / 239 CI xUnit tests verifying ledger math, concurrency, RLS, tracing, and webhooks)
 dotnet test server.Tests
 
 # Frontend Unit & Integration Tests (146 Vitest tests across 34 test suites)
@@ -154,11 +156,12 @@ Tenvora/
 │   ├── Data/               # AppDbContext, migrations, audit interceptors
 │   ├── Domain/Entities/    # Tenant-scoped domain models
 │   └── Services/           # Ledger calculations, business rules, AI services
-├── server.Tests/           # 212 xUnit unit, integration, and security regression tests
+├── server.Tests/           # 230 local / 239 CI xUnit unit, integration, and security regression tests
 ├── mobile/                 # Flutter mobile application
 │   ├── lib/                # Mobile app code, camera receipts, state management
 │   └── android/            # Native Android packaging & Gradle configuration
-├── docs/                   # Production operations, engineering records, and Play Store compliance
+├── docs/                   # System architecture, operations, engineering records, and Play Store compliance
+│   ├── ARCHITECTURE.md     # System design, ADRs, concurrency, tracing, webhooks, and failure recovery
 │   ├── engineering-records.md # Engineering audit closures and verification records
 │   ├── operations.md       # Deployment runbooks, database recovery, and health checks
 │   └── google-play.md      # Store listing metadata, Data Safety, and compliance
