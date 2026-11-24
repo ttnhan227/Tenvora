@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
@@ -228,12 +229,12 @@ public class OpenTelemetryTracingTests
         Assert.Matches("^[0-9a-f]{32}$", notFoundTraceIdValues.Single());
 
         // Test 6: Sensitive headers (Authorization, Cookie) are not leaked into span tags
-        var capturedActivities = new List<Activity>();
+        var capturedActivities = new ConcurrentQueue<Activity>();
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name.StartsWith("Microsoft.AspNetCore") || source.Name == TenvoraTelemetry.ServiceName,
             Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = a => capturedActivities.Add(a)
+            ActivityStopped = a => capturedActivities.Enqueue(a)
         };
         ActivitySource.AddActivityListener(listener);
 
