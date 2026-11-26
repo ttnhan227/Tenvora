@@ -19,7 +19,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 **Tenvora** is a business-management system built for small and local businesses (retail, wholesale, supply shops). It replaces informal credit notebooks, scattered paper receipts, and manual spreadsheets with an append-only financial ledger, real-time debt tracking, and an integrated native mobile companion.
 
@@ -31,20 +31,20 @@ The architecture enforces strict mathematical invariants on the server: atomic t
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-* **📊 Practical Financial Dashboard:** Real-time visibility into today's sales, cash collections, categorized operating expenses, and net profit.
-* **👥 Debt & Receivables Ledger:** Track customer and supplier debts, 1-click FIFO debt collection directly from customer lists, credit ceilings, and complete repayment histories.
-* **🧾 Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
-* **📱 Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
-* **🤖 Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
-* **🔒 Tenant Scoping & RLS:** Explicit `TenantId` query scoping in EF Core services combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
-* **📡 Observability & Event Delivery:** End-to-end OpenTelemetry distributed tracing across HTTP, EF Core, and Npgsql, paired with a Transactional Outbox webhook dispatcher for reliable external integrations.
-* **🌐 Multilingual & Multi-Currency Support:** Comprehensive web workspace with USD ($) primary currency and international localization (English and Vietnamese); native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
+* **Practical Financial Dashboard:** Real-time visibility into today's sales, cash collections, categorized operating expenses, and net profit.
+* **Debt & Receivables Ledger:** Track customer and supplier debts, 1-click FIFO debt collection directly from customer lists, credit ceilings, and complete repayment histories.
+* **Camera Receipt Capture:** Snap vendor invoices and store receipts directly from the mobile app to attach them to permanent records.
+* **Native Mobile Companion:** Lightweight Android app built with Flutter for fast 5-second counter sales and field operations.
+* **Multi-Provider AI Copilot:** Grounded business analysis supporting configurable LLMs (Google Gemini, OpenAI, Mistral, Ollama, or custom OpenAI-compatible endpoints) with guarded, server-validated action proposals.
+* **Tenant Scoping & RLS:** Explicit `TenantId` query scoping in EF Core services combined with PostgreSQL `FORCE ROW LEVEL SECURITY` session policies isolate data across all layers.
+* **Observability & Event Delivery:** End-to-end OpenTelemetry distributed tracing across HTTP, EF Core, and Npgsql, paired with a Transactional Outbox webhook dispatcher for reliable external integrations.
+* **Multilingual & Multi-Currency Support:** Comprehensive web workspace with USD ($) primary currency and international localization (English and Vietnamese); native Android companion localized across 7 languages (EN, VI, ES, FR, DE, PT-BR, ID) with currency and date localization.
 
 ---
 
-## 🏗️ Architecture & Technology
+## Architecture & Technology
 
 | Component | Stack | Responsibilities |
 | :--- | :--- | :--- |

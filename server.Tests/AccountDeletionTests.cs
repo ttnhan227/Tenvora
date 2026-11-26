@@ -65,6 +65,8 @@ public sealed class AccountDeletionTests
         var other = new User { Id = Guid.NewGuid(), TenantId = user.TenantId, Email = "admin@test.invalid", PasswordHash = "hash", Role = "TenantAdmin" };
         db.Add(other);
         db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), TenantId = user.TenantId, UserId = user.Id, PerformedBy = user.Email, EntityType = "Sale", EntityId = "sale", Action = "Created", IpAddress = "127.0.0.1" });
+        db.AiTelemetryEvents.Add(new AiTelemetryEvent { Id = Guid.NewGuid(), TenantId = user.TenantId, UserId = user.Id, Intent = "sale", DurationMs = 12 });
+        db.AiTelemetryEvents.Add(new AiTelemetryEvent { Id = Guid.NewGuid(), TenantId = user.TenantId, UserId = other.Id, Intent = "expense", DurationMs = 15 });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         db.ChangeTracker.Clear();
         Assert.True((await new AccountDeletionService(db).DeleteAsync(user.TenantId, user.Id, user.Email)).Success);
@@ -72,6 +74,8 @@ public sealed class AccountDeletionTests
         var audit = Assert.Single(db.AuditLogs, a => a.EntityType == "Sale");
         Assert.Null(audit.UserId); Assert.Null(audit.IpAddress); Assert.Equal("Deleted account", audit.PerformedBy);
         Assert.Empty(db.RefreshTokens); Assert.Empty(db.AiConversationMessages);
+        var remainingTelemetry = Assert.Single(db.AiTelemetryEvents);
+        Assert.Equal(other.Id, remainingTelemetry.UserId);
         Assert.DoesNotContain(db.AuditLogs, a => a.EntityType == "AiConversation" || a.EntityType == "AiConversationMessage");
     }
 

@@ -32,8 +32,16 @@ FROM nginxinc/nginx-unprivileged:alpine
 # Copy built application from build stage
 COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
 
-# Copy optimized nginx config
+# Copy optimized nginx config (production CSP by default; override connect-src via CSP_CONNECT_SRC env)
 COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
+USER root
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -eu' \
+    'if [ -n "${CSP_CONNECT_SRC:-}" ]; then' \
+    '  sed -i "s|connect-src '\''self'\'' https:;|connect-src ${CSP_CONNECT_SRC};|g" /etc/nginx/conf.d/default.conf' \
+    'fi' \
+    > /docker-entrypoint.d/25-csp-connect-src.sh && chmod +x /docker-entrypoint.d/25-csp-connect-src.sh
 
 # Switch to non-root user
 USER nginx

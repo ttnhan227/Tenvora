@@ -230,4 +230,61 @@ public sealed class PostgresWorkflowTests
             await db.Database.CloseConnectionAsync();
         }
     }
+
+    [PostgresFact]
+    public async Task Postgres_Rls_FailsClosed_WhenCurrentTenantIdIsUnsetOrEmpty()
+    {
+        await using var fixture = new Database();
+        await fixture.Initialize();
+        var (tenantA, customerA, _) = await Seed(fixture);
+
+        await using var db = fixture.Open();
+
+        await db.Database.ExecuteSqlRawAsync(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'tenvora_app_user') THEN
+                    CREATE ROLE tenvora_app_user;
+                END IF;
+                GRANT USAGE ON SCHEMA public TO tenvora_app_user;
+                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO tenvora_app_user;
+            END $$;");
+
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync("SET ROLE tenvora_app_user");
+
+            // Empty tenant GUC must fail closed (0 rows visible, inserts rejected)
+            await db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_tenant_id', '', false)");
+            var countEmpty = await db.Customers.FromSqlRaw(@"SELECT * FROM ""Customers"" WHERE ""Id"" = {0}", customerA).CountAsync();
+            Assert.Equal(0, countEmpty);
+
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO ""Customers"" (""Id"", ""TenantId"", ""Name"", ""Status"", ""CreatedAt"")
+                      VALUES ({0}, {1}, 'Unscoped Insert', 'Active', NOW())",
+                    Guid.NewGuid(), tenantA);
+            });
+
+            // Reset/unset tenant GUC must also fail closed
+            await db.Database.ExecuteSqlRawAsync("RESET app.current_tenant_id");
+            var countUnset = await db.Customers.FromSqlRaw(@"SELECT * FROM ""Customers"" WHERE ""Id"" = {0}", customerA).CountAsync();
+            Assert.Equal(0, countUnset);
+
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO ""Customers"" (""Id"", ""TenantId"", ""Name"", ""Status"", ""CreatedAt"")
+                      VALUES ({0}, {1}, 'Unset GUC Insert', 'Active', NOW())",
+                    Guid.NewGuid(), tenantA);
+            });
+        }
+        finally
+        {
+            await db.Database.ExecuteSqlRawAsync("RESET ROLE");
+            await db.Database.CloseConnectionAsync();
+        }
+    }
 }

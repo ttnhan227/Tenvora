@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, TrendingUp, TrendingDown, Info, X } from "lucide-react";
+import { NotebookPen, TrendingUp, TrendingDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { businessService } from "@/services/businessService";
@@ -35,16 +35,16 @@ export function AiInsightCard({ className }: AiInsightCardProps) {
       {insights.map((insight) => (
         <div
           key={insight.id}
-          className="relative flex items-start justify-between gap-3 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/[0.02] to-transparent p-4 px-5 shadow-sm"
+          className="relative flex items-start justify-between gap-3 rounded-lg border border-primary/25 bg-card p-4 px-5"
         >
           <div className="flex items-start gap-3.5 min-w-0">
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-accent/50 text-primary">
               {insight.trend === "up" ? (
                 <TrendingUp className="h-4 w-4" />
               ) : insight.trend === "down" ? (
                 <TrendingDown className="h-4 w-4 text-rose-500" />
               ) : (
-                <Sparkles className="h-4 w-4" />
+                <NotebookPen className="h-4 w-4" />
               )}
             </div>
             <div className="min-w-0 flex-1 pr-6 sm:pr-0">

@@ -128,104 +128,122 @@ export default function Index() {
         {/* =========================================================================
             1. HERO SECTION: High-impact SaaS Headline & Value Proposition
         ========================================================================= */}
-        <section className="relative overflow-hidden pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-32">
-          {/* Subtle Ambient Backdrops */}
-          <div className="pointer-events-none absolute -right-24 -top-32 h-152 w-152 rounded-full bg-accent/45 blur-3xl opacity-75" />
-          <div className="pointer-events-none absolute -left-32 top-1/2 h-128 w-lg rounded-full bg-primary/5 blur-3xl opacity-60" />
-
+        <section className="relative overflow-hidden border-b border-border/70 pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-16 lg:pb-20">
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="mx-auto max-w-3xl text-center">
-              {/* Product Status Pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1 text-xs font-bold text-primary shadow-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>
-                  {isVietnamese ? "Sổ tay tài chính thông minh cho doanh nghiệp độc lập" : "The Intelligent Financial Ledger for Independent Commerce"}
-                </span>
-              </div>
+            <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:gap-12">
+              <div className="text-center lg:text-left">
+                {/* Ruled Ledger Eyebrow */}
+                <div className="notebook-label">
+                  <span>
+                    {isVietnamese ? "Sổ tay tài chính cho cửa hàng độc lập" : "Financial Ledger for Independent Commerce"}
+                  </span>
+                </div>
 
-              {/* Main Headline (Preserves test expectation) */}
-              <h1 className="mt-6 text-4xl leading-[1.18] sm:leading-[1.12] sm:text-6xl lg:text-7xl font-bold">
-                {isVietnamese ? (
-                  <>
-                    Tạm biệt sổ tay ghi chép.{" "}
-                    <span className="text-primary block sm:inline">Giữ trọn sự rõ ràng.</span>
-                  </>
-                ) : (
-                  <>
-                    Leave the notebooks behind.{" "}
-                    <span className="text-primary block sm:inline">Keep the clarity.</span>
-                  </>
-                )}
-              </h1>
+                {/* Main Headline (Preserves test expectation) */}
+                <h1 className="mt-5 text-4xl leading-[1.12] sm:text-5xl lg:text-[3.5rem] font-bold">
+                  {isVietnamese ? (
+                    <>
+                      Tạm biệt sổ tay ghi chép.{" "}
+                      <span className="text-primary block sm:inline">Giữ trọn sự rõ ràng.</span>
+                    </>
+                  ) : (
+                    <>
+                      Leave the notebooks behind.{" "}
+                      <span className="text-primary block sm:inline">Keep the clarity.</span>
+                    </>
+                  )}
+                </h1>
 
-              {/* Subtitle */}
-              <p className="mt-6 text-lg sm:text-xl leading-relaxed text-muted-foreground font-normal max-w-2xl mx-auto">
-                {isVietnamese
-                  ? "Ghi chép bán hàng, theo dõi nợ khách, quản lý tồn kho và kiểm soát chi phí trong một không gian làm việc hiện đại—được tạo ra cho người làm kinh doanh thực thụ, không phải kế toán."
-                  : "Record sales, track customer debt, manage inventory, and log expenses in a clean, modern workspace made for real shop owners—not accountants."}
-              </p>
+                {/* Subtitle */}
+                <p className="mt-5 text-base sm:text-lg leading-relaxed text-muted-foreground font-normal max-w-xl mx-auto lg:mx-0">
+                  {isVietnamese
+                    ? "Ghi chép bán hàng, theo dõi nợ khách, quản lý tồn kho và kiểm soát chi phí trong một không gian làm việc hiện đại—được tạo ra cho người làm kinh doanh thực thụ, không phải kế toán."
+                    : "Record sales, track customer debt, manage inventory, and log expenses in a clean, modern workspace made for real shop owners—not accountants."}
+                </p>
 
-              {/* Primary Call to Action Buttons */}
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-md hover:shadow-lg transition-all px-7">
-                  <Link to="/register">
-                    <span>{isVietnamese ? "Bắt đầu sổ tay kinh doanh" : "Start your business notebook"}</span>
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                {/* Primary Call to Action Buttons (1 Primary + 1 Secondary) */}
+                <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+                  <Button asChild size="lg" className="w-full sm:w-auto font-bold px-7">
+                    <Link to="/register">
+                      <span>{isVietnamese ? "Bắt đầu sổ tay kinh doanh" : "Start your business notebook"}</span>
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+
+                  <Button asChild size="lg" variant="outline" className="w-full sm:w-auto font-semibold">
+                    <a href="#preview">
+                      <BarChart3 className="mr-2 h-4 w-4 text-primary" />
+                      <span>{isVietnamese ? "Khám phá giao diện trực tiếp" : "Explore Live Preview"}</span>
+                    </a>
+                  </Button>
+                </div>
+
+                {/* Secondary Android Companion Link */}
+                <div className="mt-5 flex items-center justify-center lg:justify-start">
+                  <Link to="/mobile" className="friendly-focus inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                    <Smartphone className="h-4 w-4" />
+                    <span>{isVietnamese ? "Tải ứng dụng Android (APK)" : "Download Android Companion (APK)"}</span>
                   </Link>
-                </Button>
-
-                <Button asChild size="lg" variant="outline" className="w-full sm:w-auto font-semibold">
-                  <a href="#preview">
-                    <BarChart3 className="mr-2 h-4 w-4 text-primary" />
-                    <span>{isVietnamese ? "Khám phá giao diện trực tiếp" : "Explore Live Preview"}</span>
-                  </a>
-                </Button>
-
-                <Button asChild size="lg" variant="outline" className="w-full sm:w-auto font-semibold border-border/80 hover:border-primary/50 text-foreground">
-                  <Link to="/mobile">
-                    <Smartphone className="mr-2 h-4 w-4 text-primary" />
-                    <span>{isVietnamese ? "Tải ứng dụng Android" : "Get Android App"}</span>
-                  </Link>
-                </Button>
+                </div>
               </div>
 
-              {/* Micro Guarantees */}
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Check className="h-4 w-4 text-[hsl(var(--success))]" />
-                  <span>{isVietnamese ? "Không thuật ngữ kế toán" : "No accounting jargon"}</span>
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Check className="h-4 w-4 text-[hsl(var(--success))]" />
-                  <span>{isVietnamese ? "Dùng trên điện thoại & máy tính" : "Works on phone or laptop"}</span>
-                </span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Check className="h-4 w-4 text-[hsl(var(--success))]" />
-                  <span>{isVietnamese ? "Cài đặt 60 giây · Hoàn toàn miễn phí" : "60-second setup · 100% Free to use"}</span>
-                </span>
-              </div>
+              {/* Tactile Ledger Sheet Specimen */}
+              <aside aria-label="Sample merchant ledger" className="paper-card paper-lines border-t-4 border-t-primary p-5 sm:p-6 text-left">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div>
+                    <p className="micro-label">{isVietnamese ? "SỔ BÁN HÀNG HÔM NAY" : "TODAY'S LEDGER SHEET"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-foreground">
+                      {isVietnamese ? "Cửa Hàng Minh An" : "Minh An Specialty Wholesale"}
+                    </p>
+                  </div>
+                  <span className="font-mono text-xs font-semibold text-muted-foreground">PAGE 042</span>
+                </div>
+                <div className="divide-y divide-border/80 text-sm">
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="font-semibold text-foreground">Pho Hoa Market <span className="font-mono text-xs text-muted-foreground">#S-1042</span></p>
+                      <p className="text-xs text-muted-foreground">{isVietnamese ? "Thu đủ tiền mặt" : "Paid in full · Cash"}</p>
+                    </div>
+                    <span className="tabular-nums font-mono font-bold text-[hsl(var(--success))]">+$420.00</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="font-semibold text-foreground">Binh Tay Cafe <span className="font-mono text-xs text-muted-foreground">#S-1041</span></p>
+                      <p className="text-xs text-muted-foreground">{isVietnamese ? "Còn nợ $180.00" : "Partial · $180.00 owed"}</p>
+                    </div>
+                    <span className="tabular-nums font-mono font-bold text-amber-700 dark:text-amber-300">+$180.50</span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="font-semibold text-foreground">District 3 Courier <span className="font-mono text-xs text-muted-foreground">#E-089</span></p>
+                      <p className="text-xs text-muted-foreground">{isVietnamese ? "Chi phí giao hàng" : "Delivery expense"}</p>
+                    </div>
+                    <span className="tabular-nums font-mono font-bold text-destructive">-$45.00</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between border-t-2 border-foreground/20 pt-3">
+                  <span className="micro-label">{isVietnamese ? "THỰC THU RÒNG" : "NET CASH ON HAND"}</span>
+                  <span className="tabular-nums font-mono text-lg font-bold text-primary">$555.50</span>
+                </div>
+              </aside>
             </div>
 
             {/* =========================================================================
                 2. INTERACTIVE LIVE PRODUCT PREVIEW SHOWCASE
             ========================================================================= */}
-            <div id="preview" className="mt-14 sm:mt-18 pt-4">
-              <div className="relative mx-auto max-w-5xl rounded-[1.75rem] border border-border/80 bg-card/90 p-3 sm:p-5 shadow-2xl backdrop-blur-sm">
-                {/* Browser/Window Header */}
-                <div className="flex items-center justify-between border-b border-border/60 pb-3 px-2 sm:px-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1.5">
-                      <div className="h-3 w-3 rounded-full bg-red-400/80" />
-                      <div className="h-3 w-3 rounded-full bg-amber-400/80" />
-                      <div className="h-3 w-3 rounded-full bg-emerald-400/80" />
-                    </div>
-                    <span className="ml-2 hidden sm:inline-block text-xs font-semibold text-muted-foreground">
-                      workspace.tenvora.com/records · {isVietnamese ? "Cửa Hàng Thực Phẩm Minh An" : "Minh An Specialty Wholesale"}
-                    </span>
+            <div id="preview" className="mt-10 sm:mt-14 pt-2">
+              <div className="paper-card paper-lines relative mx-auto max-w-5xl border-t-4 border-t-primary p-4 sm:p-6">
+                {/* Ruled Ledger Folio Header */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-foreground/15 pb-3">
+                  <div>
+                    <p className="micro-label">{isVietnamese ? "SỔ CÁI TRỰC TIẾP" : "LIVE LEDGER FOLIO"}</p>
+                    <p className="mt-0.5 text-sm font-bold text-foreground">
+                      {isVietnamese ? "Cửa Hàng Thực Phẩm Minh An" : "Minh An Specialty Wholesale"}
+                    </p>
                   </div>
 
                   {/* Interactive Tab Switcher */}
-                  <div className="flex items-center gap-1 rounded-xl border border-border/80 bg-muted/40 p-1 text-xs font-semibold">
+                  <div className="flex items-center gap-1 rounded-md border border-border bg-background/80 p-1 text-xs font-semibold">
                     <button
                       onClick={() => setActiveTab("demo")}
                       className={`rounded-lg px-2.5 py-1 transition-all flex items-center gap-1.5 ${

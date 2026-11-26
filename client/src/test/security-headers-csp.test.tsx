@@ -134,6 +134,9 @@ describe("TEN-WEB-05: CSP hygiene, safe printing, and Nginx security headers", (
     expect(nginxConf).toContain("base-uri 'none'");
     expect(nginxConf).toContain("frame-ancestors 'none'");
     expect(nginxConf).toContain("https://accounts.google.com/gsi/client");
+    expect(nginxConf).toContain("connect-src 'self' https:;");
+    expect(nginxConf).not.toContain("http://localhost:*");
+    expect(nginxConf).not.toContain("http://127.0.0.1:*");
     expect(nginxConf).toContain("add_header Content-Security-Policy-Report-Only \"require-trusted-types-for 'script';\" always;");
 
     const assetsBlock = nginxConf.split("location /assets/ {")[1]?.split("}")[0] ?? "";

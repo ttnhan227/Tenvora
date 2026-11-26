@@ -46,7 +46,7 @@ ThemeData tenvoraTheme(Brightness brightness) {
     useMaterial3: true,
   );
   final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(8),
     borderSide: BorderSide(color: dark ? Colors.white24 : TenvoraColors.rule),
   );
   return base.copyWith(
@@ -82,15 +82,21 @@ ThemeData tenvoraTheme(Brightness brightness) {
         fontFamily: 'serif',
         fontWeight: FontWeight.w700,
       ),
-      bodyLarge: base.textTheme.bodyLarge?.copyWith(height: 1.35),
-      bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.35),
+      bodyLarge: base.textTheme.bodyLarge?.copyWith(
+        height: 1.35,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+      bodyMedium: base.textTheme.bodyMedium?.copyWith(
+        height: 1.35,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
       margin: EdgeInsets.zero,
       color: dark ? TenvoraColors.nightCard : TenvoraColors.card,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: dark ? Colors.white12 : TenvoraColors.rule),
       ),
     ),
@@ -120,14 +126,14 @@ ThemeData tenvoraTheme(Brightness brightness) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(48, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(

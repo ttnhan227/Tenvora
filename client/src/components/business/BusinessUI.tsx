@@ -77,11 +77,10 @@ export function MoneyCard({ label, value, detail, icon: Icon, tone = "plain", fe
     <article className={cn("paper-card relative overflow-hidden p-5", tones[tone], featured && "sm:col-span-2 sm:p-7")}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-bold text-foreground/75">{label}</p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl border bg-card/70 text-primary"><Icon className="h-4 w-4" /></span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-card/70 text-primary"><Icon className="h-4 w-4" /></span>
       </div>
-      <p className={cn("metric-value mt-4 font-bold tracking-tight", featured ? "text-3xl sm:text-4xl" : "text-2xl")}>{value}</p>
+      <p className={cn("metric-value tabular-nums mt-4 font-bold tracking-tight", featured ? "text-3xl sm:text-4xl" : "text-2xl")}>{value}</p>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p>
-      {featured && <div className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full border-18 border-primary/5" />}
     </article>
   );
 }

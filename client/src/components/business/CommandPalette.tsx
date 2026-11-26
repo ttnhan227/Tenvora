@@ -145,7 +145,7 @@ export function CommandPalette({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-2xl overflow-hidden p-0 border-border bg-card/98 backdrop-blur-xl shadow-2xl rounded-2xl"
+        className="max-w-2xl overflow-hidden p-0 border-border bg-card shadow-2xl rounded-lg"
       >
         <DialogTitle className="sr-only">
           {t("command.title", undefined, "Global Command Bar")}

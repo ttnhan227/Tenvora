@@ -1045,6 +1045,7 @@ public sealed partial class BusinessService
     public async Task<ApiResult<ProcessRecurringExpensesResultDto>> ProcessDueRecurringExpensesAsync(
         Guid tenantId, Guid userId, CancellationToken ct = default)
     {
+        await using var write = await FinancialWriteScope.BeginAsync(db, tenantId);
         var now = DateTime.UtcNow;
         var dueTemplates = await db.RecurringExpenseTemplates
             .Where(t => t.TenantId == tenantId && t.IsActive && t.NextDueDate <= now)
@@ -1119,6 +1120,7 @@ public sealed partial class BusinessService
         }
 
         await db.SaveChangesAsync(ct);
+        if (write != null) await write.CommitAsync();
 
         return ApiResult<ProcessRecurringExpensesResultDto>.Ok(new(
             ProcessedCount: dueTemplates.Count,

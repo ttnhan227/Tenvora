@@ -258,7 +258,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="md:pl-68">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/92 px-3 backdrop-blur-xl sm:px-6 md:px-8">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/98 px-3 sm:px-6 md:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <Button
               type="button"
@@ -337,7 +337,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card/96 px-1 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_30px_hsl(var(--foreground)/.07)] backdrop-blur-xl md:hidden">
+      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card px-1 pb-[max(.35rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_30px_hsl(var(--foreground)/.07)] md:hidden">
         {mobileItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return <Link key={item.href} to={item.href} aria-current={active ? "page" : undefined} className={`friendly-focus flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold ${active ? "text-primary" : "text-muted-foreground"}`}><item.icon size={20} /><span>{t(item.key, item.label)}</span></Link>;

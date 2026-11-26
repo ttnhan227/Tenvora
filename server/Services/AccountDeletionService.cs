@@ -32,6 +32,7 @@ public sealed class AccountDeletionService(AppDbContext db)
             var actionQuery = db.AiActions.Where(a => a.TenantId == tenantId && (others.Count == 0 || a.UserId == userId));
             var actionIds = await actionQuery.Select(a => a.Id).ToListAsync();
             await RemoveRowsAsync(actionQuery);
+            await RemoveRowsAsync(db.AiTelemetryEvents.Where(e => e.TenantId == tenantId && (others.Count == 0 || e.UserId == userId)));
             var personalEntityIds = ids.Concat(messageIds).Concat(actionIds).Select(id => id.ToString()).ToList();
             await RemoveRowsAsync(db.RefreshTokens.Where(t => t.UserId == userId));
             await RemoveRowsAsync(db.AuditLogs.Where(a =>

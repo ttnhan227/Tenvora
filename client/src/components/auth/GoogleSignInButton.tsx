@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { useLanguage } from "@/contexts/LanguageContext";
 import { GOOGLE_CLIENT_ID } from "@/lib/googleAuthConfig";
 
 export type GoogleCredentialResponse = { credential: string };
@@ -36,10 +37,13 @@ export function GoogleSignInButton({
   onError,
   text = "continue_with",
 }: GoogleSignInButtonProps) {
+  const { language } = useLanguage();
   const buttonRef = useRef<HTMLDivElement>(null);
   const onCredentialRef = useRef(onCredential);
   const onErrorRef = useRef(onError);
   const initializedRef = useRef(false);
+
+  const googleLocale = language === "pt-BR" ? "pt_BR" : language || "en";
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
@@ -65,13 +69,14 @@ export function GoogleSignInButton({
         theme: "outline",
         size: "large",
         text,
+        locale: googleLocale,
         shape: "rectangular",
         width: Math.min(360, buttonRef.current.clientWidth || 360),
       });
     };
 
     const existing = document.querySelector<HTMLScriptElement>(
-      'script[src="https://accounts.google.com/gsi/client"]',
+      'script[src^="https://accounts.google.com/gsi/client"]',
     );
     if (existing) {
       if (window.google) render();
@@ -83,7 +88,7 @@ export function GoogleSignInButton({
     }
 
     const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
+    script.src = `https://accounts.google.com/gsi/client?hl=${encodeURIComponent(googleLocale)}`;
     script.async = true;
     script.defer = true;
     script.onload = render;
@@ -96,7 +101,7 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [disabled, text]);
+  }, [disabled, text, googleLocale]);
 
   if (!GOOGLE_CLIENT_ID) return null;
 

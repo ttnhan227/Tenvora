@@ -1,4 +1,4 @@
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, NotebookPen } from "lucide-react";
 
 type PageAssistant = {
   title: string;
@@ -100,14 +100,14 @@ export function ContextualAiBar({
   if (!content) return null;
 
   return (
-    <section className="relative mb-6 overflow-hidden rounded-2xl border border-primary/20 bg-accent/45 p-4 shadow-sm sm:p-5">
+    <section className="relative mb-6 overflow-hidden rounded-lg border border-primary/25 bg-accent/35 p-4 sm:p-5">
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-            <Sparkles className="h-5 w-5" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-card text-primary">
+            <NotebookPen className="h-4 w-4" />
           </span>
           <div>
-            <p className="text-sm font-extrabold tracking-tight">{content.title}</p>
+            <p className="text-sm font-bold tracking-tight">{content.title}</p>
             <p className="mt-0.5 max-w-2xl text-xs leading-relaxed text-muted-foreground sm:text-sm">{content.description}</p>
           </div>
         </div>
@@ -117,7 +117,7 @@ export function ContextualAiBar({
               key={prompt}
               type="button"
               onClick={() => onPrompt(prompt)}
-              className="friendly-focus group inline-flex min-h-9 items-center gap-1.5 rounded-full border border-primary/20 bg-background/80 px-3 text-xs font-semibold text-foreground shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-background hover:shadow-md"
+              className="friendly-focus group inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground transition hover:border-primary/50 hover:bg-background"
             >
               {prompt}
               <ArrowUpRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

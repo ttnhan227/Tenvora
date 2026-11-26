@@ -77,11 +77,10 @@
   --radius-sm: calc(var(--radius) - 4px);
 
   --font-sans:
-    'Be Vietnam Pro', 'Plus Jakarta Sans', Inter, -apple-system,
+    'Be Vietnam Pro', Inter, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display:
-    'Plus Jakarta Sans', 'Be Vietnam Pro', Inter, -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    'Newsreader', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -104,10 +103,8 @@
 }
 
 @utility paper-card {
-  @apply rounded-2xl border bg-card;
-  box-shadow:
-    0 1px 0 hsl(var(--foreground) / 0.04),
-    0 8px 28px hsl(var(--foreground) / 0.045);
+  @apply rounded-lg border bg-card;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 }
 
 @utility paper-lines {
@@ -120,8 +117,7 @@
 }
 
 @utility notebook-label {
-  @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold text-primary;
-  background: hsl(var(--accent) / 0.72);
+  @apply inline-flex items-center border-b border-primary/40 pb-1 text-xs font-bold uppercase tracking-wider text-primary;
 }
 
 @utility page-title {
@@ -157,14 +153,14 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
-    font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
     font-size-adjust: from-font;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
     text-wrap: balance;
   }
   h1, .display-type {
-    font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    letter-spacing: -0.015em;
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    letter-spacing: -0.025em;
   }
   button, input, select, textarea { @apply shadow-none; font-family: inherit; }
   button, a { -webkit-tap-highlight-color: transparent; }

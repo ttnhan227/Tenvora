@@ -1324,36 +1324,29 @@ public sealed class AiActionService(
                 return ApiResult<AiActionExecutionResponse>.Fail(_localizer.GetClarification("product_already_exists", existingInDb[0]));
             }
 
-            // 2. Transactional batch creation
-            var tenant = await db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == action.TenantId);
-            var tenantCurrency = tenant?.BaseCurrency ?? "VND";
+            // 2. Transactional batch creation via BusinessService.CreateProductAsync
             var createdIds = new List<Guid>();
             var createdNames = new List<string>();
 
             foreach (var prod in payload.Products)
             {
-                var newProduct = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = action.TenantId,
-                    Name = prod.Name.Trim(),
-                    Unit = string.IsNullOrWhiteSpace(prod.Unit) ? "item" : prod.Unit.Trim(),
-                    DefaultPrice = Math.Max(0m, prod.UnitPrice),
-                    CostPrice = 0m,
-                    StockQuantity = 0m,
-                    Currency = tenantCurrency,
-                    Notes = prod.Notes,
-                    IsActive = true,
-                    TrackInventory = false,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                db.Products.Add(newProduct);
-                createdIds.Add(newProduct.Id);
-                createdNames.Add(newProduct.Name);
-            }
+                var created = await business.CreateProductAsync(
+                    action.TenantId,
+                    new CreateProductRequest(
+                        prod.Name,
+                        null,
+                        string.IsNullOrWhiteSpace(prod.Unit) ? "item" : prod.Unit.Trim(),
+                        prod.UnitPrice,
+                        Notes: prod.Notes));
 
-            await db.SaveChangesAsync();
+                if (!created.Success || created.Data == null)
+                {
+                    return ApiResult<AiActionExecutionResponse>.Fail(created.Message);
+                }
+
+                createdIds.Add(created.Data.Id);
+                createdNames.Add(created.Data.Name);
+            }
 
             // 3. Post-execution persistence verification
             var verifiedCount = await db.Products
