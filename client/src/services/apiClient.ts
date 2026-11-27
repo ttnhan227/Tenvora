@@ -30,8 +30,10 @@ function readCookie(name: string): string | null {
 // Request interceptor to attach CSRF token and locale
 apiClient.interceptors.request.use(
   (config) => {
-    reportRequestActivity(1);
-    (config as any)._activityTracked = true;
+    if (!(config as any)._skipActivityIndicator) {
+      reportRequestActivity(1);
+      (config as any)._activityTracked = true;
+    }
 
     const method = (config.method || "get").toUpperCase();
     if (!["GET", "HEAD", "OPTIONS", "TRACE"].includes(method)) {
@@ -105,7 +107,16 @@ apiClient.interceptors.response.use(
       reportRequestActivity(-1);
     }
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isPublicAuthRequest(originalRequest.url)) {
+    const isSessionProbeWithoutSession =
+      String(originalRequest?.url || "").includes("/auth/me") && !readCookie("XSRF-TOKEN");
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isPublicAuthRequest(originalRequest.url) &&
+      !isSessionProbeWithoutSession
+    ) {
       originalRequest._retry = true;
       const epochAtStart = sessionEpoch;
 

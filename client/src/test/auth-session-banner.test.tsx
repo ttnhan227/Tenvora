@@ -2,6 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import axios, { AxiosError, AxiosHeaders } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { RequestActivityIndicator } from "@/components/RequestActivityIndicator";
+import { REQUEST_ACTIVITY_EVENT } from "@/lib/requestActivity";
 import apiClient from "@/services/apiClient";
 
 function AuthStateProbe() {
@@ -37,15 +39,46 @@ describe("AuthProvider session initialization and refresh handling", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     window.history.replaceState({}, "", "/");
   });
 
   afterEach(() => {
     apiClient.defaults.adapter = originalAdapter;
+    document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     vi.restoreAllMocks();
   });
 
+  it("skips POST /auth/refresh-token and request activity indicator on unauthenticated /auth/me 401", async () => {
+    const activityEvents: number[] = [];
+    const onActivity = (e: Event) => activityEvents.push((e as CustomEvent<number>).detail);
+    window.addEventListener(REQUEST_ACTIVITY_EVENT, onActivity);
+
+    apiClient.defaults.adapter = vi.fn(async (config) => {
+      throw makeAxiosError(401, config.url || "/auth/me", { success: false, message: "Unauthorized" });
+    });
+    const postSpy = vi.spyOn(axios, "post");
+
+    render(
+      <AuthProvider>
+        <RequestActivityIndicator />
+        <AuthStateProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+    });
+
+    window.removeEventListener(REQUEST_ACTIVITY_EVENT, onActivity);
+    expect(postSpy).not.toHaveBeenCalled();
+    expect(activityEvents).toEqual([]);
+    expect(screen.queryByText(/Working on your request/i)).toBeNull();
+    expect(screen.getByTestId("authenticated").textContent).toBe("false");
+  });
+
   it("treats GET /auth/me (401) -> POST /auth/refresh-token (400) as anonymous with no error banner", async () => {
+    document.cookie = "XSRF-TOKEN=test-csrf; path=/";
     apiClient.defaults.adapter = vi.fn(async (config) => {
       throw makeAxiosError(401, config.url || "/auth/me", { success: false, message: "Unauthorized" });
     });

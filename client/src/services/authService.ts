@@ -136,7 +136,7 @@ export const authService = {
 
   getProfile: async (): Promise<ApiResponse<UserProfile>> => {
     try {
-      const response = await apiClient.get("/auth/me");
+      const response = await apiClient.get("/auth/me", { _skipActivityIndicator: true } as any);
       return response.data;
     } catch (error: unknown) {
       return toApiFailure(error, "Failed to fetch profile");
